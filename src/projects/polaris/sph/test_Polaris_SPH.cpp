@@ -280,10 +280,11 @@ int main(int argc, char* argv[]) {
             sysFSI.Initialize();
             #ifdef CHRONO_OPENGL
             visFSI.Initialize();
-            #endif
+            
 
             if (run_time_vis_bce)
                 vehicle->SetTireVisualizationType(VisualizationType::NONE);
+            #endif    
 
             on_ramp = false;
         }
@@ -310,12 +311,48 @@ int main(int argc, char* argv[]) {
         // Set current driver inputs
         driver_inputs = driver.GetInputs();
 
-        if (t < 0.5) {
-            driver_inputs.m_throttle = 0;
-            driver_inputs.m_braking = 1;
-        } else {
-            ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 0.5) / 0.5);
+        // if (t < 0.5) {
+        //     driver_inputs.m_throttle = 0;
+        //     driver_inputs.m_braking = 1;
+        // } else {
+        //     ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 0.5) / 0.5);
+        // }
+
+        double t_0=1.0;
+        double t_1=1.5;
+        double t_2=2.0;
+        double t_3=3.0;
+        double t_4=4.0;
+        double t_5=5.0;
+        double t_6=6.0;
+        double t_7=7.0;
+
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 0.0;
+
+        if (t < t_0)
+        {
+         driver_inputs.m_throttle = 0.0;
+         driver_inputs.m_braking = 1.0;
         }
+        else if (t < t_1)
+         driver_inputs.m_throttle = (t - t_0) / (t_1-t_0);
+        else if (t < t_2)
+         driver_inputs.m_throttle = 1;
+        else if (t < t_3)
+         driver_inputs.m_throttle = (t_3 - t) / (t_3 - t_2);
+        else if (t < t_4)
+         driver_inputs.m_braking = 0.5*(t - t_3) / (t_4 - t_3);
+        else if (t < t_6)
+         driver_inputs.m_throttle = (t - t_4) / (t_6-t_4);
+        else if (t < t_7)
+         driver_inputs.m_braking = (t - t_6) / (tend - t_6);
+        else if (t < tend)
+         driver_inputs.m_throttle = 1.0;
+
+        if (driver_inputs.m_throttle<0.00001)
+         driver_inputs.m_braking = 1.0;
+
 
         ////if (verbose)
         ////    cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
