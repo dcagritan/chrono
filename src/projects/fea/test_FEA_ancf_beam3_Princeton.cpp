@@ -54,15 +54,15 @@
 
 #include "chrono/physics/ChSystemSMC.h"
 
-#include "chrono/fea/ChElementBeamANCF.h"
+#include "chrono/fea/ChElementBeamANCF_3333.h"
 #include "chrono/fea/ChMesh.h"
-#include "chrono/fea/ChVisualizationFEAmesh.h"
+#include "chrono/assets/ChVisualShapeFEA.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono_irrlicht/ChIrrApp.h"
+#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
-#include "chrono_mkl/ChSolverMKL.h"
+#include "chrono_pardisomkl/ChSolverPardisoMKL.h"
 
 #ifdef CHRONO_MUMPS
 #include "chrono_mumps/ChSolverMumps.h"
@@ -70,6 +70,7 @@
 
 using namespace chrono;
 using namespace chrono::fea;
+using namespace chrono::irrlicht;
 
 class TestBeam{
   public:
@@ -79,15 +80,7 @@ class TestBeam{
     ChSystem* GetSystem() { return m_system; }
     void ExecuteStep() { m_system->DoStepDynamics(1e-4); }
     void SimulateVis();
-    void NonlinearStatics() { 
-        auto analysis = chrono_types::make_shared<ChStaticNonLinearAnalysis>(*m_system);
-        analysis->SetIncrementalSteps(0);
-        analysis->SetMaxIterations(50);
-        ////analysis->SetResidualTolerance(1e-6);
-        analysis->SetCorrectionTolerance(1e-6, 1e-10);
-        analysis->SetVerbose(true);
-        m_system->DoStaticNonlinear(analysis); 
-    }
+    void NonlinearStatics() { m_system->DoStaticNonlinear(50, true); }
     ChVector<> GetBeamMidPointPos() { return m_nodeMidPoint->GetPos(); }
     ChVector<> GetBeamEndPointPos() { return m_nodeEndPoint->GetPos(); }
 
@@ -107,7 +100,7 @@ TestBeam::TestBeam(int num_elements, double beam_angle_rad, double vert_tip_load
 
 #ifndef CHRONO_MUMPS
     if (solver_type == ChSolver::Type::MUMPS) {
-        solver_type = ChSolver::Type::PARDISO;
+        solver_type = ChSolver::Type::PARDISO_MKL;
         std::cout << "WARNING! Chrono::MUMPS not enabled. Forcing use of Pardiso solver" << std::endl;
     }
 #endif
@@ -123,8 +116,8 @@ TestBeam::TestBeam(int num_elements, double beam_angle_rad, double vert_tip_load
 #endif
             break;
         }
-        case ChSolver::Type::PARDISO: {
-            auto solver = chrono_types::make_shared<ChSolverMKL>();
+        case ChSolver::Type::PARDISO_MKL: {
+            auto solver = chrono_types::make_shared<ChSolverPardisoMKL>();
             solver->UseSparsityPatternLearner(true);
             solver->LockSparsityPattern(true);
             solver->SetVerbose(false);
@@ -177,17 +170,17 @@ TestBeam::TestBeam(int num_elements, double beam_angle_rad, double vert_tip_load
     m_system->Add(mesh);
 
     //Setup visualization - Need to fix this section
-    auto vis_surf = chrono_types::make_shared<ChVisualizationFEAmesh>(*mesh);
-    vis_surf->SetFEMdataType(ChVisualizationFEAmesh::E_PLOT_SURFACE);
+    auto vis_surf = chrono_types::make_shared<ChVisualShapeFEA>(mesh);
+    vis_surf->SetFEMdataType(ChVisualShapeFEA::DataType::SURFACE);
     vis_surf->SetWireframe(true);
     vis_surf->SetDrawInUndeformedReference(true);
-    mesh->AddAsset(vis_surf);
+    mesh->AddVisualShapeFEA(vis_surf);
 
-    auto vis_node = chrono_types::make_shared<ChVisualizationFEAmesh>(*mesh);
-    vis_node->SetFEMglyphType(ChVisualizationFEAmesh::E_GLYPH_NODE_DOT_POS);
-    vis_node->SetFEMdataType(ChVisualizationFEAmesh::E_PLOT_NONE);
+    auto vis_node = chrono_types::make_shared<ChVisualShapeFEA>(mesh);
+    vis_node->SetFEMglyphType(ChVisualShapeFEA::GlyphType::NODE_DOT_POS);
+    vis_node->SetFEMdataType(ChVisualShapeFEA::DataType::NONE);
     vis_node->SetSymbolsThickness(0.01);
-    mesh->AddAsset(vis_node);
+    mesh->AddVisualShapeFEA(vis_node);
 
     // Populate the mesh container with a the nodes and elements for the meshed beam
     int num_nodes = (2 * num_elements) + 1;
@@ -207,14 +200,11 @@ TestBeam::TestBeam(int num_elements, double beam_angle_rad, double vert_tip_load
         mesh->AddNode(nodeB);
         mesh->AddNode(nodeC);
 
-        auto element = chrono_types::make_shared<ChElementBeamANCF>();
+        auto element = chrono_types::make_shared<ChElementBeamANCF_3333>();
         element->SetNodes(nodeA, nodeB, nodeC);
         element->SetDimensions(2*dx, thickness, width);
         element->SetMaterial(material);
         element->SetAlphaDamp(0.0);
-        element->SetGravityOn(true);  //Enable the efficient ANCF method for calculating the application of gravity to the element
-        element->SetStrainFormulation(ChElementBeamANCF::StrainFormulation::CMPoisson);
-        //element->SetStrainFormulation(ChElementBeamANCF::StrainFormulation::CMNoPoisson);
         mesh->AddElement(element);
 
         //Cache the middle node of the beam for reporting displacements
@@ -237,26 +227,24 @@ TestBeam::TestBeam(int num_elements, double beam_angle_rad, double vert_tip_load
 
 void TestBeam::SimulateVis() {
 #ifdef CHRONO_IRRLICHT
-    irrlicht::ChIrrApp application(m_system, L"Princeton Beam Experiment - ANCF 3 Node Beams", irr::core::dimension2d<irr::u32>(800, 600), false, true);
-    application.AddLogo();
-    application.AddSkyBox();
-    application.AddTypicalLights();
-    application.AddCamera(irr::core::vector3df(-0.2f, 0.2f, 0.2f), irr::core::vector3df(0, 0, 0));
+    auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+    vis->SetWindowSize(800, 600);
+    vis->SetWindowTitle("Princeton Beam Experiment - ANCF 3 Node Beams");
+    vis->Initialize();
+    vis->AddLogo();
+    vis->AddSkyBox();
+    vis->AddTypicalLights();
+    vis->AddCamera(ChVector<>(-0.2, 0.2, 0.2), ChVector<>(0.0, 0.0, 0.0));
+    vis->AttachSystem(m_system);
 
-    application.AssetBindAll();
-    application.AssetUpdateAll();
-
-    while (application.GetDevice()->run()) {
-        application.BeginScene();
-        application.DrawAll();
-        irrlicht::ChIrrTools::drawSegment(application.GetVideoDriver(), ChVector<>(0), ChVector<>(1, 0, 0),
-                                          irr::video::SColor(255, 255, 0, 0));
-        irrlicht::ChIrrTools::drawSegment(application.GetVideoDriver(), ChVector<>(0), ChVector<>(0, 1, 0),
-                                          irr::video::SColor(255, 0, 255, 0));
-        irrlicht::ChIrrTools::drawSegment(application.GetVideoDriver(), ChVector<>(0), ChVector<>(0, 0, 1),
-                                          irr::video::SColor(255, 0, 0, 255));
+    while (vis->Run()) {
+        vis->BeginScene();
+        vis->Render();
+        irrlicht::tools::drawSegment(vis.get(), ChVector<>(0), ChVector<>(1, 0, 0), ChColor(1, 0, 0));
+        irrlicht::tools::drawSegment(vis.get(), ChVector<>(0), ChVector<>(0, 1, 0), ChColor(0, 1, 0));
+        irrlicht::tools::drawSegment(vis.get(), ChVector<>(0), ChVector<>(0, 0, 1), ChColor(0, 0, 1));
         ExecuteStep();
-        application.EndScene();
+        vis->EndScene();
     }
 #endif
 }

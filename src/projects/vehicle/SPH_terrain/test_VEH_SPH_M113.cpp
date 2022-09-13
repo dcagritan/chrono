@@ -122,7 +122,6 @@ int main(int argc, char* argv[]) {
     sysFSI.SetBoundaries(cMin, cMax);
 
     // Setup the output directory for FSI data
-    sysFSI.SetOutputDirectory(out_dir);
     sysFSI.SetOutputLength(0);
 
     // Create an initial box for the terrain patch

@@ -8,16 +8,16 @@
 #include "chrono/solver/ChIterativeSolverLS.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
-#include "chrono_irrlicht/ChIrrApp.h"
+#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
-#include "chrono_mkl/ChSolverMKL.h"
+#include "chrono_pardisomkl/ChSolverPardisoMKL.h"
 
 #include "chrono/fea/ChBuilderBeam.h"
 #include "chrono/fea/ChElementCableANCF.h"
 #include "chrono/fea/ChLinkDirFrame.h"
 #include "chrono/fea/ChLinkPointFrame.h"
 #include "chrono/fea/ChMesh.h"
-#include "chrono/fea/ChVisualizationFEAmesh.h"
+#include "chrono/assets/ChVisualShapeFEA.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
 #include "chrono_thirdparty/filesystem/resolver.h"
@@ -95,31 +95,32 @@ int main(int argc, char* argv[]) {
     mphysicalSystem.Add(my_mesh);
 
     // Mesh visualization
-    auto mvisualizebeamA = chrono_types::make_shared<fea::ChVisualizationFEAmesh>(*my_mesh);
-    mvisualizebeamA->SetFEMdataType(fea::ChVisualizationFEAmesh::E_PLOT_ANCF_BEAM_BD);
+    auto mvisualizebeamA = chrono_types::make_shared<ChVisualShapeFEA>(my_mesh);
+    mvisualizebeamA->SetFEMdataType(ChVisualShapeFEA::DataType::ANCF_BEAM_BD);
     mvisualizebeamA->SetColorscaleMinMax(-20, 20);
     mvisualizebeamA->SetSmoothFaces(true);
     mvisualizebeamA->SetWireframe(false);
-    my_mesh->AddAsset(mvisualizebeamA);
+    my_mesh->AddVisualShapeFEA(mvisualizebeamA);
 
     // ----------------------
     // Run-time visualization
     // ----------------------
-    ChIrrApp application(&mphysicalSystem, L"Test ANCF Cables", irr::core::dimension2d<irr::u32>(1600, 1200), false,
-                         true);
-    application.AddLogo();
-    application.AddSkyBox();
-    application.AddTypicalLights();
-    application.AddCamera(irr::core::vector3df(0.05f, -0.3f, 0.05f), irr::core::vector3df(0.05f, 0.0f, 0.0f));
 
-    application.AssetBindAll();
-    application.AssetUpdateAll();
+    auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+    vis->SetWindowSize(800, 600);
+    vis->SetWindowTitle("Test ANCF Cables");
+    vis->Initialize();
+    vis->AddLogo();
+    vis->AddSkyBox();
+    vis->AddTypicalLights();
+    vis->AddCamera(ChVector<>(0.05, -0.3, 0.05), ChVector<>(0.05, 0.0, 0.0));
+    vis->AttachSystem(&mphysicalSystem);
 
     // ---------------
     // Solver settings
     // ---------------
     if (use_MKL) {
-        auto mkl_solver = chrono_types::make_shared<ChSolverMKL>();
+        auto mkl_solver = chrono_types::make_shared<ChSolverPardisoMKL>();
         mkl_solver->LockSparsityPattern(true);
         mphysicalSystem.SetSolver(mkl_solver);
     } else {
@@ -169,14 +170,14 @@ int main(int argc, char* argv[]) {
 
     int step_number = 0;
     double dt = 0.01;
-    application.SetTimestep(dt);
 
-    while (application.GetDevice()->run()) {
-        application.BeginScene();
-        application.DrawAll();
-        ChIrrTools::drawAllCOGs(mphysicalSystem, application.GetVideoDriver(), 0.05);
-        application.DoStep();
-        application.EndScene();
+    while (vis->Run()) {
+        vis->BeginScene();
+        vis->Render();
+        irrlicht::tools::drawAllCOGs(vis.get(), 0.05);
+        vis->EndScene();
+
+        mphysicalSystem.DoStepDynamics(dt);
         step_number++;
 
         if (step_number == 1) {

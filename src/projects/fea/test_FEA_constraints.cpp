@@ -19,18 +19,19 @@
 #include "chrono/physics/ChSystemSMC.h"
 #include "chrono/solver/ChIterativeSolverLS.h"
 
-#include "chrono_irrlicht/ChIrrApp.h"
+#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
-#include "chrono_mkl/ChSolverMKL.h"
+#include "chrono_pardisomkl/ChSolverPardisoMKL.h"
 
 #include "chrono/fea/ChBuilderBeam.h"
 #include "chrono/fea/ChElementCableANCF.h"
 #include "chrono/fea/ChLinkDirFrame.h"
 #include "chrono/fea/ChLinkPointFrame.h"
 #include "chrono/fea/ChMesh.h"
-#include "chrono/fea/ChVisualizationFEAmesh.h"
+#include "chrono/assets/ChVisualShapeFEA.h"
 
 using namespace chrono;
+using namespace chrono::irrlicht;
 
 // Define FIX_NODES to fix mesh nodes.
 // Otherwise, use constraints.
@@ -124,34 +125,35 @@ int main(int argc, char* argv[]) {
 
     sys.Add(mesh);
 
-    auto mvisA = chrono_types::make_shared<fea::ChVisualizationFEAmesh>(*mesh);
-    mvisA->SetFEMdataType(fea::ChVisualizationFEAmesh::E_PLOT_ANCF_BEAM_BD);
+    auto mvisA = chrono_types::make_shared<ChVisualShapeFEA>(mesh);
+    mvisA->SetFEMdataType(ChVisualShapeFEA::DataType::ANCF_BEAM_BD);
     mvisA->SetColorscaleMinMax(-02, 20);
     mvisA->SetSmoothFaces(true);
     mvisA->SetWireframe(false);
-    mesh->AddAsset(mvisA);
+    mesh->AddVisualShapeFEA(mvisA);
 
-    auto mvisB = chrono_types::make_shared<fea::ChVisualizationFEAmesh>(*mesh);
-    mvisB->SetFEMglyphType(fea::ChVisualizationFEAmesh::E_GLYPH_NODE_DOT_POS);
-    mvisB->SetFEMdataType(fea::ChVisualizationFEAmesh::E_PLOT_NONE);
+    auto mvisB = chrono_types::make_shared<ChVisualShapeFEA>(mesh);
+    mvisB->SetFEMglyphType(ChVisualShapeFEA::GlyphType::NODE_DOT_POS);
+    mvisB->SetFEMdataType(ChVisualShapeFEA::DataType::NONE);
     mvisB->SetSymbolsThickness(0.004);
     mvisB->SetSymbolsScale(0.002);
     mvisB->SetZbufferHide(false);
-    mesh->AddAsset(mvisB);
+    mesh->AddVisualShapeFEA(mvisB);
 
     // Run-time visualization
-    irrlicht::ChIrrApp application(&sys, L"Cables FEM", irr::core::dimension2d<irr::u32>(800, 600), false, true);
-    application.AddLogo();
-    application.AddSkyBox();
-    application.AddTypicalLights();
-    application.AddCamera(irr::core::vector3df(0.0f, 0.05f, 0.2f));
-
-    application.AssetBindAll();
-    application.AssetUpdateAll();
+    auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+    vis->SetWindowSize(800, 600);
+    vis->SetWindowTitle("Cables FEM");
+    vis->Initialize();
+    vis->AddLogo();
+    vis->AddSkyBox();
+    vis->AddTypicalLights();
+    vis->AddCamera(ChVector<>(0.0, 0.05, 0.2), ChVector<>(0.0, 0.0, 0.0));
+    vis->AttachSystem(&sys);
 
     // Solver settings
     if (use_MKL) {
-        auto mkl_solver = chrono_types::make_shared<ChSolverMKL>();
+        auto mkl_solver = chrono_types::make_shared<ChSolverPardisoMKL>();
         mkl_solver->LockSparsityPattern(true);
         sys.SetSolver(mkl_solver);
     } else {
@@ -179,10 +181,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Simulation loop
-    application.SetTimestep(0.01);
-
     bool disabled = false;
-    while (application.GetDevice()->run()) {
+    while (vis->Run()) {
         if (!disabled && sys.GetChTime() > 2) {
 #ifdef FIX_NODES
             for (auto node : tip_nodes)
@@ -194,10 +194,11 @@ int main(int argc, char* argv[]) {
             disabled = true;
         }
 
-        application.BeginScene();
-        application.DrawAll();
-        application.DoStep();
-        application.EndScene();
+        vis->BeginScene();
+        vis->Render();
+        vis->EndScene();
+
+        sys.DoStepDynamics(0.01);
     }
 
     return 0;
