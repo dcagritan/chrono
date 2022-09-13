@@ -401,7 +401,6 @@ int main(int argc, char* argv[]) {
         ////         << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
         ////         << endl;
         
-        #ifdef CHRONO_OPENGL
         // Run-time visualization
 #ifdef CHRONO_OPENGL
         if (run_time_vis && frame % render_steps == 0) {
