@@ -1,6 +1,6 @@
 message(STATUS "Projects: FEA module...")
 
-if(NOT ENABLE_MODULE_IRRLICHT OR NOT ENABLE_MODULE_MKL)
+if(NOT ENABLE_MODULE_IRRLICHT OR NOT ENABLE_MODULE_PARDISO_MKL)
   return()
 endif()  
 
@@ -18,7 +18,7 @@ include_directories(${CH_IRRLICHTINC})
 include_directories(${CH_MKL_INCLUDES})
 list(APPEND LIBS "ChronoEngine")
 list(APPEND LIBS "ChronoEngine_irrlicht")
-list(APPEND LIBS "ChronoEngine_mkl")
+list(APPEND LIBS "ChronoEngine_pardisomkl")
 set(COMPILER_FLAGS "${CH_CXX_FLAGS} ${CH_MKL_CXX_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
 set(LINKER_FLAGS "${CH_LINKERFLAG_EXE} ${CH_MKL_LINK_FLAGS}")
 

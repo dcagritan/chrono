@@ -157,15 +157,17 @@ struct print_particle_pos {
     std::ofstream* m_stream;
 };
 
-struct print_particle_pos_vel_frc {
-    print_particle_pos_vel_frc(std::ofstream* stream) : m_stream(stream) {}
+struct print_particle_pos_vel_acc_frc {
+    print_particle_pos_vel_acc_frc(std::ofstream* stream) : m_stream(stream) {}
     template <typename T>
     __host__ void operator()(const T pvf) {
         auto p = thrust::get<0>(pvf);
         auto v = thrust::get<1>(pvf);
-        auto f = thrust::get<2>(pvf);
+        auto a = thrust::get<2>(pvf);
+        auto f = thrust::get<3>(pvf);
         (*m_stream) << p.x << ", " << p.y << ", " << p.z << ", "  //
                     << v.x << ", " << v.y << ", " << v.z << ", "  //
+                    << a.x << ", " << a.y << ", " << a.z << ", "  //
                     << f.x << ", " << f.y << ", " << f.z << "\n";
     }
     std::ofstream* m_stream;
@@ -185,23 +187,27 @@ void DataWriter::WriteDataParticles(const thrust::device_vector<int>& indices_D,
         thrust::for_each(thrust::host, pos_H.begin(), pos_H.end(), print_particle_pos(&stream));
         stream.close();
     } else {
-        // Get particle positions, velocities, and forces on device
+        // Get particle positions, velocities, accelerations, and forces on device
         auto pos_D = m_sysFSI.GetParticlePositions(indices_D);
         auto vel_D = m_sysFSI.GetParticleVelocities(indices_D);
+        auto acc_D = m_sysFSI.GetParticleAccelerations(indices_D);
         auto frc_D = m_sysFSI.GetParticleForces(indices_D);
 
         // Copy vectors to host
         thrust::host_vector<Real4> pos_H = pos_D;
         thrust::host_vector<Real3> vel_H = vel_D;
+        thrust::host_vector<Real4> acc_H = acc_D;
         thrust::host_vector<Real4> frc_H = frc_D;
 
         // Write output file
         std::ofstream stream;
         stream.open(filename, std::ios_base::trunc);
-        thrust::for_each(thrust::host,                                                                                //
-                         thrust::make_zip_iterator(thrust::make_tuple(pos_H.begin(), vel_H.begin(), frc_H.begin())),  //
-                         thrust::make_zip_iterator(thrust::make_tuple(pos_H.end(), vel_H.end(), frc_H.end())),        //
-                         print_particle_pos_vel_frc(&stream)                                                          //
+        thrust::for_each(thrust::host,                                                                         //
+                         thrust::make_zip_iterator(                                                            //
+                             thrust::make_tuple(pos_H.begin(), vel_H.begin(), acc_H.begin(), frc_H.begin())),  //
+                         thrust::make_zip_iterator(                                                            //
+                             thrust::make_tuple(pos_H.end(), vel_H.end(), acc_H.end(), frc_H.end())),          //
+                         print_particle_pos_vel_acc_frc(&stream)                                               //
         );
         stream.close();
     }

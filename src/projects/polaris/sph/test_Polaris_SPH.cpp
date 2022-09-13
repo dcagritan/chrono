@@ -50,13 +50,16 @@ using std::endl;
 
 PolarisModel model = PolarisModel::MODIFIED;
 
-const ChVector<> gravity(0, 0, -9.81);
-
 // ===================================================================================================================
 
 bool GetProblemSpecs(int argc,
                      char** argv,
                      std::string& terrain_dir,
+                     double& density,
+                     double& cohesion,
+                     double& friction,
+                     double& youngs_modulus,
+                     double& poisson_ratio,
                      double& ramp_length,
                      double& target_speed,
                      double& tend,
@@ -114,27 +117,40 @@ class PolarisStats : public opengl::ChOpenGLStats {
 int main(int argc, char* argv[]) {
     // Parse command line arguments
     std::string terrain_dir;
+
+    double density = 1700;
+    double cohesion = 5e3;
+    double friction = 0.8;
+    double youngs_modulus = 1e6;
+    double poisson_ratio = 0.3;
+    
     double ramp_length = 0.0;
     double target_speed = 7.0;
     double tend = 30;
     double step_size = 5e-4;
     double active_box_dim = 0.5;
+
     double output_major_fps = 20;
     double output_minor_fps = 1000;
     int output_frames = 5;
     bool position_only = false;           // output only particle positions
     double filter_window = 0;             // do not filter data
     double vis_output_fps = 0;            // no post-processing visualization output
+    
     bool run_time_vis = false;            // no run-time visualization
     double run_time_vis_fps = 0;          // render every simulation frame
     bool run_time_vis_particles = false;  // render only terrain surface mesh
     bool run_time_vis_bce = false;        // render vehicle meshes
     bool chase_cam = false;               // fixed camera
+    
     bool verbose = true;
 
-    if (!GetProblemSpecs(argc, argv, terrain_dir, ramp_length, target_speed, tend, step_size, active_box_dim,
-                         output_major_fps, output_minor_fps, output_frames, position_only, filter_window,
-                         vis_output_fps, run_time_vis, run_time_vis_particles, run_time_vis_bce, run_time_vis_fps,
+    if (!GetProblemSpecs(argc, argv,                                                                       //
+                         terrain_dir, density, cohesion, friction, youngs_modulus, poisson_ratio,          //
+                         ramp_length, target_speed, tend, step_size, active_box_dim,                       //
+                         output_major_fps, output_minor_fps, output_frames, position_only, filter_window,  //
+                         vis_output_fps,                                                                   //
+                         run_time_vis, run_time_vis_particles, run_time_vis_bce, run_time_vis_fps,         //
                          chase_cam, verbose)) {
         return 1;
     }
@@ -144,10 +160,6 @@ int main(int argc, char* argv[]) {
     bool vis_output = (vis_output_fps > 0);
 
     // Check input files exist
-    if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
-        std::cout << "Input file sph_params.json not found in directory " << terrain_dir << std::endl;
-        return 1;
-    }
     if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/path.txt")).exists()) {
         std::cout << "Input file path.txt not found in directory " << terrain_dir << std::endl;
         return 1;
@@ -160,14 +172,47 @@ int main(int argc, char* argv[]) {
         std::cout << "Input file bce_20mm.txt not found in directory " << terrain_dir << std::endl;
         return 1;
     }
+    ////if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
+    ////    std::cout << "Input file sph_params.json not found in directory " << terrain_dir << std::endl;
+    ////    return 1;
+    ////}
 
     // Create the Chrono systems
     ChSystemNSC sys;
     ChSystemFsi sysFSI(sys);
 
-    // Load SPH parameter file
-    cout << "Load SPH parameter file..." << endl;
-    sysFSI.ReadParametersFromFile(vehicle::GetDataFile(terrain_dir + "/sph_params.json"));
+    // Set SPH parameters and soil material properties
+
+    const ChVector<> gravity(0, 0, -9.81);
+    sysFSI.Set_G_acc(gravity);
+    sys.Set_G_acc(gravity);
+
+    ChSystemFsi::ElasticMaterialProperties mat_props;
+    mat_props.Young_modulus = youngs_modulus;
+    mat_props.Poisson_ratio = poisson_ratio;
+    mat_props.stress = 0;  // default
+    mat_props.viscosity_alpha = 0.5;
+    mat_props.viscosity_beta = 0.0;
+    mat_props.mu_I0 = 0.04;
+    mat_props.mu_fric_s = friction;
+    mat_props.mu_fric_2 = friction;
+    mat_props.average_diam = 0.005;
+    mat_props.friction_angle = CH_C_PI / 10;  // default
+    mat_props.dilation_angle = CH_C_PI / 10;  // default
+    mat_props.cohesion_coeff = 0;             // default
+    mat_props.kernel_threshold = 0.8;
+
+    sysFSI.SetElasticSPH(mat_props);
+    sysFSI.SetDensity(density);
+    sysFSI.SetCohesionForce(cohesion);
+
+    double init_spacing = 0.02;
+    double kernel_length = 0.03;
+    sysFSI.SetInitialSpacing(init_spacing);
+    sysFSI.SetKernelLength(kernel_length);
+
+    ////cout << "Load SPH parameter file..." << endl;
+    ////sysFSI.ReadParametersFromFile(vehicle::GetDataFile(terrain_dir + "/sph_params.json"));
 
     sysFSI.SetActiveDomain(ChVector<>(active_box_dim, active_box_dim, 1));
     sysFSI.SetDiscreType(false, false);
@@ -181,8 +226,6 @@ int main(int argc, char* argv[]) {
     std::string vis_dir = out_dir + "Visualization/";
     sysFSI.SetOutputLength(0);
     ////sysFSI.SetOutputDirectory(out_dir);
-
-    sys.Set_G_acc(gravity);
 
     // Create terrain
     cout << "Create terrain..." << endl;
@@ -208,7 +251,7 @@ int main(int argc, char* argv[]) {
         cout << "  [" << i << "]   " << path->getPoint(i) << endl;
     }
 
-    #ifdef CHRONO_OPENGL
+#ifdef CHRONO_OPENGL
     // Create run-time visualization
     opengl::ChVisualSystemOpenGL vis;
     ChVisualizationFsi visFSI(&sysFSI, &vis);
@@ -217,7 +260,8 @@ int main(int argc, char* argv[]) {
     if (run_time_vis) {
         visFSI.SetTitle("Chrono::FSI single wheel demo");
         visFSI.SetSize(1280, 720);
-        visFSI.SetCameraPosition(init_pos.pos + ChVector<>(-7, 0, 6), init_pos.pos + ChVector<>(1, 0, 0.5));
+        ////visFSI.SetCameraPosition(init_pos.pos + ChVector<>(-7, 0, 6), init_pos.pos + ChVector<>(1, 0, 0.5));
+        visFSI.SetCameraPosition(ChVector<>(0, 4, 1), ChVector<>(0, -1, 0));
         visFSI.SetCameraMoveScale(1.0f);
         visFSI.EnableFluidMarkers(run_time_vis_particles);
         visFSI.EnableRigidBodyMarkers(run_time_vis_bce);
@@ -228,13 +272,13 @@ int main(int argc, char* argv[]) {
         sentinel = CreateSentinel(sys, init_pos);
 
         stats = chrono_types::make_shared<PolarisStats>(*vehicle);
-        vis.SetStatsRenderer(stats);
+        vis.AttachStatsRenderer(stats);
         vis.EnableStats(true);
 
         vis.AttachSystem(&sys);
         vis.Initialize();
     }
-    #endif
+#endif
 
     // Enable data output
     cout << "===============================================================================" << endl;
@@ -278,13 +322,11 @@ int main(int argc, char* argv[]) {
 
             // Complete construction of FSI system
             sysFSI.Initialize();
-            #ifdef CHRONO_OPENGL
+#ifdef CHRONO_OPENGL
             visFSI.Initialize();
-            
-
             if (run_time_vis_bce)
                 vehicle->SetTireVisualizationType(VisualizationType::NONE);
-            #endif    
+#endif
 
             on_ramp = false;
         }
@@ -361,6 +403,7 @@ int main(int argc, char* argv[]) {
         
         #ifdef CHRONO_OPENGL
         // Run-time visualization
+#ifdef CHRONO_OPENGL
         if (run_time_vis && frame % render_steps == 0) {
             if (chase_cam) {
                 ChVector<> cam_loc = veh_loc + ChVector<>(-3, 3, 2);
@@ -372,7 +415,7 @@ int main(int argc, char* argv[]) {
             if (!visFSI.Render())
                 break;
         }
-        #endif
+#endif
 
         // Synchronize systems
         driver.Synchronize(t);
@@ -403,6 +446,11 @@ int main(int argc, char* argv[]) {
 bool GetProblemSpecs(int argc,
                      char** argv,
                      std::string& terrain_dir,
+                     double& density,
+                     double& cohesion,
+                     double& friction,
+                     double& youngs_modulus,
+                     double& poisson_ratio,
                      double& ramp_length,
                      double& target_speed,
                      double& tend,
@@ -422,7 +470,13 @@ bool GetProblemSpecs(int argc,
                      bool& verbose) {
     ChCLI cli(argv[0], "Polaris SPH terrain simulation");
 
-    cli.AddOption<std::string>("Simulation", "terrain_dir", "Directory with terrain specification data");
+    cli.AddOption<std::string>("Problem setup", "terrain_dir", "Directory with terrain specification data");
+    cli.AddOption<double>("Problem setup", "density", "Material density [kg/m3]", std::to_string(density));
+    cli.AddOption<double>("Problem setup", "cohesion", "Cohesion [Pa]", std::to_string(cohesion));
+    cli.AddOption<double>("Problem setup", "friction", "Coefficient of friction", std::to_string(friction));
+    cli.AddOption<double>("Problem setup", "youngs_modulus", "Young's modulus [Pa]", std::to_string(youngs_modulus));
+    cli.AddOption<double>("Problem setup", "poisson_ratio", "Poission ratio", std::to_string(poisson_ratio));
+
     cli.AddOption<double>("Simulation", "ramp_length", "Length of the acceleration ramp", std::to_string(ramp_length));
     cli.AddOption<double>("Simulation", "target_speed", "Target speed [m/s]", std::to_string(target_speed));
     cli.AddOption<double>("Simulation", "tend", "Simulation end time [s]", std::to_string(tend));
@@ -463,6 +517,12 @@ bool GetProblemSpecs(int argc,
         cli.Help();
         return false;
     }
+
+    density = cli.GetAsType<double>("density");
+    cohesion = cli.GetAsType<double>("cohesion");
+    friction = cli.GetAsType<double>("friction");
+    youngs_modulus = cli.GetAsType<double>("youngs_modulus");
+    poisson_ratio = cli.GetAsType<double>("poisson_ratio");
 
     ramp_length = cli.GetAsType<double>("ramp_length");
     target_speed = cli.GetAsType<double>("target_speed");

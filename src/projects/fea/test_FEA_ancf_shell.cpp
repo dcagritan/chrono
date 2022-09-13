@@ -25,19 +25,18 @@
 
 #include "chrono/solver/ChIterativeSolverLS.h"
 #include "chrono/fea/ChContactSurfaceMesh.h"
-#include "chrono/fea/ChElementShellANCF.h"
+#include "chrono/fea/ChElementShellANCF_3423.h"
 #include "chrono/fea/ChMesh.h"
-#include "chrono/fea/ChVisualizationFEAmesh.h"
+#include "chrono/assets/ChVisualShapeFEA.h"
 
-#include "chrono_mkl/ChSolverMKL.h"
+#include "chrono_pardisomkl/ChSolverPardisoMKL.h"
 
-#include "chrono_irrlicht/ChIrrApp.h"
+#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
 using namespace chrono;
 using namespace chrono::geometry;
 using namespace chrono::fea;
 using namespace chrono::irrlicht;
-using namespace irr;
 using std::cout;
 using std::endl;
 
@@ -49,9 +48,9 @@ bool element_gravity = true;
 // Integration step size.
 double time_step = 1e-4;
 
-// Solver (PARDISO or GMRES).
-// Prefer PARDISO (alternatively MUMPS).
-ChSolver::Type solver_type = ChSolver::Type::PARDISO;
+// Solver (PARDISO_MKL or GMRES).
+// Prefer PARDISO_MKL (alternatively MUMPS).
+ChSolver::Type solver_type = ChSolver::Type::PARDISO_MKL;
 
 // Timestepper (HHT or EULER_IMPLICIT or EULER_IMPLICIT_LINEARIZED). 
 // Prefer HHT (or maybe EULER_IMPLICIT).
@@ -178,7 +177,7 @@ int main(int argc, char* argv[]) {
             int node2 = (i * n_c) + j + (2 * n_a) + 1;
             int node3 = (i * n_c) + j + 1;
             // Create the element and set its nodes.
-            auto element = chrono_types::make_shared<ChElementShellANCF>();
+            auto element = chrono_types::make_shared<ChElementShellANCF_3423>();
             element->SetNodes(std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node0)),
                               std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node1)),
                               std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node2)),
@@ -187,7 +186,6 @@ int main(int argc, char* argv[]) {
             element->SetDimensions(a / n_a, a / n_a);             // Set element dimensions
             element->AddLayer(dz, 0 * CH_C_DEG_TO_RAD, mem_mat);  // Single layer with 0deg. fiber angle
             element->SetAlphaDamp(0.0);                           // Structural damping for this element
-            element->SetGravityOn(element_gravity);  // turn internal gravitational force calculation on/off
             mem_mesh->AddElement(element);
         }
     }
@@ -200,7 +198,7 @@ int main(int argc, char* argv[]) {
         int node2 = l + 1;
         int node3 = (4 * n_c * n_a) - (2 * n_a) + 1 + l;
         // Create the element and set its nodes.
-        auto element = chrono_types::make_shared<ChElementShellANCF>();
+        auto element = chrono_types::make_shared<ChElementShellANCF_3423>();
         element->SetNodes(std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node0)),
                           std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node1)),
                           std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node2)),
@@ -209,7 +207,6 @@ int main(int argc, char* argv[]) {
         element->SetDimensions(a / n_a, a / n_a);             // Set element dimensions
         element->AddLayer(dz, 0 * CH_C_DEG_TO_RAD, mem_mat);  // Single layer with 0deg. fiber angle
         element->SetAlphaDamp(0.0);                           // Structural damping for this element
-        element->SetGravityOn(element_gravity);               // turn internal gravitational force calculation on/off
         mem_mesh->AddElement(element);
     }
 
@@ -221,7 +218,7 @@ int main(int argc, char* argv[]) {
         int node2 = ((m - 1) * n_c) + (2 * n_a);
         int node3 = ((m - 1) * n_c);
         // Create the element and set its nodes.
-        auto element = chrono_types::make_shared<ChElementShellANCF>();
+        auto element = chrono_types::make_shared<ChElementShellANCF_3423>();
         element->SetNodes(std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node0)),
                           std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node1)),
                           std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(node2)),
@@ -230,12 +227,11 @@ int main(int argc, char* argv[]) {
         element->SetDimensions(a / n_a, a / n_a);             // Set element dimensions
         element->AddLayer(dz, 0 * CH_C_DEG_TO_RAD, mem_mat);  // Single layer with 0deg. fiber angle
         element->SetAlphaDamp(0.0);                           // Structural damping for this element
-        element->SetGravityOn(element_gravity);               // turn internal gravitational force calculation on/off
         mem_mesh->AddElement(element);
     }
 
     // End element(R and r)
-    auto element = chrono_types::make_shared<ChElementShellANCF>();
+    auto element = chrono_types::make_shared<ChElementShellANCF_3423>();
     element->SetNodes(std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(tot - 1)),
                       std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode((n_a * 2) - 1)),
                       std::dynamic_pointer_cast<ChNodeFEAxyzD>(mem_mesh->GetNode(0)),
@@ -244,7 +240,6 @@ int main(int argc, char* argv[]) {
     element->SetDimensions(a / n_a, a / n_a);             // Set element dimensions
     element->AddLayer(dz, 0 * CH_C_DEG_TO_RAD, mem_mat);  // Single layer with 0deg. fiber angle
     element->SetAlphaDamp(0.0);                           // Structural damping for this element
-    element->SetGravityOn(element_gravity);               // turn internal gravitational force calculation off
     mem_mesh->AddElement(element);
 
     // Enable/disable mesh-level automatic gravity load
@@ -259,33 +254,33 @@ int main(int argc, char* argv[]) {
     //           ANCF Visualization         //
     //--------------------------------------//
 
-    auto mvisualizemesh = chrono_types::make_shared<ChVisualizationFEAmesh>(*(mem_mesh.get()));
-    mvisualizemesh->SetFEMdataType(ChVisualizationFEAmesh::E_PLOT_NODE_SPEED_NORM);
+    auto mvisualizemesh = chrono_types::make_shared<ChVisualShapeFEA>(mem_mesh);
+    mvisualizemesh->SetFEMdataType(ChVisualShapeFEA::DataType::NODE_SPEED_NORM);
     mvisualizemesh->SetColorscaleMinMax(0.0, 5.50);
     mvisualizemesh->SetShrinkElements(true, 0.85);
     mvisualizemesh->SetSmoothFaces(true);
-    mem_mesh->AddAsset(mvisualizemesh);
+    mem_mesh->AddVisualShapeFEA(mvisualizemesh);
 
-    auto mvisualizemeshref = chrono_types::make_shared<ChVisualizationFEAmesh>(*(mem_mesh.get()));
-    mvisualizemeshref->SetFEMdataType(ChVisualizationFEAmesh::E_PLOT_SURFACE);
+    auto mvisualizemeshref = chrono_types::make_shared<ChVisualShapeFEA>(mem_mesh);
+    mvisualizemeshref->SetFEMdataType(ChVisualShapeFEA::DataType::SURFACE);
     mvisualizemeshref->SetWireframe(true);
     mvisualizemeshref->SetDrawInUndeformedReference(true);
-    mem_mesh->AddAsset(mvisualizemeshref);
+    mem_mesh->AddVisualShapeFEA(mvisualizemeshref);
 
-    auto mvisualizemeshC = chrono_types::make_shared<ChVisualizationFEAmesh>(*(mem_mesh.get()));
-    mvisualizemeshC->SetFEMglyphType(ChVisualizationFEAmesh::E_GLYPH_NODE_DOT_POS);
-    mvisualizemeshC->SetFEMdataType(ChVisualizationFEAmesh::E_PLOT_NONE);
+    auto mvisualizemeshC = chrono_types::make_shared<ChVisualShapeFEA>(mem_mesh);
+    mvisualizemeshC->SetFEMglyphType(ChVisualShapeFEA::GlyphType::NODE_DOT_POS);
+    mvisualizemeshC->SetFEMdataType(ChVisualShapeFEA::DataType::NONE);
     mvisualizemeshC->SetSymbolsThickness(0.004);
-    mem_mesh->AddAsset(mvisualizemeshC);
+    mem_mesh->AddVisualShapeFEA(mvisualizemeshC);
 
-    auto mvisualizemeshD = chrono_types::make_shared<ChVisualizationFEAmesh>(*(mem_mesh.get()));
+    auto mvisualizemeshD = chrono_types::make_shared<ChVisualShapeFEA>(mem_mesh);
     // mvisualizemeshD->SetFEMglyphType(ChVisualizationFEAmesh::E_GLYPH_NODE_VECT_SPEED);
-    mvisualizemeshD->SetFEMglyphType(ChVisualizationFEAmesh::E_GLYPH_ELEM_TENS_STRAIN);
-    mvisualizemeshD->SetFEMdataType(ChVisualizationFEAmesh::E_PLOT_NONE);
+    mvisualizemeshD->SetFEMglyphType(ChVisualShapeFEA::GlyphType::ELEM_TENS_STRAIN);
+    mvisualizemeshD->SetFEMdataType(ChVisualShapeFEA::DataType::NONE);
     mvisualizemeshD->SetSymbolsScale(1);
     mvisualizemeshD->SetColorscaleMinMax(-0.5, 5);
     mvisualizemeshD->SetZbufferHide(false);
-    mem_mesh->AddAsset(mvisualizemeshD);
+    mem_mesh->AddVisualShapeFEA(mvisualizemeshD);
 
     my_system.Add(mem_mesh);  // Add the mesh to the system
 
@@ -298,10 +293,6 @@ int main(int argc, char* argv[]) {
     mfloor->SetPos(ChVector<>(0, -0.1, 0));
     mfloor->SetBodyFixed(true);
     my_system.Add(mfloor);
-
-    auto masset_texture = chrono_types::make_shared<ChTexture>();
-    masset_texture->SetTextureFilename(GetChronoDataFile("concrete.jpg"));
-    mfloor->AddAsset(masset_texture);
 
     // two falling objects:
     auto mcube = chrono_types::make_shared<ChBodyEasyBox>(0.1, 0.1, 0.1, 5000, true, true, mysurfmaterial);
@@ -316,32 +307,25 @@ int main(int argc, char* argv[]) {
     //   Create the Irrlicht visualization  //
     //--------------------------------------//
 
-    ChIrrApp application(&my_system,                         // Target system
-                         L"FEA contacts",                    // Window title
-                         core::dimension2d<u32>(1200, 800),  // Window dimensions
-                         false,                              // Fullscreen?
-                         false,                              // Shadows?
-                         false,                              // Anti-Aliasing?
-                         video::EDT_OPENGL);                 // Graphics Driver
-    application.AddLogo();
-    application.AddSkyBox();
-    application.AddTypicalLights();
-    application.AddCamera(core::vector3df(0, (f32)0.6, -1));
-    application.AddLightWithShadow(core::vector3df(1.5, 5.5, -2.5), core::vector3df(0, 0, 0), 3, 2.2, 7.2, 40, 512,
-                                   video::SColorf(1, 1, 1));
-    application.SetContactsDrawMode(ChIrrTools::CONTACT_DISTANCES);
-    application.AssetBindAll();
-    application.AssetUpdateAll();
-    application.AddShadowAll();
+    auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+    vis->SetWindowSize(800, 600);
+    vis->SetWindowTitle("ANCF Shells");
+    vis->Initialize();
+    vis->AddLogo();
+    vis->AddSkyBox();
+    vis->AddTypicalLights();
+    vis->AddCamera(ChVector<>(0.0, 0.6, -1.0), ChVector<>(0.0, 0.0, 0.0));
+    vis->AttachSystem(&my_system);
+
 
     //--------------------------------------//
     //         Running the simulation       //
     //--------------------------------------//
 
     switch (solver_type) {
-        case ChSolver::Type::PARDISO: {
+        case ChSolver::Type::PARDISO_MKL: {
             cout << "Using PARDISO solver" << endl;
-            auto solver = chrono_types::make_shared<ChSolverMKL>();
+            auto solver = chrono_types::make_shared<ChSolverPardisoMKL>();
             my_system.SetSolver(solver);
             solver->UseSparsityPatternLearner(true);
             solver->LockSparsityPattern(true);
@@ -397,20 +381,18 @@ int main(int argc, char* argv[]) {
             return 1;
     }
 
-    application.SetTimestep(time_step);
-    application.SetTryRealtime(false);
-
-    while (application.GetDevice()->run()) {
+    while (vis->Run()) {
         cout << "Simulation Time= " << my_system.GetChTime() << "\n";
         cout << "  node: " << first_node->GetPos() << "\n";
         cout << "  ball: " << msphere->GetPos() << "\n";
         cout << "  cube: " << mcube->GetPos() << "\n";
         cout << endl;
 
-        application.BeginScene();
-        application.DrawAll();
-        application.DoStep();
-        application.EndScene();
+        vis->BeginScene();
+        vis->Render();
+        my_system.DoStepDynamics(time_step);
+        vis->EndScene();
     }
+
     return 0;
 }

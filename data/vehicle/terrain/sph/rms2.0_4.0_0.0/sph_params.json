@@ -1,6 +1,6 @@
 {
   "Physical Properties of Fluid": {
-    "Density": 3000,
+    "Density": 1700,
     "Gravity": [ 0.0, 0.0, -9.81 ]
   },
 
@@ -20,6 +20,7 @@
   "Elastic SPH": {
     "Poisson ratio": 0.3,
     "Young modulus": 1.0e6,
+    "cohesion coefficient": 5e3,
     "Artificial viscosity alpha": 0.5,
     "Artificial viscosity beta": 0.0,
     "I0": 0.04,

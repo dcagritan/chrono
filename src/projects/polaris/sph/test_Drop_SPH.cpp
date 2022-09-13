@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
     cout << "Create sphere..." << endl;
     auto sphere = CreateSolidPhase(sys, sysFSI, init_pos);
 
-    #ifdef CHRONO_OPENGL
+#ifdef CHRONO_OPENGL
     // Create run-time visualization
     opengl::ChVisualSystemOpenGL vis;
     ChVisualizationFsi visFSI(&sysFSI, &vis);
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
         vis.AttachSystem(&sys);
         vis.Initialize();
     }
-    #endif
+#endif
 
     // Enable data output
     cout << "===============================================================================" << endl;
@@ -252,9 +252,9 @@ int main(int argc, char* argv[]) {
     double t = 0;
     int frame = 0;
     sysFSI.Initialize();
-    #ifdef CHRONO_OPENGL
+#ifdef CHRONO_OPENGL
     visFSI.Initialize();
-    #endif
+#endif
 
     while (t < tend) {
         // Simulation data output
@@ -269,13 +269,14 @@ int main(int argc, char* argv[]) {
 
             vis_output_frame++;
         }
-        #ifdef CHRONO_OPENGL
+
+#ifdef CHRONO_OPENGL
         // Run-time visualization
         if (run_time_vis && frame % render_steps == 0) {
             if (!visFSI.Render())
                 break;
         }
-        #endif
+#endif
 
         // Advance both FSI and embedded MBD systems
         sysFSI.DoStepDynamics_FSI();
