@@ -58,8 +58,11 @@ class DataWriter {
   public:
     virtual ~DataWriter();
 
-    /// Enable/disable output data running-average filtering (default: true).
-    void UseFilteredData(bool val, double window);
+    /// Enable/disable output data running-average filtering of velocities (default: true).
+    void UseFilteredVelData(bool val, double window);
+
+    /// Enable/disable output data running-average filtering of accelerations (default: true).
+    void UseFilteredAccData(bool val, double window);
 
     /// Enable/disable terminal messages (default: true).
     void SetVerbose(bool verbose) { m_verbose = verbose; }
@@ -85,6 +88,12 @@ class DataWriter {
 
     /// Specify the number of output data channels from the multibody system.
     virtual int GetNumChannelsMBS() const = 0;
+
+    /// Specify the output velocity channels.
+    virtual const std::vector<int> GetVelChannelsMBS() const = 0;
+
+    /// Specify the output acceleration channels.
+    virtual const std::vector<int> GetAccChannelsMBS() const = 0;
 
     /// Collect current values from all MBS output channels.
     virtual void CollectDataMBS() = 0;
@@ -121,9 +130,13 @@ class DataWriter {
     int m_minor_frame;
     int m_last_major;
 
-    bool m_filter;
-    double m_filter_window;
-    std::vector<std::shared_ptr<chrono::utils::ChRunningAverage>> m_filters;
+    bool m_filter_vel;
+    bool m_filter_acc;
+    double m_filter_window_vel;
+    double m_filter_window_acc;
+    std::vector<std::shared_ptr<chrono::utils::ChRunningAverage>> m_filters_vel;
+    std::vector<std::shared_ptr<chrono::utils::ChRunningAverage>> m_filters_acc;
+
     std::ofstream m_mbs_stream;
 
     bool m_out_pos;
@@ -152,12 +165,17 @@ class DataWriterVehicle : public DataWriter {
 
   private:
     virtual int GetNumChannelsMBS() const override { return (7 + 6) + 4 * (7 + 6 + 3 + 3); }
+    virtual const std::vector<int> GetVelChannelsMBS() const { return m_vel_channels; }
+    virtual const std::vector<int> GetAccChannelsMBS() const { return m_acc_channels; }
     virtual void CollectDataMBS() override;
     virtual void WriteDataMBS(const std::string& filename) override;
     virtual chrono::ChFrame<> GetSampleBoxFrame(int box_id) const override;
 
     std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
     std::array<std::shared_ptr<chrono::vehicle::ChWheel>, 4> m_wheels;
+
+    std::vector<int> m_vel_channels;
+    std::vector<int> m_acc_channels;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -181,10 +199,15 @@ class DataWriterObject : public DataWriter {
 
   private:
     virtual int GetNumChannelsMBS() const override { return (7 + 6 + 3 + 3); }
+    virtual const std::vector<int> GetVelChannelsMBS() const { return m_vel_channels; }
+    virtual const std::vector<int> GetAccChannelsMBS() const { return m_acc_channels; }
     virtual void CollectDataMBS() override;
     virtual void WriteDataMBS(const std::string& filename) override;
     virtual chrono::ChFrame<> GetSampleBoxFrame(int box_id) const override;
 
     std::shared_ptr<chrono::ChBody> m_body;
     chrono::ChVector<> m_body_size;
+
+    std::vector<int> m_vel_channels;
+    std::vector<int> m_acc_channels;
 };

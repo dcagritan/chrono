@@ -444,6 +444,10 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     endif()
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(CH_LINKERFLAG_EXE "${CH_LINKERFLAG_EXE} -Wl,-no_compact_unwind")
+    set(CH_LINKERFLAG_SHARED "${CH_LINKERFLAG_SHARED} -Wl,-no_compact_unwind")
+endif()
 
 # Compiler warning level and disbaled warnings
 
@@ -571,10 +575,6 @@ include_directories(${THRUST_INCLUDE_DIR})
 #------------------------------------------------------------
 # Build submodules
 #------------------------------------------------------------
-
-message(STATUS "")
-message(STATUS "==== Chrono Modules ====")
-message(STATUS "")
 
 if(BUILD_TESTING)
   message(STATUS "Build Google test framework")

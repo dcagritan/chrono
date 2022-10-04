@@ -38,8 +38,10 @@ DataWriter::DataWriter(ChSystemFsi& sysFSI, int num_sample_boxes)
     : m_sysFSI(sysFSI),
       m_num_sample_boxes(num_sample_boxes),
       m_out_pos(false),
-      m_filter(true),
-      m_filter_window(0.05),
+      m_filter_vel(true),
+      m_filter_acc(true),
+      m_filter_window_vel(0.05),
+      m_filter_window_acc(0.05),
       m_verbose(true) {
     //////m_indices.resize(m_num_sample_boxes);
 }
@@ -48,9 +50,14 @@ DataWriter::~DataWriter() {
     m_mbs_stream.close();
 }
 
-void DataWriter::UseFilteredData(bool val, double window) {
-    m_filter = val;
-    m_filter_window = window;
+void DataWriter::UseFilteredVelData(bool val, double window) {
+    m_filter_vel = val;
+    m_filter_window_vel = window;
+}
+
+void DataWriter::UseFilteredAccData(bool val, double window) {
+    m_filter_acc = val;
+    m_filter_window_acc = window;
 }
 
 void DataWriter::SetSamplingVolume(const ChVector<>& offset, const ChVector2<>& size) {
@@ -80,13 +87,20 @@ void DataWriter::Initialize(const std::string& dir,
 
     // Resize vectors
     m_mbs_outputs.resize(GetNumChannelsMBS());
-    m_filters.resize(GetNumChannelsMBS());
+    m_filters_vel.resize(GetVelChannelsMBS().size());
+    m_filters_acc.resize(GetAccChannelsMBS().size());
 
     // Create filters
-    if (m_filter) {
-        int steps = (int)std::round(m_filter_window / step_size);
-        for (int i = 0; i < GetNumChannelsMBS(); i++) {
-            m_filters[i] = chrono_types::make_shared<chrono::utils::ChRunningAverage>(steps);
+    if (m_filter_vel) {
+        int steps = (int)std::round(m_filter_window_vel / step_size);
+        for (int i = 0; i < GetVelChannelsMBS().size(); i++) {
+            m_filters_vel[i] = chrono_types::make_shared<chrono::utils::ChRunningAverage>(steps);
+        }
+    }
+    if (m_filter_acc) {
+        int steps = (int)std::round(m_filter_window_acc / step_size);
+        for (int i = 0; i < GetAccChannelsMBS().size(); i++) {
+            m_filters_acc[i] = chrono_types::make_shared<chrono::utils::ChRunningAverage>(steps);
         }
     }
 
@@ -100,9 +114,16 @@ void DataWriter::Initialize(const std::string& dir,
 void DataWriter::Process(int sim_frame) {
     // Collect data from all MBS channels and run through filters if requested
     CollectDataMBS();
-    if (m_filter) {
-        for (int i = 0; i < GetNumChannelsMBS(); i++) {
-            m_mbs_outputs[i] = m_filters[i]->Add(m_mbs_outputs[i]);
+    if (m_filter_vel) {
+        for (int i = 0; i < GetVelChannelsMBS().size(); i++) {
+            int j = GetVelChannelsMBS()[i];
+            m_mbs_outputs[j] = m_filters_vel[i]->Add(m_mbs_outputs[j]);
+        }
+    }
+    if (m_filter_acc) {
+        for (int i = 0; i < GetAccChannelsMBS().size(); i++) {
+            int j = GetAccChannelsMBS()[i];
+            m_mbs_outputs[j] = m_filters_acc[i]->Add(m_mbs_outputs[j]);
         }
     }
 
@@ -233,9 +254,18 @@ DataWriterVehicle::DataWriterVehicle(ChSystemFsi& sysFSI, std::shared_ptr<Wheele
     m_box_size.z() = 0.2;
 
     // Set default offset of sampling box
-    m_box_offset = ChVector<>(3.0 * tire_radius/2.0-0.5, 0.0, 0.0);
-    // m_box_offset = ChVector<>(0.0, 0.0, 0.0);
-    
+    m_box_offset = ChVector<>(0.15, 0.0, 0.0);
+
+    m_vel_channels = {7,  8,  9,  10, 11, 12,  //
+                      20, 21, 22, 23, 24, 25,  //
+                      39, 40, 41, 42, 43, 44,  //
+                      58, 59, 60, 61, 62, 63,  //
+                      77, 78, 79, 80, 81, 82};
+
+    m_acc_channels = {26, 27, 28, 29, 30, 31,  //
+                      45, 46, 47, 48, 49, 50,  //
+                      64, 65, 66, 67, 68, 69,  //
+                      83, 84, 85, 86, 87, 88};
 }
 
 void DataWriterVehicle::CollectDataMBS() {
@@ -358,6 +388,9 @@ DataWriterObject::DataWriterObject(ChSystemFsi& sysFSI, std::shared_ptr<ChBody> 
     : DataWriter(sysFSI, 1), m_body(body), m_body_size(body_size) {
     m_box_size = 2.0 * body_size;
     m_box_offset = VNULL;
+
+    m_vel_channels = {7, 8, 9, 10, 11, 12};
+    m_acc_channels = {13, 14, 15, 16, 17, 18};
 }
 
 void DataWriterObject::CollectDataMBS() {

@@ -94,7 +94,7 @@ std::shared_ptr<chrono::ChBody> CreateSolids(chrono::ChSystemNSC& sys,
     sys.AddBody(ground);
 
     // Add BCE markers
-    sysFSI.AddBoxBCE(ground, ChVector<>(0.0, 0.0, 0), QUNIT, ChVector<>(gxDim, gyDim, gzDim), 12);
+    sysFSI.AddBoxBCE(ground, ChFrame<>(), ChVector<>(gxDim, gyDim, gzDim), false);
 
     // Create a falling sphere
     double sphere_radius = 0.25;
@@ -119,7 +119,7 @@ std::shared_ptr<chrono::ChBody> CreateSolids(chrono::ChSystemNSC& sys,
 
     // Add this body to the FSI system and create BCEs
     sysFSI.AddFsiBody(sphere);
-    sysFSI.AddSphereBCE(sphere, ChVector<>(0), ChQuaternion<>(1, 0, 0, 0), sphere_radius);
+    sysFSI.AddSphereBCE(sphere, ChFrame<>(), sphere_radius, true);
 
     return sphere;
 }
@@ -187,7 +187,7 @@ int main(int argc, char* argv[]) {
     sysFSI.SetBoundaries(-5.0 * b_size, +5.0 * b_size);
 
     // Initialize the SPH particles
-    sysFSI.AddBoxSPH(init_spacing, kernel_length, ChVector<>(0.0, 0.0, b_size.z() / 2), b_size / 2);
+    sysFSI.AddBoxSPH(ChVector<>(0.0, 0.0, b_size.z() / 2), b_size / 2);
 
     // Create bottom plate and dropping sphere with BCE markers
     auto sphere = CreateSolids(sys, sysFSI, b_size);
