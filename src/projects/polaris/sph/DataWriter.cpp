@@ -249,12 +249,13 @@ DataWriterVehicle::DataWriterVehicle(ChSystemFsi& sysFSI, std::shared_ptr<Wheele
     // m_box_size.x() = 2.0 * std::sqrt(3.0) * tire_radius;
     // m_box_size.y() = 1.5 * tire_width;
     // m_box_size.z() = 0.2;
-    m_box_size.x() = 3.0 * tire_radius;
+    m_box_size.x() = 3.5 * tire_radius;
     m_box_size.y() = 2.5 * tire_width;
     m_box_size.z() = 0.2;
 
     // Set default offset of sampling box
-    m_box_offset = ChVector<>(0.15, 0.0, 0.0);
+    m_box_offset = ChVector<>((3.5 * tire_radius/2.0)-0.3, 0.0, 0.0);
+    // m_box_offset = ChVector<>(0.15, 0.0, 0.0);
 
     m_vel_channels = {7,  8,  9,  10, 11, 12,  //
                       20, 21, 22, 23, 24, 25,  //
