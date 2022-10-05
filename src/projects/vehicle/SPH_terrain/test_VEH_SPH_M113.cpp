@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
     int numPart = (int)points.size();
     for (int i = 0; i < numPart; i++) {
         double pre_ini = sysFSI.GetDensity() * abs(gravity.z()) * (-points[i].z() + bzDim);
-        sysFSI.AddSPHParticle(points[i], sysFSI.GetDensity(), 0, sysFSI.GetViscosity(), sysFSI.GetKernelLength(),
+        sysFSI.AddSPHParticle(points[i], sysFSI.GetDensity(), 0, sysFSI.GetViscosity(),
                               ChVector<>(0),         // initial velocity
                               ChVector<>(-pre_ini),  // tauxxyyzz
                               ChVector<>(0)          // tauxyxzyz
@@ -244,46 +244,20 @@ int main(int argc, char* argv[]) {
 //------------------------------------------------------------------
 void CreateSolidPhase(ChSystemNSC& sysMBS, ChSystemFsi& sysFSI, const ChVector<>& box_dims) {
     // Set common material Properties
-    auto mysurfmaterial = chrono_types::make_shared<ChMaterialSurfaceNSC>();
-    mysurfmaterial->SetFriction(0.9);
-    mysurfmaterial->SetRestitution(0.4);
+    auto cmaterial = chrono_types::make_shared<ChMaterialSurfaceNSC>();
+    cmaterial->SetFriction(0.9);
+    cmaterial->SetRestitution(0.4);
     collision::ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
     collision::ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
 
     // Create a body for the rigid soil container
-    auto box = chrono_types::make_shared<ChBodyEasyBox>(100, 100, 0.02, 1000, false, true, mysurfmaterial);
+    auto box = chrono_types::make_shared<ChBodyEasyBox>(100, 100, 0.02, 1000, false, true, cmaterial);
     box->SetPos(ChVector<>(0, 0, 0));
     box->SetBodyFixed(true);
     sysMBS.Add(box);
 
-    // Get the initial SPH particle spacing
-    double initSpace0 = sysFSI.GetInitialSpacing();
-
-    double bxDim = box_dims.x();
-    double byDim = box_dims.y();
-    double bzDim = box_dims.z();
-
-    /// Bottom wall
-    ChVector<> size_XY(bxDim / 2 + 3 * initSpace0, byDim / 2 + 3 * initSpace0, 2 * initSpace0);
-    ChVector<> pos_zn(0, 0, -3 * initSpace0);
-    ChVector<> pos_zp(0, 0, bzDim + 2 * initSpace0);
-
-    /// Left and right wall
-    ChVector<> size_YZ(2 * initSpace0, byDim / 2 + 3 * initSpace0, bzDim / 2);
-    ChVector<> pos_xp(bxDim / 2 + initSpace0, 0.0, bzDim / 2 + 0 * initSpace0);
-    ChVector<> pos_xn(-bxDim / 2 - 3 * initSpace0, 0.0, bzDim / 2 + 0 * initSpace0);
-
-    /// Front and back wall
-    ChVector<> size_XZ(bxDim / 2, 2 * initSpace0, bzDim / 2);
-    ChVector<> pos_yp(0, byDim / 2 + initSpace0, bzDim / 2 + 0 * initSpace0);
-    ChVector<> pos_yn(0, -byDim / 2 - 3 * initSpace0, bzDim / 2 + 0 * initSpace0);
-
-    /// Fluid-Solid Coupling at the walls via BCE particles
-    sysFSI.AddBoxBCE(box, pos_zn, QUNIT, size_XY, 12);
-    sysFSI.AddBoxBCE(box, pos_xp, QUNIT, size_YZ, 23);
-    sysFSI.AddBoxBCE(box, pos_xn, QUNIT, size_YZ, 23);
-    sysFSI.AddBoxBCE(box, pos_yp, QUNIT, size_XZ, 13);
-    sysFSI.AddBoxBCE(box, pos_yn, QUNIT, size_XZ, 13);
+    // Fluid-Solid Coupling at the walls via BCE particles
+    sysFSI.AddContainerBCE(box, ChFrame<>(), box_dims + ChVector<>(0, 0, box_dims.z()), ChVector<int>(2, 0, -1));
 
     // --------------------------
     // Construct the M113 vehicle
@@ -313,13 +287,13 @@ void CreateSolidPhase(ChSystemNSC& sysMBS, ChSystemFsi& sysFSI, const ChVector<>
         auto track_L = track->GetVehicle().GetTrackAssembly(LEFT);
         auto shoe_body = track_L->GetTrackShoe(i)->GetShoeBody();
         sysFSI.AddFsiBody(shoe_body);
-        sysFSI.AddBoxBCE(shoe_body, ChVector<>(0), QUNIT, ChVector<>(0.06, 0.18, 0.04), 123, true);
+        sysFSI.AddBoxBCE(shoe_body, ChFrame<>(VNULL, QUNIT), ChVector<>(0.06, 0.18, 0.04), true);
     }
     for (int i = 0; i < num_shoe_R; i++) {
         auto track_R = track->GetVehicle().GetTrackAssembly(RIGHT);
         auto shoe_body = track_R->GetTrackShoe(i)->GetShoeBody();
         sysFSI.AddFsiBody(shoe_body);
-        sysFSI.AddBoxBCE(shoe_body, ChVector<>(0), QUNIT, ChVector<>(0.06, 0.18, 0.04), 123, true);
+        sysFSI.AddBoxBCE(shoe_body, ChFrame<>(VNULL, QUNIT), ChVector<>(0.06, 0.18, 0.04), true);
     }
 
     /// Add some rocks on the terrain
@@ -378,7 +352,7 @@ void CreateSolidPhase(ChSystemNSC& sysMBS, ChSystemFsi& sysFSI, const ChVector<>
         // Set collision
         rock_body->SetBodyFixed(false);
         rock_body->GetCollisionModel()->ClearModel();
-        rock_body->GetCollisionModel()->AddTriangleMesh(mysurfmaterial, trimesh, false, false, VNULL, ChMatrix33<>(1),
+        rock_body->GetCollisionModel()->AddTriangleMesh(cmaterial, trimesh, false, false, VNULL, ChMatrix33<>(1),
     0.005); rock_body->GetCollisionModel()->BuildModel(); rock_body->SetCollide(true);
 
         // Create BCE particles associated with mesh

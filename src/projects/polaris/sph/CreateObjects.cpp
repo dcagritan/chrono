@@ -45,17 +45,19 @@ chrono::ChCoordsys<> CreateTerrain(ChSystem& sys,
     // Include acceleration ramp?
     bool create_ramp = (ramp_length > 0);
 
+    std::ifstream ifile;
+    std::string line;
+    std::string cell;
+
     // Create SPH markers with initial locations from file
     int num_particles = 0;
     ChVector<> aabb_min(std::numeric_limits<double>::max());
     ChVector<> aabb_max(-std::numeric_limits<double>::max());
 
-    ChVector<> marker;
-    std::string line;
-    std::string cell;
-
-    std::ifstream ifile(vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt"));
+    ifile.open(vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt"));
     getline(ifile, line);  // Comment line
+
+    ChVector<> marker;
     while (getline(ifile, line)) {
         std::stringstream ls(line);
         for (int i = 0; i < 3; i++) {
@@ -66,8 +68,7 @@ chrono::ChCoordsys<> CreateTerrain(ChSystem& sys,
         }
         ////ChVector<> tau(-sysFSI.GetSensity() * std::abs(gravity.z) * (-marker.z() + fzDim));
         ChVector<> tau(0);
-        sysFSI.AddSPHParticle(marker, sysFSI.GetDensity(), 0, sysFSI.GetViscosity(), sysFSI.GetKernelLength(), VNULL,
-                              tau, VNULL);
+        sysFSI.AddSPHParticle(marker, sysFSI.GetDensity(), 0.0, sysFSI.GetViscosity(), VNULL, tau, VNULL);
         num_particles++;
     }
     ifile.close();
@@ -88,7 +89,21 @@ chrono::ChCoordsys<> CreateTerrain(ChSystem& sys,
     sys.AddBody(body);
 
     // Attach BCE markers (Note: BCE markers must be created after SPH markers!)
-    sysFSI.AddFileBCE(body, vehicle::GetDataFile(terrain_dir + "/bce_20mm.txt"), VNULL, QUNIT, 1.0, false);
+    std::vector<ChVector<>> bces;
+
+    ifile.open(vehicle::GetDataFile(terrain_dir + "/bce_20mm.txt"));
+    getline(ifile, line);  // Comment line
+
+    ChVector<> bce;
+    while (getline(ifile, line)) {
+        std::stringstream ls(line);
+        for (int i = 0; i < 3; i++) {
+            getline(ls, cell, ',');
+            bce[i] = stod(cell);
+        }
+        bces.push_back(bce);
+    }
+    sysFSI.AddPointsBCE(body, bces, ChFrame<>(), false);
 
     // Extract slope and banking of the terrain patch
     double slope = 0;
@@ -256,7 +271,7 @@ void CreateWheelBCEMarkers(std::shared_ptr<WheeledVehicle> vehicle, ChSystemFsi&
     for (auto& axle : vehicle->GetAxles()) {
         for (auto& wheel : axle->GetWheels()) {
             sysFSI.AddFsiBody(wheel->GetSpindle());
-            sysFSI.AddPointsBCE(wheel->GetSpindle(), point_cloud, VNULL, QUNIT);
+            sysFSI.AddPointsBCE(wheel->GetSpindle(), point_cloud, ChFrame<>(), true);
         }
     }
 }

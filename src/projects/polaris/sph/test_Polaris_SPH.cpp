@@ -68,8 +68,10 @@ bool GetProblemSpecs(int argc,
                      double& output_major_fps,
                      double& output_minor_fps,
                      int& output_frames,
-                     bool& output_pos_only,
-                     double& filter_window,
+                     int& particle_output,
+                     bool& wheel_output,
+                     double& filter_window_vel,
+                     double& filter_window_acc,
                      double& vis_output_fps,
                      bool& run_time_vis,
                      bool& run_time_vis_particles,
@@ -133,31 +135,41 @@ int main(int argc, char* argv[]) {
     double output_major_fps = 20;
     double output_minor_fps = 1000;
     int output_frames = 5;
-    bool position_only = false;           // output only particle positions
-    double filter_window = 0;             // do not filter data
-    double vis_output_fps = 0;            // no post-processing visualization output
-    
+    int particle_output = 2;       // output all particle info
+    bool wheel_output = true;      // save individual wheel output files
+    double filter_window_vel = 0;  // do not filter velocity data
+    double filter_window_acc = 0;  // do not filter acceleration data
+    double vis_output_fps = 0;     // no post-processing visualization output
+
     bool run_time_vis = false;            // no run-time visualization
     double run_time_vis_fps = 0;          // render every simulation frame
     bool run_time_vis_particles = false;  // render only terrain surface mesh
     bool run_time_vis_bce = false;        // render vehicle meshes
     bool chase_cam = false;               // fixed camera
-    
+
     bool verbose = true;
 
-    if (!GetProblemSpecs(argc, argv,                                                                       //
-                         terrain_dir, density, cohesion, friction, youngs_modulus, poisson_ratio,          //
-                         ramp_length, target_speed, tend, step_size, active_box_dim,                       //
-                         output_major_fps, output_minor_fps, output_frames, position_only, filter_window,  //
-                         vis_output_fps,                                                                   //
-                         run_time_vis, run_time_vis_particles, run_time_vis_bce, run_time_vis_fps,         //
+    if (!GetProblemSpecs(argc, argv,                                                                        //
+                         terrain_dir, density, cohesion, friction, youngs_modulus, poisson_ratio,           //
+                         ramp_length, target_speed, tend, step_size, active_box_dim,                        //
+                         output_major_fps, output_minor_fps, output_frames, particle_output, wheel_output,  //
+                         filter_window_vel, filter_window_acc,                                              //
+                         vis_output_fps,                                                                    //
+                         run_time_vis, run_time_vis_particles, run_time_vis_bce, run_time_vis_fps,          //
                          chase_cam, verbose)) {
         return 1;
     }
 
     bool sim_output = (output_major_fps > 0);
-    bool use_filter = (filter_window > 0);
+    bool use_filter_vel = (filter_window_vel > 0);
+    bool use_filter_acc = (filter_window_acc > 0);
     bool vis_output = (vis_output_fps > 0);
+
+    DataWriter::ParticleOutput output_level = DataWriter::ParticleOutput::ALL;
+    if (particle_output == 0)
+        output_level = DataWriter::ParticleOutput::NONE;
+    else if (particle_output == 1)
+        output_level = DataWriter::ParticleOutput::POSITIONS;
 
     // Check input files exist
     if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/path.txt")).exists()) {
@@ -219,7 +231,7 @@ int main(int argc, char* argv[]) {
     sysFSI.SetWallBC(BceVersion::ORIGINAL);
     sysFSI.SetSPHMethod(FluidDynamics::WCSPH);
     sysFSI.SetStepSize(step_size);
-    sysFSI.SetVerbose(false);
+    sysFSI.SetVerbose(verbose);
 
     // Set simulation data output and FSI information output
     std::string out_dir = GetChronoOutputPath() + "POLARIS_SPH/";
@@ -291,10 +303,13 @@ int main(int argc, char* argv[]) {
         cout << "Error creating directory " << sim_dir << endl;
         return 1;
     }
+
     DataWriterVehicle data_writer(sysFSI, vehicle);
     data_writer.SetVerbose(verbose);
-    data_writer.SavePositionsOnly(position_only);
-    data_writer.UseFilteredData(use_filter, filter_window);
+    data_writer.SetParticleOutput(output_level);
+    data_writer.SetMBSOutput(wheel_output);
+    data_writer.UseFilteredVelData(use_filter_vel, filter_window_vel);
+    data_writer.UseFilteredAccData(use_filter_acc, filter_window_acc);
     data_writer.Initialize(sim_dir, output_major_fps, output_minor_fps, output_frames, step_size);
     cout << "Simulation output data saved in: " << sim_dir << endl;
     cout << "===============================================================================" << endl;
@@ -316,7 +331,7 @@ int main(int argc, char* argv[]) {
         const auto& veh_loc = vehicle->GetPos();
 
         // Check if vehicle approaching SPH terrain patch
-        if (on_ramp && veh_loc.x() > -2) {
+        if (on_ramp && veh_loc.x() > -0.5) {
             // Create the wheel BCE markers at current wheel body locations
             CreateWheelBCEMarkers(vehicle, sysFSI);
 
@@ -337,7 +352,7 @@ int main(int argc, char* argv[]) {
 
         // Simulation data output
         if (sim_output && !on_ramp)
-            data_writer.Process(frame);
+            data_writer.Process(frame, t);
 
         // Visualization data output
         if (vis_output && frame % vis_output_steps == 0) {
@@ -458,8 +473,10 @@ bool GetProblemSpecs(int argc,
                      double& output_major_fps,
                      double& output_minor_fps,
                      int& output_frames,
-                     bool& output_pos_only,
-                     double& filter_window,
+                     int& particle_output,
+                     bool& wheel_output,
+                     double& filter_window_vel,
+                     double& filter_window_acc,
                      double& vis_output_fps,
                      bool& run_time_vis,
                      bool& run_time_vis_particles,
@@ -476,22 +493,26 @@ bool GetProblemSpecs(int argc,
     cli.AddOption<double>("Problem setup", "youngs_modulus", "Young's modulus [Pa]", std::to_string(youngs_modulus));
     cli.AddOption<double>("Problem setup", "poisson_ratio", "Poission ratio", std::to_string(poisson_ratio));
 
-    cli.AddOption<double>("Simulation", "ramp_length", "Length of the acceleration ramp", std::to_string(ramp_length));
+    cli.AddOption<double>("Simulation", "ramp_length", "Acceleration ramp length", std::to_string(ramp_length));
     cli.AddOption<double>("Simulation", "target_speed", "Target speed [m/s]", std::to_string(target_speed));
     cli.AddOption<double>("Simulation", "tend", "Simulation end time [s]", std::to_string(tend));
     cli.AddOption<double>("Simulation", "step_size", "Integration step size [s]", std::to_string(step_size));
-    cli.AddOption<double>("Simulation", "active_box_dim", "Half-dimension of active box [m]",
+    cli.AddOption<double>("Simulation", "active_box_dim", "Active box half-size [m]",
                           std::to_string(active_box_dim));
 
     cli.AddOption<double>("Simulation output", "output_major_fps", "Simulation output major frequency [fps]",
                           std::to_string(output_major_fps));
     cli.AddOption<double>("Simulation output", "output_minor_fps", "Simulation output major frequency [fps]",
                           std::to_string(output_minor_fps));
-    cli.AddOption<int>("Simulation output", "output_frames", "Number of successive output frames",
+    cli.AddOption<int>("Simulation output", "output_frames", "Successive output frames",
                        std::to_string(output_frames));
-    cli.AddOption<bool>("Simulation output", "position_only", "Do not output particle velocities and forces");
-    cli.AddOption<double>("Simulation output", "filter_window", "Running average filter window [s]",
-                          std::to_string(filter_window));
+    cli.AddOption<int>("Simulation output", "particle_output", "Particle output (0: none, 1: pos, 2: all)",
+                       std::to_string(particle_output));
+    cli.AddOption<bool>("Simulation output", "no_wheel_output", "Disable individual wheel output files");
+    cli.AddOption<double>("Simulation output", "filter_window_vel", "Running average velocity filter window [s]",
+                          std::to_string(filter_window_vel));
+    cli.AddOption<double>("Simulation output", "filter_window_acc", "Running average acceleration filter window [s]",
+                          std::to_string(filter_window_acc));
 
     cli.AddOption<bool>("", "quiet", "Disable all messages during simulation");
 
@@ -529,9 +550,11 @@ bool GetProblemSpecs(int argc,
     output_major_fps = cli.GetAsType<double>("output_major_fps");
     output_minor_fps = cli.GetAsType<double>("output_minor_fps");
     output_frames = cli.GetAsType<int>("output_frames");
-    output_pos_only = cli.GetAsType<bool>("position_only");
+    particle_output = cli.GetAsType<int>("particle_output");
+    wheel_output = !cli.GetAsType<bool>("no_wheel_output");
 
-    filter_window = cli.GetAsType<double>("filter_window");
+    filter_window_vel = cli.GetAsType<double>("filter_window_vel");
+    filter_window_acc = cli.GetAsType<double>("filter_window_acc");
 
     vis_output_fps = cli.GetAsType<double>("vis_output_fps");
     run_time_vis = cli.GetAsType<bool>("run_time_vis");

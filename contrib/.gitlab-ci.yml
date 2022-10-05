@@ -25,12 +25,12 @@ stages:
 .archlinux:
   tags:
   - linux
-  image: 
+  image:
     name: archlinux:base-devel
     entrypoint: ["/usr/bin/bash", "-c"]
   before_script:
   - uname -a
-  - pacman -Syyu --noconfirm cuda git eigen cmake glfw glm glew glut irrlicht ninja wget python python-pip openmpi openssh swig hdf5
+  - pacman -Sy --noconfirm cuda git eigen cmake glfw glm glew glut irrlicht ninja wget python python-pip openmpi openssh swig hdf5
 # Clean up the package cache to make more space for the build
   - pacman -Scc --noconfirm
   - ldconfig
@@ -53,8 +53,8 @@ linux:arch-gcc:build:
   - cd build
   - echo $CI_PROJECT_DIR
   - cmake ../ --preset=linuxci
-    -DCMAKE_C_COMPILER=/usr/bin/gcc 
-    -DCMAKE_CXX_COMPILER=/usr/bin/g++ 
+    -DCMAKE_C_COMPILER=/usr/bin/gcc
+    -DCMAKE_CXX_COMPILER=/usr/bin/g++
     -DEIGEN3_INCLUDE_DIR=/usr/include/eigen3
     -DBUILD_TESTING_GPU=FALSE
     -DBUILD_TESTING_SENSOR=FALSE
@@ -63,7 +63,6 @@ linux:arch-gcc:build:
     expire_in: 60m
     paths:
     - build/
-    
 
 linux:arch-gcc:test:
   stage: test
@@ -72,57 +71,9 @@ linux:arch-gcc:test:
   script:
   - cd build
   - export OMP_NUM_THREADS=8
-  - export CTEST_OUTPUT_ON_FAILURE=1 
+  - export CTEST_OUTPUT_ON_FAILURE=1
   - ninja test
   dependencies: ["linux:arch-gcc:build"]
-
-
-linux:doxygen:deploy:
-  tags:
-  - linux
-  image: 
-    name: archlinux:base-devel
-    entrypoint: ["/usr/bin/bash", "-c"]
-  stage: deploy
-  before_script:
-#    - pacman -Syyu --noconfirm base-devel git python python-pip doxygen graphviz openssh rsync clang
-    - pacman -Syyu --noconfirm base-devel git python python-pip graphviz openssh rsync wget
-    - wget https://downloads.sourceforge.net/project/doxygen/rel-1.8.16/doxygen-1.8.16.linux.bin.tar.gz
-    - tar -xf doxygen-1.8.16.linux.bin.tar.gz
-    - mkdir -p ~/.ssh
-    - chmod 0700 ~/.ssh
-# This private key is only useable from specific IPs, so it should be okay to
-# be included here.
-    - cp $API_PRIVATE_KEY ~/.ssh/id_ed25519
-    - chmod 0600 ~/.ssh/id_ed25519
-# Remove any duplicate host key entries, if necessary
-    - if test -f ~/.ssh/known_hosts; then ssh-keygen -R $API_REINDEX_ENDPOINT; fi
-# Cache a verified host pubkey from file to avoid MITM attacks
-    - cat $API_ENDPOINT_PUBKEY >> ~/.ssh/known_hosts
-  script:
-    - export PATH="$PWD/doxygen-1.8.16/bin:$PATH"
-    - cd doxygen
-    - doxygen Doxyfile
-    # - doxygen Doxyfile_Generate_Search_Index
-    - rsync -ra /tmp/chrono_doxygen/html/* $API_HTML_ENDPOINT
-    - rsync /tmp/chrono_doxygen/searchdata.xml $API_SEARCH_ENDPOINT
-    - ssh $API_REINDEX_ENDPOINT /usr/bin/doxyindexer -o $API_CGI_DIR $API_CGI_DIR/searchdata.xml
-  needs:
-    - job: linux:arch-gcc:test
-      artifacts: false
-#    - job: macos-intel:monterey:test
-#      artifacts: false
-    - job: macos-apple:monterey:test
-      artifacts: false
-    - job: windows:vs2022:test
-      artifacts: false
-  environment:
-    name: doxygen
-    url: http://api.projectchrono.org/
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == "main"'
-      when: always
-
 
 linux:arch-llvm:build:
   stage: build
@@ -130,9 +81,9 @@ linux:arch-llvm:build:
   script:
   - pacman -S --noconfirm llvm clang openmp
   - cd build
-  - cmake ../ --preset=linuxci 
+  - cmake ../ --preset=linuxci
     -DCMAKE_C_COMPILER=/usr/bin/clang
-    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ 
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++
     -DEIGEN3_INCLUDE_DIR=/usr/include/eigen3
     -DCUDA_HOST_COMPILER=/usr/bin/gcc
     -DBUILD_TESTING_GPU=FALSE
@@ -154,7 +105,7 @@ linux:arch-llvm:test:
   - pacman -S --noconfirm llvm clang openmp
   - cd build
   - export OMP_NUM_THREADS=8
-  - export CTEST_OUTPUT_ON_FAILURE=1 
+  - export CTEST_OUTPUT_ON_FAILURE=1
   - ninja test
   dependencies: ["linux:arch-llvm:build"]
 
@@ -171,10 +122,10 @@ linux:arch-llvm:test:
   before_script:
     - uname -a
     - export DEBIAN_FRONTEND=noninteractive
-    - apt-get update; apt-get -y install wget python git 
-        cmake ninja-build build-essential libboost-dev swig libeigen3-dev 
+    - apt-get update; apt-get -y install wget python git
+        cmake ninja-build build-essential libboost-dev swig libeigen3-dev
         libglfw3-dev libglm-dev libglew-dev freeglut3-dev libirrlicht-dev
-        libxxf86vm-dev libopenmpi-dev python3 python3-dev libhdf5-dev
+        libxxf86vm-dev libopenmpi-dev python3 python3-dev libhdf5-dev libnvidia-gl-510
     - ldconfig
     - wget https://bitbucket.org/blaze-lib/blaze/downloads/blaze-3.8.tar.gz
     - tar -xf blaze-3.8.tar.gz
@@ -228,6 +179,52 @@ linux:arch-llvm:test:
     name: pychrono-ubuntu2004
     url: https://anaconda.org/projectchrono/pychrono
 
+linux:doxygen:deploy:
+  tags:
+  - linux
+  image:
+    name: ubuntu:focal
+  stage: deploy
+  before_script:
+    - TZ=America/Chicago
+    - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone  
+    - apt-get update; apt-get install -y git python python3-pip graphviz rsync wget
+    #- pacman -Sy --noconfirm base-devel git python python-pip graphviz openssh rsync wget
+    - wget https://downloads.sourceforge.net/project/doxygen/rel-1.8.16/doxygen-1.8.16.linux.bin.tar.gz
+    - tar -xf doxygen-1.8.16.linux.bin.tar.gz
+    - mkdir -p ~/.ssh
+    - chmod 0700 ~/.ssh
+# This private key is only useable from specific IPs, so it should be okay to
+# be included here.
+    - cp $API_PRIVATE_KEY ~/.ssh/id_ed25519
+    - chmod 0600 ~/.ssh/id_ed25519
+# Remove any duplicate host key entries, if necessary
+    - if test -f ~/.ssh/known_hosts; then ssh-keygen -R $API_REINDEX_ENDPOINT; fi
+# Cache a verified host pubkey from file to avoid MITM attacks
+    - cat $API_ENDPOINT_PUBKEY >> ~/.ssh/known_hosts
+  script:
+    - export PATH="$PWD/doxygen-1.8.16/bin:$PATH"
+    - cd doxygen
+    - doxygen Doxyfile
+    # - doxygen Doxyfile_Generate_Search_Index
+    - rsync -ra /tmp/chrono_doxygen/html/* $API_HTML_ENDPOINT
+    - rsync /tmp/chrono_doxygen/searchdata.xml $API_SEARCH_ENDPOINT
+    - ssh $API_REINDEX_ENDPOINT /usr/bin/doxyindexer -o $API_CGI_DIR $API_CGI_DIR/searchdata.xml
+  needs:
+#    - job: linux:arch-gcc:test
+#      artifacts: false
+#    - job: macos-intel:monterey:test
+#      artifacts: false
+    - job: macos-apple:monterey:test
+      artifacts: false
+    - job: windows:vs2022:test
+      artifacts: false
+  environment:
+    name: doxygen
+    url: http://api.projectchrono.org/
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "main"'
+      when: always
 
 #----------------#
 # Ubuntu Builder #
@@ -244,8 +241,9 @@ linux:ubuntu2004:build:
         -DENABLE_MODULE_PYTHON=TRUE -DENABLE_MODULE_COSIMULATION=FALSE
         -DENABLE_MODULE_IRRLICHT=TRUE -DENABLE_MODULE_VEHICLE=TRUE
         -DENABLE_MODULE_MULTICORE=TRUE -DENABLE_MODULE_OPENGL=TRUE
-        -DENABLE_MODULE_SYNCHRONO=TRUE -DENABLE_MODULE_CSHARP=TRUE
-        -DENABLE_MODULE_GPU=TRUE -DENABLE_MODULE_DISTRIBUTED=TRUE
+        -DENABLE_MODULE_FSI=TRUE -DENABLE_MODULE_SYNCHRONO=TRUE
+        -DENABLE_MODULE_CSHARP=TRUE -DENABLE_MODULE_GPU=TRUE 
+        -DENABLE_MODULE_DISTRIBUTED=TRUE
         -DENABLE_HDF5=TRUE
         -DCMAKE_C_COMPILER=/usr/bin/gcc
         -DCMAKE_CXX_COMPILER=/usr/bin/g++
@@ -254,7 +252,7 @@ linux:ubuntu2004:build:
         -DEIGEN3_INCLUDE_DIR=/usr/include/eigen3
         -DCMAKE_VERBOSE_MAKEFILE=TRUE
         -DENABLE_MODULE_SENSOR=TRUE
-        -DBUILD_TESTING_SENSOR=FALSE
+        -DBUILD_TESTING_SENSOR=TRUE
         -DOptiX_INSTALL_DIR=/opt/optix/7.2.0
     - ninja -j 8
   artifacts:
@@ -282,7 +280,7 @@ linux:ubuntu2004:deploy-python3.8:
     - pwd
     - conda build purge-all
     - conda build ./contrib/packaging-python/conda -c intel -c conda-forge -c dlr-sc --no-remove-work-dir --dirty --python=3.8
-    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda3/conda-bld/linux-64/pychrono*.bz2 -l develop --force
+    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda3/conda-bld/linux-64/pychrono*.bz2 -l main --force
   when: manual
 
 linux:ubuntu2004:deploy-python3.9:
@@ -292,7 +290,7 @@ linux:ubuntu2004:deploy-python3.9:
   script:
     - conda build purge-all
     - conda build ./contrib/packaging-python/conda -c intel -c conda-forge -c dlr-sc --no-remove-work-dir --dirty --python=3.9
-    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda3/conda-bld/linux-64/pychrono*.bz2 -l develop --force
+    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda3/conda-bld/linux-64/pychrono*.bz2 -l main --force
   when: manual
 
 linux:ubuntu2004:deploy-python3.10:
@@ -302,7 +300,7 @@ linux:ubuntu2004:deploy-python3.10:
   script:
     - conda build purge-all
     - conda build ./contrib/packaging-python/conda -c intel -c conda-forge -c dlr-sc --no-remove-work-dir --dirty --python=3.10
-    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda3/conda-bld/linux-64/pychrono*.bz2 -l develop --force
+    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda3/conda-bld/linux-64/pychrono*.bz2 -l main --force
   when: manual
 
 #------------------#
@@ -427,12 +425,17 @@ windows:vs2019:test:
   - ctest --extra-verbose --output-on-failure
   dependencies: ["windows:vs2019:build"]
 
-windows:vs2019:deploy:
-  stage: deploy
-  needs: []
-  extends: .windows
-  script:
-    - rm -r build
+.windows-vs2019-deploy-base:
+  tags:
+    - windows11
+  before_script:
+    # Extending .windows did not work, since GitLab currently does not execute two before_scripts in order
+    # Therefore, that chain of commands has been copied here
+    - '& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\Launch-VsDevShell.ps1"'
+    - $env:CONDA_INSTALL_LOCN="C:\Users\builder\miniconda3"
+    - echo $CI_PROJECT_DIR
+    - git submodule init
+    - git submodule update
     # get libiomp5md.lib
     #- $libiomppth=Join-Path -Path $Env:CONDA_INSTALL_LOCN -ChildPath "\Library\lib\libiomp5md.lib"
     #- Invoke-WebRequest -Uri http://www.projectchrono.org/assets/downloads/libiomp5md.lib  -OutFile $libiomppth
@@ -464,18 +467,15 @@ windows:vs2019:deploy:
     - mv -Force $CI_PROJECT_DIR\contrib\packaging-python\conda\upload.py $location\upload.py
     - set REQUESTS_CA_BUNDLE=C:\users\builder\miniconda3\Lib\site-packages\certifi\cacert.pem
     - conda build purge-all timeout /t 240
-    # Building pyChrono for python v3.10
-    - conda build .\contrib\packaging-python\conda -c conda-forge -c dlr-sc -c intel --python=3.10 --no-remove-work-dir
-    - anaconda --token "$Env:ANACONDA_TOKEN" upload "$Env:CONDA_INSTALL_LOCN\envs\build-env\conda-bld\win-64\pychrono*.bz2" --force --label main
-    - conda build purge-all timeout /t 240
-    # Building pyChrono for python v3.9
-    - conda build .\contrib\packaging-python\conda -c conda-forge -c dlr-sc -c intel --python=3.9 --no-remove-work-dir
-    - anaconda --token "$Env:ANACONDA_TOKEN" upload "$Env:CONDA_INSTALL_LOCN\envs\build-env\conda-bld\win-64\pychrono*.bz2" --force --label main
-    - conda build purge-all timeout /t 240
-    # Building pyChrono for python v3.8
-    - conda build .\contrib\packaging-python\conda -c conda-forge -c dlr-sc -c intel --python=3.8 --no-remove-work-dir
-    - anaconda --token "$Env:ANACONDA_TOKEN" upload "$Env:CONDA_INSTALL_LOCN\envs\build-env\conda-bld\win-64\pychrono*.bz2" --force --label main
-    - conda build purge timeout /t 240
+  environment:
+    name: pychrono-win64
+    url: https://anaconda.org/projectchrono/pychrono
+
+windows:vs2019:deploy-python3.6:
+  stage: deploy
+  needs: []
+  extends: .windows-vs2019-deploy-base
+  script:
     # Building pyChrono for python v3.6
     - conda build .\contrib\packaging-python\conda -c conda-forge -c dlr-sc -c intel --python=3.6 --no-remove-work-dir
     - anaconda --token "$Env:ANACONDA_TOKEN" upload "$Env:CONDA_INSTALL_LOCN\envs\build-env\conda-bld\win-64\pychrono*.bz2" --force --label main
@@ -485,7 +485,75 @@ windows:vs2019:deploy:
     - Remove-Item $Env:CONDA_INSTALL_LOCN\envs\build-env -Recurse -Force
     # Get rid of the downloaded numpy package to prevent conflicts
     - Remove-Item $Env:CONDA_ISNTALL_LOCN\pkgs\numpy* -Recurse -Force
+  environment:
+    name: pychrono-win64
+    url: https://anaconda.org/projectchrono/pychrono
+  when: manual
+  artifacts:
+    expire_in: 60m
+    paths:
+      - ./logs/
 
+windows:vs2019:deploy-python3.8:
+  stage: deploy
+  needs: []
+  extends: .windows-vs2019-deploy-base
+  script:
+    # Building pyChrono for python v3.8
+    - conda build .\contrib\packaging-python\conda -c conda-forge -c dlr-sc -c intel --python=3.8 --no-remove-work-dir
+    - anaconda --token "$Env:ANACONDA_TOKEN" upload "$Env:CONDA_INSTALL_LOCN\envs\build-env\conda-bld\win-64\pychrono*.bz2" --force --label main
+  after_script:
+    # Get rid of the build environment
+    - conda deactivate build-env
+    - Remove-Item $Env:CONDA_INSTALL_LOCN\envs\build-env -Recurse -Force
+    # Get rid of the downloaded numpy package to prevent conflicts
+    - Remove-Item $Env:CONDA_ISNTALL_LOCN\pkgs\numpy* -Recurse -Force
+  environment:
+    name: pychrono-win64
+    url: https://anaconda.org/projectchrono/pychrono
+  when: manual
+  artifacts:
+    expire_in: 60m
+    paths:
+      - ./logs/
+
+windows:vs2019:deploy-python3.9:
+  stage: deploy
+  needs: []
+  extends: .windows-vs2019-deploy-base
+  script:
+    # Building pyChrono for python v3.9
+    - conda build .\contrib\packaging-python\conda -c conda-forge -c dlr-sc -c intel --python=3.9 --no-remove-work-dir
+    - anaconda --token "$Env:ANACONDA_TOKEN" upload "$Env:CONDA_INSTALL_LOCN\envs\build-env\conda-bld\win-64\pychrono*.bz2" --force --label main
+  after_script:
+    # Get rid of the build environment
+    - conda deactivate build-env
+    - Remove-Item $Env:CONDA_INSTALL_LOCN\envs\build-env -Recurse -Force
+    # Get rid of the downloaded numpy package to prevent conflicts
+    - Remove-Item $Env:CONDA_ISNTALL_LOCN\pkgs\numpy* -Recurse -Force
+  environment:
+    name: pychrono-win64
+    url: https://anaconda.org/projectchrono/pychrono
+  when: manual
+  artifacts:
+    expire_in: 60m
+    paths:
+      - ./logs/
+
+windows:vs2019:deploy-python3.10:
+  stage: deploy
+  needs: []
+  extends: .windows-vs2019-deploy-base
+  script:
+    # Building pyChrono for python v3.10
+    - conda build .\contrib\packaging-python\conda -c conda-forge -c dlr-sc -c intel --python=3.10 --no-remove-work-dir
+    - anaconda --token "$Env:ANACONDA_TOKEN" upload "$Env:CONDA_INSTALL_LOCN\envs\build-env\conda-bld\win-64\pychrono*.bz2" --force --label main
+  after_script:
+    # Get rid of the build environment
+    - conda deactivate build-env
+    - Remove-Item $Env:CONDA_INSTALL_LOCN\envs\build-env -Recurse -Force
+    # Get rid of the downloaded numpy package to prevent conflicts
+    - Remove-Item $Env:CONDA_ISNTALL_LOCN\pkgs\numpy* -Recurse -Force
   environment:
     name: pychrono-win64
     url: https://anaconda.org/projectchrono/pychrono
@@ -545,7 +613,7 @@ macos-intel:monterey:build:
     - macos
     - monterey
     - intel
-    
+
 macos-intel:monterey:test:
   extends: .macos-monterey-test
   tags:
@@ -576,19 +644,24 @@ macos-apple:monterey:test:
 
 .macos-deploy-base:
   extends: .macos
+  tags:
+    - intel
   before_script:
     - export CONDA_NPY=19
-    - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh
+    - brew install wget
+    - ARCHITECTURE=`uname -m`
+    - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-$ARCHITECTURE.sh -O ~/miniconda.sh
     - rm -r $HOME/miniconda > /dev/null 2>&1 || FAILED=true
     - bash ~/miniconda.sh -b -p $HOME/miniconda
     - export PATH=$HOME/miniconda/bin:$PATH
     - conda install --yes -c intel jinja2
     - conda config --set show_channel_urls true
     - conda install conda-build anaconda-client conda-verify --yes
-    - conda config --add channels https://conda.anaconda.org/conda-forge
-    - conda config --add channels https://conda.anaconda.org/intel
+    - conda config --add channels conda-forge
+    - conda config --add channels intel
+    - conda config --add channels dlr-sc
     #- conda install -c dlr-sc opencascade --yes
-    - conda install -c intel mkl-devel --yes
+    #- conda install -c intel mkl-devel --yes
     - ls $HOME/miniconda/lib/
     - conda build purge-all
     # this command is needed to get the git describe data needed by the numbering
@@ -596,33 +669,11 @@ macos-apple:monterey:test:
     - clang --version
     # conda build uses "build.sh" for both Linux and MacOS. Since we do things differently, we do the following workaround
     - mv -f ./contrib/packaging-python/conda/buildMacOS.sh ./contrib/packaging-python/conda/build.sh
-    # same goes for the post install script: we don't want it to operate on MacOS bs it wouldn't find any sensor.py (not enabled in macos)
-    - rm ./contrib/packaging-python/conda/post-link.sh 
     - conda install -c conda-forge llvm-openmp --yes
   environment:
     name: pychrono-macos
     url: https://anaconda.org/projectchrono/pychrono
 
-macos:macos-deploy-python3.6:
-  stage: deploy
-  needs: []
-  extends: .macos-deploy-base
-  script:
-    - echo "Build PyChrono 3.6 and deploy via Anaconda..."
-    - conda build purge-all
-    - conda build ./contrib/packaging-python/conda --no-remove-work-dir --dirty --python=3.6
-    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda/conda-bld/osx-64/pychrono*.bz2 -l main --force
-  when: manual
-macos:macos-deploy-python3.7:
-  stage: deploy
-  needs: []
-  extends: .macos-deploy-base
-  script:
-    - echo "Build PyChrono 3.7 and deploy via Anaconda..."
-    - conda build purge-all
-    - conda build ./contrib/packaging-python/conda --no-remove-work-dir --dirty --python=3.7
-    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda/conda-bld/osx-64/pychrono*.bz2 -l main --force
-  when: manual
 macos:macos-deploy-python3.8:
   stage: deploy
   needs: []
@@ -633,3 +684,27 @@ macos:macos-deploy-python3.8:
     - conda build ./contrib/packaging-python/conda --no-remove-work-dir --dirty --python=3.8
     - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda/conda-bld/osx-64/pychrono*.bz2 -l main --force
   when: manual
+macos:macos-deploy-python3.9:
+  stage: deploy
+  needs: []
+  extends: .macos-deploy-base
+  script:
+    - echo "Build PyChrono 3.9 and deploy via Anaconda..."
+    - conda build purge-all
+    - conda build ./contrib/packaging-python/conda --no-remove-work-dir --dirty --python=3.9
+    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda/conda-bld/osx-64/pychrono*.bz2 -l main --force
+  when: manual
+macos:macos-deploy-python3.10:
+  stage: deploy
+  needs: []
+  extends: .macos-deploy-base
+  script:
+    - echo "Build PyChrono 3.10 and deploy via Anaconda..."
+    - conda build purge-all
+    - conda build ./contrib/packaging-python/conda --no-remove-work-dir --dirty --python=3.10
+    - anaconda -t $ANACONDA_TOKEN upload $HOME/miniconda/conda-bld/osx-64/pychrono*.bz2 -l main --force
+  when: manual
+  tags:
+    - macos
+    - monterey
+    - apple
