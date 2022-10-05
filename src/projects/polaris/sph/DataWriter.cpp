@@ -34,10 +34,15 @@ using namespace chrono;
 using namespace chrono::vehicle;
 using namespace chrono::fsi;
 
+using std::cout;
+using std::cin;
+using std::endl;
+
 DataWriter::DataWriter(ChSystemFsi& sysFSI, int num_sample_boxes)
     : m_sysFSI(sysFSI),
       m_num_sample_boxes(num_sample_boxes),
-      m_out_pos(false),
+      m_particle_output(ParticleOutput::ALL),
+      m_mbs_output(true),
       m_filter_vel(true),
       m_filter_acc(true),
       m_filter_window_vel(0.05),
@@ -81,7 +86,7 @@ void DataWriter::Initialize(const std::string& dir,
 
     // Sanity check
     if (m_minor_skip * m_out_frames > m_major_skip) {
-        std::cout << "Error: Incompatible output frequencies!" << std::endl;
+        cout << "Error: Incompatible output frequencies!" << endl;
         throw std::runtime_error("Incompatible output frequencies");
     }
 
@@ -107,11 +112,13 @@ void DataWriter::Initialize(const std::string& dir,
     std::string filename = m_dir + "/mbs.csv";
     m_mbs_stream.open(filename, std::ios_base::trunc);
 
-    std::cout << "Sampling box size:   " << m_box_size << std::endl;
-    std::cout << "Sampling box offset: " << m_box_offset << std::endl;
+    cout << "Sampling box size:   " << m_box_size << endl;
+    cout << "Sampling box offset: " << m_box_offset << endl;
+    cout << "Major skip: " << m_major_skip << endl;
+    cout << "Minor skip: " << m_minor_skip << endl;
 }
 
-void DataWriter::Process(int sim_frame) {
+void DataWriter::Process(int sim_frame, double time) {
     // Collect data from all MBS channels and run through filters if requested
     CollectDataMBS();
     if (m_filter_vel) {
@@ -132,17 +139,17 @@ void DataWriter::Process(int sim_frame) {
         m_major_frame++;
         m_minor_frame = 0;
         if (m_verbose)
-            std::cout << "Start collection " << m_major_frame << std::endl;
+            cout << "Start collection " << m_major_frame << endl;
         Reset();
     }
     if (m_last_major >= 0 && (sim_frame - m_last_major) % m_minor_skip == 0 && m_minor_frame < m_out_frames) {
         if (m_verbose)
-            std::cout << "    Output data " << m_major_frame << "/" << m_minor_frame << std::endl;
+            cout << "    Output data " << m_major_frame << "/" << m_minor_frame << "  time: " << time << endl;
         Write();
         m_minor_frame++;
     }
     if (m_verbose)
-        std::cout << std::flush;
+        cout << std::flush;
 }
 
 void DataWriter::Reset() {
@@ -153,17 +160,21 @@ void DataWriter::Reset() {
 }
 
 void DataWriter::Write() {
-    for (int i = 0; i < m_num_sample_boxes; i++) {
-        std::string filename = m_dir + "/soil_" + std::to_string(m_major_frame) + "_" + std::to_string(m_minor_frame) +
-                               "_w" + std::to_string(i) + ".csv ";
-        WriteDataParticles(m_indices[i], filename);
+    if (m_particle_output != ParticleOutput::NONE) {
+        for (int i = 0; i < m_num_sample_boxes; i++) {
+            std::string filename = m_dir + "/soil_" + std::to_string(m_major_frame) + "_" +
+                                   std::to_string(m_minor_frame) + "_w" + std::to_string(i) + ".csv ";
+            WriteDataParticles(m_indices[i], filename);
+        }
     }
 
-    {
+    if (m_mbs_output) {
         std::string filename =
             m_dir + "/mbs_" + std::to_string(m_major_frame) + "_" + std::to_string(m_minor_frame) + ".csv ";
         WriteDataMBS(filename);
+    }
 
+    {
         // Write line to global MBS output file
         m_mbs_stream << m_sysFSI.GetSimTime() << "    ";
         for (int i = 0; i < GetNumChannelsMBS(); i++)
@@ -195,7 +206,7 @@ struct print_particle_pos_vel_acc_frc {
 };
 
 void DataWriter::WriteDataParticles(const thrust::device_vector<int>& indices_D, const std::string& filename) {
-    if (m_out_pos) {
+    if (m_particle_output == ParticleOutput::POSITIONS) {
         // Get particle positions on device
         auto pos_D = m_sysFSI.GetParticlePositions(indices_D);
 
@@ -257,16 +268,20 @@ DataWriterVehicle::DataWriterVehicle(ChSystemFsi& sysFSI, std::shared_ptr<Wheele
     m_box_offset = ChVector<>((3.5 * tire_radius/2.0)-0.3, 0.0, 0.0);
     // m_box_offset = ChVector<>(0.15, 0.0, 0.0);
 
-    m_vel_channels = {7,  8,  9,  10, 11, 12,  //
-                      20, 21, 22, 23, 24, 25,  //
-                      39, 40, 41, 42, 43, 44,  //
-                      58, 59, 60, 61, 62, 63,  //
-                      77, 78, 79, 80, 81, 82};
+    m_vel_channels = {
+        7,  8,  9,  10, 11, 12,  // chassis
+        20, 21, 22, 23, 24, 25,  // wheel FL
+        33, 34, 35, 36, 37, 38,  // wheel FR
+        46, 47, 48, 49, 50, 51,  // wheel RL
+        59, 60, 61, 62, 63, 64   // wheel RR
+    };
 
-    m_acc_channels = {26, 27, 28, 29, 30, 31,  //
-                      45, 46, 47, 48, 49, 50,  //
-                      64, 65, 66, 67, 68, 69,  //
-                      83, 84, 85, 86, 87, 88};
+    m_acc_channels = {
+        65, 66, 67, 68, 69, 70,  // wheel FL
+        71, 72, 73, 74, 75, 76,  // wheel FR
+        77, 78, 79, 80, 81, 82,  // wheel RL
+        83, 84, 85, 86, 87, 88   // wheel RR
+    };
 }
 
 void DataWriterVehicle::CollectDataMBS() {

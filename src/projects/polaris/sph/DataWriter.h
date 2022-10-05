@@ -56,6 +56,8 @@
 /// Terrain forces and moments are assumed applied at the interacting object's center and are given in the global frame.
 class DataWriter {
   public:
+    enum class ParticleOutput { ALL, POSITIONS, NONE};
+
     virtual ~DataWriter();
 
     /// Enable/disable output data running-average filtering of velocities (default: true).
@@ -67,9 +69,13 @@ class DataWriter {
     /// Enable/disable terminal messages (default: true).
     void SetVerbose(bool verbose) { m_verbose = verbose; }
 
-    /// Write only particle positions (default: false).
+    /// Set output level for SPH particles (default: ALL).
     /// By default, output contains particle positions, velocities, and forces.
-    void SavePositionsOnly(bool val) { m_out_pos = val; }
+    void SetParticleOutput(ParticleOutput val) { m_particle_output = val; }
+
+    /// Enable/disable individual output files for MBS (default: true).
+    /// If false, only the global MBS output file is written.
+    void SetMBSOutput(bool val) { m_mbs_output = val; }
 
     /// Set the location (relative to tire bottom point) and dimension (x and y) of the soil sampling domain.
     void SetSamplingVolume(const chrono::ChVector<>& offset, const chrono::ChVector2<>& size);
@@ -80,7 +86,7 @@ class DataWriter {
     /// Run the data writer at the current simulation frame.
     /// This function must be called at each simulation frame; output occurs only at those frames that are consistent
     /// with the given output frequencies.
-    void Process(int sim_frame);
+    void Process(int sim_frame, double time);
 
   protected:
     /// Construct an output data writer for the specified FSI system.
@@ -139,7 +145,8 @@ class DataWriter {
 
     std::ofstream m_mbs_stream;
 
-    bool m_out_pos;
+    ParticleOutput m_particle_output;
+    bool m_mbs_output;
     bool m_verbose;
 };
 

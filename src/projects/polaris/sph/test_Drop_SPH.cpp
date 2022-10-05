@@ -62,7 +62,7 @@ bool GetProblemSpecs(int argc,
                      double& output_major_fps,
                      double& output_minor_fps,
                      int& output_frames,
-                     bool& output_pos_only,
+                     int& particle_output,
                      double& filter_window_vel,
                      double& filter_window_acc,
                      double& vis_output_fps,
@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
     double output_major_fps = 20;
     double output_minor_fps = 1000;
     int output_frames = 5;
-    bool position_only = false;           // output only particle positions
+    int particle_output = 2;              // output all particle info
     double filter_window_vel = 0;         // do not filter velocity data
     double filter_window_acc = 0;         // do not filter acceleration data
     double vis_output_fps = 0;            // no post-processing visualization output
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]) {
     bool verbose = true;
 
     if (!GetProblemSpecs(argc, argv, terrain_dir, tend, step_size, active_box_dim, output_major_fps, output_minor_fps,
-                         output_frames, position_only, filter_window_vel, filter_window_acc, vis_output_fps,
+                         output_frames, particle_output, filter_window_vel, filter_window_acc, vis_output_fps,
                          run_time_vis, run_time_vis_particles, run_time_vis_bce, run_time_vis_fps, verbose)) {
         return 1;
     }
@@ -154,6 +154,12 @@ int main(int argc, char* argv[]) {
     bool use_filter_vel = (filter_window_vel > 0);
     bool use_filter_acc = (filter_window_acc > 0);
     bool vis_output = (vis_output_fps > 0);
+
+    DataWriter::ParticleOutput output_level = DataWriter::ParticleOutput::ALL;
+    if (particle_output == 0)
+        output_level = DataWriter::ParticleOutput::NONE;
+    else if (particle_output == 1)
+        output_level = DataWriter::ParticleOutput::POSITIONS;
 
     // Check input files exist
     if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
@@ -239,7 +245,7 @@ int main(int argc, char* argv[]) {
 
     DataWriterObject data_writer(sysFSI, sphere, ChVector<>(2 * sphere_radius));
     data_writer.SetVerbose(verbose);
-    data_writer.SavePositionsOnly(position_only);
+    data_writer.SetParticleOutput(output_level);
     data_writer.UseFilteredVelData(use_filter_vel, filter_window_vel);
     data_writer.UseFilteredAccData(use_filter_acc, filter_window_acc);
     data_writer.Initialize(sim_dir, output_major_fps, output_minor_fps, output_frames, step_size);
@@ -263,7 +269,7 @@ int main(int argc, char* argv[]) {
     while (t < tend) {
         // Simulation data output
         if (sim_output)
-            data_writer.Process(frame);
+            data_writer.Process(frame, t);
 
         // Visualization data output
         if (vis_output && frame % vis_output_steps == 0) {
@@ -303,7 +309,7 @@ bool GetProblemSpecs(int argc,
                      double& output_major_fps,
                      double& output_minor_fps,
                      int& output_frames,
-                     bool& output_pos_only,
+                     int& particle_output,
                      double& filter_window_vel,
                      double& filter_window_acc,
                      double& vis_output_fps,
@@ -326,7 +332,8 @@ bool GetProblemSpecs(int argc,
                           std::to_string(output_minor_fps));
     cli.AddOption<int>("Simulation output", "output_frames", "Successive output frames",
                        std::to_string(output_frames));
-    cli.AddOption<bool>("Simulation output", "position_only", "Do not output particle velocities and forces");
+    cli.AddOption<int>("Simulation output", "particle_output", "Particle output (0: none, 1: pos, 2: all)",
+                       std::to_string(particle_output));
     cli.AddOption<double>("Simulation output", "filter_window_vel", "Running average velocity filter window [s]",
                           std::to_string(filter_window_vel));
     cli.AddOption<double>("Simulation output", "filter_window_acc", "Running average acceleration filter window [s]",
@@ -358,7 +365,7 @@ bool GetProblemSpecs(int argc,
     output_major_fps = cli.GetAsType<double>("output_major_fps");
     output_minor_fps = cli.GetAsType<double>("output_minor_fps");
     output_frames = cli.GetAsType<int>("output_frames");
-    output_pos_only = cli.GetAsType<bool>("position_only");
+    particle_output = cli.GetAsType<int>("particle_output");
 
     filter_window_vel = cli.GetAsType<double>("filter_window_vel");
     filter_window_acc = cli.GetAsType<double>("filter_window_acc");
