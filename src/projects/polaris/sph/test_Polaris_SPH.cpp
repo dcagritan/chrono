@@ -377,12 +377,12 @@ int main(int argc, char* argv[]) {
 
         double t_0=1.0;
         double t_1=1.5;
-        double t_2=2.0;
-        double t_3=3.0;
+        double t_2=3.0;
+        double t_3=3.5;
         double t_4=4.0;
         double t_5=5.0;
         double t_6=6.0;
-        double t_7=7.0;
+        double t_7=6.5;
 
         driver_inputs.m_throttle = 0.0;
         driver_inputs.m_braking = 0.0;
@@ -399,7 +399,7 @@ int main(int argc, char* argv[]) {
         else if (t < t_3)
          driver_inputs.m_throttle = (t_3 - t) / (t_3 - t_2);
         else if (t < t_4)
-         driver_inputs.m_braking = 0.5*(t - t_3) / (t_4 - t_3);
+         driver_inputs.m_braking = (t - t_3) / (t_4 - t_3);
         else if (t < t_6)
          driver_inputs.m_throttle = (t - t_4) / (t_6-t_4);
         else if (t < t_7)
@@ -408,7 +408,12 @@ int main(int argc, char* argv[]) {
          driver_inputs.m_throttle = 1.0;
 
         if (driver_inputs.m_throttle<0.00001)
-         driver_inputs.m_braking = 1.0;
+        {
+            if (driver_inputs.m_braking<0.5)
+            {
+                driver_inputs.m_braking = 0.5;
+            }
+        }
 
 
         ////if (verbose)
