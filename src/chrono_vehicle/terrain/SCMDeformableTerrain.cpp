@@ -139,8 +139,7 @@ void SCMDeformableTerrain::WriteMeshVertices(const std::string& filename) const{
     int v_counter = 1;
     for (auto& m : meshes) {
         for (auto& v : m.m_vertices) {
-            mf << v.x() << " " << v.y() << " " << v.z() << std::endl;
-            // std::cout<<"v " << v.x() << " " << v.y() << " " << v.z() << std::endl;
+            mf << v.x() << ", " << v.y() << ", " << v.z() << std::endl;
             v_counter++;
         }
     }
