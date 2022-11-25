@@ -80,10 +80,10 @@ ChQuaternion<> initRot(1, 0, 0, 0);
 // -----------------------------------------------------------------------------
 
 // Simulation step size
-double step_size = 3e-3;
+double step_size = 1e-3;
 
 // Time interval between two render frames (1/FPS)
-double render_step_size = 1.0 / 100;
+double render_step_size = 2.0 / 100;
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
@@ -328,13 +328,14 @@ int main(int argc, char* argv[]) {
         if (step_number % render_steps == 0) {
             std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
             terrain.WriteMeshVertices(vertices_filename);
+            std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
             if (img_output% render_steps == 0)
             {
             char filename[100];
             sprintf(filename, "%s/img_%03d.jpg", img_dir.c_str(), render_frame + 1);
             vis->WriteImageToFile(filename);
-            render_frame++;
             }
+            render_frame++;
         }
 
         // Driver inputs
