@@ -37,6 +37,9 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
+#include "DataWriter.h"
+#include "CreateObjects.h"
+
 using namespace chrono;
 using namespace chrono::collision;
 using namespace chrono::irrlicht;

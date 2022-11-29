@@ -29,6 +29,13 @@ endif()
 set(PROGRAMS 
     test_Polaris_SCM
     )
+    
+set(UTILITIES
+    DataWriter.h
+    DataWriter.cpp
+    CreateObjects.h
+    CreateObjects.cpp
+)
 
 foreach(PROGRAM ${PROGRAMS})
   message(STATUS "...add ${PROGRAM}")
