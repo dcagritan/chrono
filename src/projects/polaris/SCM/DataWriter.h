@@ -60,37 +60,32 @@ class DataWriter {
 
     virtual ~DataWriter();
 
-//     /// Enable/disable output data running-average filtering of velocities (default: true).
-//     void UseFilteredVelData(bool val, double window);
 
-//     /// Enable/disable output data running-average filtering of accelerations (default: true).
-//     void UseFilteredAccData(bool val, double window);
-
-//     /// Enable/disable terminal messages (default: true).
-//     void SetVerbose(bool verbose) { m_verbose = verbose; }
+    /// Enable/disable terminal messages (default: true).
+    void SetVerbose(bool verbose) { m_verbose = verbose; }
 
 //     /// Set output level for SPH particles (default: ALL).
 //     /// By default, output contains particle positions, velocities, and forces.
 //     void SetParticleOutput(ParticleOutput val) { m_particle_output = val; }
 
-//     /// Enable/disable individual output files for MBS (default: true).
-//     /// If false, only the global MBS output file is written.
-//     void SetMBSOutput(bool val) { m_mbs_output = val; }
+    /// Enable/disable individual output files for MBS (default: true).
+    /// If false, only the global MBS output file is written.
+    void SetMBSOutput(bool val) { m_mbs_output = val; }
 
 //     /// Set the location (relative to tire bottom point) and dimension (x and y) of the soil sampling domain.
 //     void SetSamplingVolume(const chrono::ChVector<>& offset, const chrono::ChVector2<>& size);
 
-//     /// Initialize the data writer, specifying the output directory and output frequency parameters.
-//     void Initialize(const std::string& dir, double major_FPS, double minor_FPS, int num_minor, double step_size);
+    /// Initialize the data writer, specifying the output directory and output frequency parameters.
+    void Initialize(const std::string& dir, double major_FPS, double minor_FPS, int num_minor, double step_size);
 
-//     /// Run the data writer at the current simulation frame.
-//     /// This function must be called at each simulation frame; output occurs only at those frames that are consistent
-//     /// with the given output frequencies.
-//     void Process(int sim_frame, double time);
+    /// Run the data writer at the current simulation frame.
+    /// This function must be called at each simulation frame; output occurs only at those frames that are consistent
+    /// with the given output frequencies.
+    void Process(int sim_frame, double time);
 
   protected:
     /// Construct an output data writer for the specified FSI system.
-    DataWriter(chrono::fsi::ChSystemFsi& sysFSI, int num_sample_boxes);
+    DataWriter(chrono::ChSystem* sysFSI, int num_sample_boxes);
 
     /// Specify the number of output data channels from the multibody system.
     virtual int GetNumChannelsMBS() const = 0;
@@ -107,8 +102,6 @@ class DataWriter {
     /// Write the MBS data at the current time.
     virtual void WriteDataMBS(const std::string& filename) = 0;
 
-    // /// Get the current position and orientation of the sampling box under the specified interacting object.
-    // virtual chrono::ChFrame<> GetSampleBoxFrame(int box_id) const = 0;
 
     int m_num_sample_boxes;
     chrono::ChVector<> m_box_size;
@@ -119,29 +112,26 @@ class DataWriter {
     std::vector<double> m_mbs_outputs;
 
   private:
-//     void Reset();
 
-//     void Write();
+    void Write();
 
 //     void WriteDataParticles(const thrust::device_vector<int>& indices_D, const std::string& filename);
 
-    chrono::fsi::ChSystemFsi& m_sysFSI;
+    chrono::ChSystem* m_sys;
 //     std::array<thrust::device_vector<int>, 4> m_indices;
 
-//     std::string m_dir;
-//     int m_major_skip;
-//     int m_minor_skip;
-//     int m_out_frames;
-//     int m_major_frame;
-//     int m_minor_frame;
-//     int m_last_major;
+    std::string m_dir;
+    int m_major_skip;
+    int m_minor_skip;
+    int m_out_frames;
+    int m_major_frame;
+    int m_minor_frame;
+    int m_last_major;
 
-//     bool m_filter_vel;
-//     bool m_filter_acc;
-//     double m_filter_window_vel;
-//     double m_filter_window_acc;
-//     std::vector<std::shared_ptr<chrono::utils::ChRunningAverage>> m_filters_vel;
-//     std::vector<std::shared_ptr<chrono::utils::ChRunningAverage>> m_filters_acc;
+    bool m_filter_vel;
+    bool m_filter_acc;
+    double m_filter_window_vel;
+    double m_filter_window_acc;
 
     std::ofstream m_mbs_stream;
 
@@ -167,7 +157,7 @@ class DataWriter {
 /// Tire forces and moments are assumed applied at the wheel/tire center and are given in the global frame.
 class DataWriterVehicle : public DataWriter {
   public:
-    DataWriterVehicle(chrono::fsi::ChSystemFsi& sysFSI, std::shared_ptr<chrono::vehicle::WheeledVehicle> vehicle);
+    DataWriterVehicle(chrono::ChSystem* sysFSI, std::shared_ptr<chrono::vehicle::WheeledVehicle> vehicle);
     ~DataWriterVehicle() {}
 
   private:

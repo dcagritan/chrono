@@ -38,8 +38,8 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-DataWriter::DataWriter(ChSystemFsi& sysFSI, int num_sample_boxes)
-    : m_sysFSI(sysFSI),
+DataWriter::DataWriter(ChSystem* sysFSI, int num_sample_boxes)
+    : m_sys(sysFSI),
       m_mbs_output(true),
       m_verbose(true) 
       {
@@ -50,15 +50,6 @@ DataWriter::~DataWriter() {
     m_mbs_stream.close();
 }
 
-// void DataWriter::UseFilteredVelData(bool val, double window) {
-//     m_filter_vel = val;
-//     m_filter_window_vel = window;
-// }
-
-// void DataWriter::UseFilteredAccData(bool val, double window) {
-//     m_filter_acc = val;
-//     m_filter_window_acc = window;
-// }
 
 // void DataWriter::SetSamplingVolume(const ChVector<>& offset, const ChVector2<>& size) {
 //     m_box_size.x() = size.x();
@@ -66,117 +57,75 @@ DataWriter::~DataWriter() {
 //     m_box_offset = offset;
 // }
 
-// void DataWriter::Initialize(const std::string& dir,
-//                             double major_FPS,
-//                             double minor_FPS,
-//                             int num_minor,
-//                             double step_size) {
-//     m_dir = dir;
-//     m_out_frames = num_minor;
-//     m_major_skip = (int)std::round((1.0 / major_FPS) / step_size);
-//     m_minor_skip = (int)std::round((1.0 / minor_FPS) / step_size);
-//     m_major_frame = -1;
-//     m_last_major = -1;
-//     m_minor_frame = 0;
+void DataWriter::Initialize(const std::string& dir,
+                            double major_FPS,
+                            double minor_FPS,
+                            int num_minor,
+                            double step_size) {
+    m_dir = dir;
+    m_out_frames = num_minor;
+    m_major_skip = (int)std::round((1.0 / major_FPS) / step_size);
+    m_minor_skip = (int)std::round((1.0 / minor_FPS) / step_size);
+    m_major_frame = -1;
+    m_last_major = -1;
+    m_minor_frame = 0;
 
-//     // Sanity check
-//     if (m_minor_skip * m_out_frames > m_major_skip) {
-//         cout << "Error: Incompatible output frequencies!" << endl;
-//         throw std::runtime_error("Incompatible output frequencies");
-//     }
+    // Sanity check
+    if (m_minor_skip * m_out_frames > m_major_skip) {
+        cout << "Error: Incompatible output frequencies!" << endl;
+        throw std::runtime_error("Incompatible output frequencies");
+    }
 
-//     // Resize vectors
-//     m_mbs_outputs.resize(GetNumChannelsMBS());
-//     m_filters_vel.resize(GetVelChannelsMBS().size());
-//     m_filters_acc.resize(GetAccChannelsMBS().size());
+    // Resize vectors
+    m_mbs_outputs.resize(GetNumChannelsMBS());
 
-//     // Create filters
-//     if (m_filter_vel) {
-//         int steps = (int)std::round(m_filter_window_vel / step_size);
-//         for (int i = 0; i < GetVelChannelsMBS().size(); i++) {
-//             m_filters_vel[i] = chrono_types::make_shared<chrono::utils::ChRunningAverage>(steps);
-//         }
-//     }
-//     if (m_filter_acc) {
-//         int steps = (int)std::round(m_filter_window_acc / step_size);
-//         for (int i = 0; i < GetAccChannelsMBS().size(); i++) {
-//             m_filters_acc[i] = chrono_types::make_shared<chrono::utils::ChRunningAverage>(steps);
-//         }
-//     }
+    std::string filename = m_dir + "/mbs.csv";
+    m_mbs_stream.open(filename, std::ios_base::trunc);
 
-//     std::string filename = m_dir + "/mbs.csv";
-//     m_mbs_stream.open(filename, std::ios_base::trunc);
+    cout << "Sampling box size:   " << m_box_size << endl;
+    cout << "Sampling box offset: " << m_box_offset << endl;
+    cout << "Major skip: " << m_major_skip << endl;
+    cout << "Minor skip: " << m_minor_skip << endl;
+}
 
-//     cout << "Sampling box size:   " << m_box_size << endl;
-//     cout << "Sampling box offset: " << m_box_offset << endl;
-//     cout << "Major skip: " << m_major_skip << endl;
-//     cout << "Minor skip: " << m_minor_skip << endl;
-// }
+void DataWriter::Process(int sim_frame, double time) {
+    // Collect data from all MBS channels and run through filters if requested
+    CollectDataMBS();
 
-// void DataWriter::Process(int sim_frame, double time) {
-//     // Collect data from all MBS channels and run through filters if requested
-//     CollectDataMBS();
-//     if (m_filter_vel) {
-//         for (int i = 0; i < GetVelChannelsMBS().size(); i++) {
-//             int j = GetVelChannelsMBS()[i];
-//             m_mbs_outputs[j] = m_filters_vel[i]->Add(m_mbs_outputs[j]);
-//         }
-//     }
-//     if (m_filter_acc) {
-//         for (int i = 0; i < GetAccChannelsMBS().size(); i++) {
-//             int j = GetAccChannelsMBS()[i];
-//             m_mbs_outputs[j] = m_filters_acc[i]->Add(m_mbs_outputs[j]);
-//         }
-//     }
+    if (sim_frame % m_major_skip == 0) {
+        m_last_major = sim_frame;
+        m_major_frame++;
+        m_minor_frame = 0;
+        if (m_verbose)
+            cout << "Start collection " << m_major_frame << endl;
+    }
+    if (m_last_major >= 0 && (sim_frame - m_last_major) % m_minor_skip == 0 && m_minor_frame < m_out_frames) {
+        if (m_verbose)
+            cout << "    Output data " << m_major_frame << "/" << m_minor_frame << "  time: " << time << endl;
+        Write();
+        m_minor_frame++;
+    }
+    if (m_verbose)
+        cout << std::flush;
+}
 
-//     if (sim_frame % m_major_skip == 0) {
-//         m_last_major = sim_frame;
-//         m_major_frame++;
-//         m_minor_frame = 0;
-//         if (m_verbose)
-//             cout << "Start collection " << m_major_frame << endl;
-//         Reset();
-//     }
-//     if (m_last_major >= 0 && (sim_frame - m_last_major) % m_minor_skip == 0 && m_minor_frame < m_out_frames) {
-//         if (m_verbose)
-//             cout << "    Output data " << m_major_frame << "/" << m_minor_frame << "  time: " << time << endl;
-//         Write();
-//         m_minor_frame++;
-//     }
-//     if (m_verbose)
-//         cout << std::flush;
-// }
 
-// void DataWriter::Reset() {
-//     for (int i = 0; i < m_num_sample_boxes; i++) {
-//         auto box_frame = GetSampleBoxFrame(i);
-//         m_indices[i] = m_sysFSI.FindParticlesInBox(box_frame, m_box_size);
-//     }
-// }
+void DataWriter::Write() {
 
-// void DataWriter::Write() {
-//     if (m_particle_output != ParticleOutput::NONE) {
-//         for (int i = 0; i < m_num_sample_boxes; i++) {
-//             std::string filename = m_dir + "/soil_" + std::to_string(m_major_frame) + "_" +
-//                                    std::to_string(m_minor_frame) + "_w" + std::to_string(i) + ".csv ";
-//             WriteDataParticles(m_indices[i], filename);
-//         }
-//     }
+    if (m_mbs_output) {
+        std::string filename =
+            m_dir + "/mbs_" + std::to_string(m_major_frame) + "_" + std::to_string(m_minor_frame) + ".csv ";
+        WriteDataMBS(filename);
+    }
 
-//     if (m_mbs_output) {
-//         std::string filename =
-//             m_dir + "/mbs_" + std::to_string(m_major_frame) + "_" + std::to_string(m_minor_frame) + ".csv ";
-//         WriteDataMBS(filename);
-//     }
-
-//     {
-//         // Write line to global MBS output file
-//         m_mbs_stream << m_sysFSI.GetSimTime() << "    ";
-//         for (int i = 0; i < GetNumChannelsMBS(); i++)
-//             m_mbs_stream << m_mbs_outputs[i] << "  ";
-//         m_mbs_stream << "\n";
-//     }
-// }
+    {
+        // Write line to global MBS output file
+        m_mbs_stream << m_sys->GetChTime() << "    ";
+        for (int i = 0; i < GetNumChannelsMBS(); i++)
+            m_mbs_stream << m_mbs_outputs[i] << "  ";
+        m_mbs_stream << "\n";
+    }
+}
 
 // struct print_particle_pos {
 //     print_particle_pos(std::ofstream* stream) : m_stream(stream) {}
@@ -242,7 +191,7 @@ DataWriter::~DataWriter() {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-DataWriterVehicle::DataWriterVehicle(ChSystemFsi& sysFSI, std::shared_ptr<WheeledVehicle> vehicle)
+DataWriterVehicle::DataWriterVehicle(ChSystem* sysFSI, std::shared_ptr<WheeledVehicle> vehicle)
     : DataWriter(sysFSI, 4), m_vehicle(vehicle) {
     m_wheels[0] = vehicle->GetWheel(0, LEFT);
     m_wheels[1] = vehicle->GetWheel(0, RIGHT);
@@ -366,19 +315,6 @@ void DataWriterVehicle::WriteDataMBS(const std::string& filename) {
     stream.close();
 }
 
-// ChFrame<> DataWriterVehicle::GetSampleBoxFrame(int box_id) const {
-//     auto wheel_pos = m_wheels[box_id]->GetPos();
-//     auto wheel_normal = m_wheels[box_id]->GetSpindle()->GetRot().GetYaxis();
-//     auto tire_radius = m_wheels[box_id]->GetTire()->GetRadius();
-
-//     ChVector<> Z_dir(0, 0, 1);
-//     ChVector<> X_dir = Vcross(wheel_normal, ChVector<>(0, 0, 1)).GetNormalized();
-//     ChVector<> Y_dir = Vcross(Z_dir, X_dir);
-//     ChMatrix33<> box_rot(X_dir, Y_dir, Z_dir);
-//     ChVector<> box_pos = wheel_pos + box_rot * (m_box_offset - ChVector<>(0, 0, tire_radius));
-
-//     return ChFrame<>(box_pos, box_rot);
-// }
 
 // // --------------------------------------------------------------------------------------------------------------------
 
