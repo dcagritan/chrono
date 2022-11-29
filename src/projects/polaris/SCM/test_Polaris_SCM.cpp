@@ -25,6 +25,7 @@
 #include <cmath>
 #include <vector>
 
+#include "chrono/physics/ChSystemNSC.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
@@ -65,6 +66,8 @@ double delta = 0.05;          // SCM grid spacing
 // Vehicle parameters
 // -----------------------------------------------------------------------------
 
+PolarisModel model = PolarisModel::MODIFIED;
+
 // Type of tire (controls both contact and visualization)
 enum class TireType { CYLINDRICAL, LUGGED };
 TireType tire_type = TireType::LUGGED;
@@ -75,8 +78,9 @@ float cr_t = 0.1f;
 float mu_t = 0.8f;
 
 // Initial vehicle position and orientation
-ChVector<> initLoc(-5, -2, 0.6);
+ChVector<> initLoc(-3, -2, 0.6);
 ChQuaternion<> initRot(1, 0, 0, 0);
+ChCoordsys<> init_pos(initLoc, initRot);
 
 // -----------------------------------------------------------------------------
 // Simulation parameters
@@ -196,6 +200,18 @@ int main(int argc, char* argv[]) {
 
     my_hmmwv.SetChassisVisualizationType(VisualizationType::NONE);
 
+    // Create the Chrono systems
+    ChSystemNSC sys;
+
+    // Set SPH parameters and soil material properties
+
+    const ChVector<> gravity(0, 0, -9.81);
+    sys.Set_G_acc(gravity);
+
+    // Create vehicle
+    cout << "Create vehicle..." << endl;
+    auto vehicle = CreateVehicle(model, sys, init_pos);
+
     // -----------------------------------------------------------
     // Set tire contact material, contact model, and visualization
     // -----------------------------------------------------------
@@ -216,11 +232,7 @@ int main(int argc, char* argv[]) {
             }
     }
 
-    // --------------------
-    // Create driver system
-    // --------------------
-    MyDriver driver(my_hmmwv.GetVehicle(), 0.5);
-    driver.Initialize();
+    
 
     // ------------------
     // Create the terrain
@@ -228,7 +240,11 @@ int main(int argc, char* argv[]) {
     ChSystem* system = my_hmmwv.GetSystem();
     system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
 
-    SCMDeformableTerrain terrain(system);
+
+    
+
+    // SCMDeformableTerrain terrain(system);
+    SCMDeformableTerrain terrain(&sys);
     terrain.SetSoilParameters(2e6,   // Bekker Kphi
                                 0,     // Bekker Kc
                                 1.1,   // Bekker n exponent
@@ -246,7 +262,7 @@ int main(int argc, char* argv[]) {
     ////                                10);  // number of concentric vertex selections subject to erosion
 
     // Optionally, enable moving patch feature (single patch around vehicle chassis)
-    terrain.AddMovingPatch(my_hmmwv.GetChassisBody(), ChVector<>(0, 0, 0), ChVector<>(5, 3, 1));
+    // terrain.AddMovingPatch(my_hmmwv.GetChassisBody(), ChVector<>(0, 0, 0), ChVector<>(5, 3, 1));
 
     // Optionally, enable moving patch feature (multiple patches around each wheel)
     ////for (auto& axle : my_hmmwv.GetVehicle().GetAxles()) {
@@ -261,8 +277,20 @@ int main(int argc, char* argv[]) {
     terrain.Initialize(terrainLength, terrainWidth, delta);
 
 
-    std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";
-    terrain.WriteMeshVertices(vertices_filename);
+    // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";
+    // terrain.WriteMeshVertices(vertices_filename);
+
+    // // ---------------------------------------
+    // // Create the vehicle Irrlicht application
+    // // ---------------------------------------
+    // auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+    // vis->SetWindowTitle("HMMWV Deformable Soil Demo");
+    // vis->SetChaseCamera(trackPoint, 6.0, 0.5);
+    // vis->Initialize();
+    // vis->AddLightDirectional();
+    // vis->AddSkyBox();
+    // vis->AddLogo();
+    // vis->AttachVehicle(&my_hmmwv.GetVehicle());
 
     // ---------------------------------------
     // Create the vehicle Irrlicht application
@@ -274,7 +302,16 @@ int main(int argc, char* argv[]) {
     vis->AddLightDirectional();
     vis->AddSkyBox();
     vis->AddLogo();
-    vis->AttachVehicle(&my_hmmwv.GetVehicle());
+    ChVehicle* castedvehicle = vehicle.get();
+    // auto castedvehicle = std::static_pointer_cast<ChVehicle>(vehicle);
+    // ChVehicle* castedvehicle = (ChVehicle*)vehicle
+    vis->AttachVehicle(castedvehicle);
+
+    // --------------------
+    // Create driver system
+    // --------------------
+    MyDriver driver(*castedvehicle, 0.5);
+    driver.Initialize();
 
     // -----------------
     // Initialize output
@@ -293,7 +330,7 @@ int main(int argc, char* argv[]) {
     // ---------------
     // Simulation loop
     // ---------------
-    std::cout << "Total vehicle mass: " << my_hmmwv.GetVehicle().GetMass() << std::endl;
+    std::cout << "Total vehicle mass: " << vehicle->GetMass() << std::endl;
 
     // Solver settings.
     system->SetSolverMaxIterations(50);
@@ -308,7 +345,7 @@ int main(int argc, char* argv[]) {
     ChTimer<> timer;
 
     while (vis->Run()) {
-        double time = system->GetChTime();
+        double time = sys.GetChTime();
 
         if (step_number == 800) {
             std::cout << "\nstart timer at t = " << time << std::endl;
@@ -341,17 +378,18 @@ int main(int argc, char* argv[]) {
             render_frame++;
         }
 
-        // Driver inputs
+        // // Driver inputs
         DriverInputs driver_inputs = driver.GetInputs();
 
-        // Update modules
+        // // Update modules
         driver.Synchronize(time);
         terrain.Synchronize(time);
-        my_hmmwv.Synchronize(time, driver_inputs, terrain);
+        // my_hmmwv.Synchronize(time, driver_inputs, terrain);
+        vehicle->Synchronize(time, driver_inputs, terrain);
         vis->Synchronize("", driver_inputs);
 
         // Advance dynamics
-        system->DoStepDynamics(step_size);
+        sys.DoStepDynamics(step_size);
         vis->Advance(step_size);
 
         // Increment frame number

@@ -16,25 +16,25 @@
 // //
 // // =============================================================================
 
-// #include <string>
-// #include <fstream>
-// #include <iostream>
-// #include <sstream>
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
-// #include "chrono/assets/ChBoxShape.h"
-// #include "chrono/assets/ChSphereShape.h"
-// #include "chrono/assets/ChTriangleMeshShape.h"
+#include "chrono/assets/ChBoxShape.h"
+#include "chrono/assets/ChSphereShape.h"
+#include "chrono/assets/ChTriangleMeshShape.h"
 
-// #include "chrono_vehicle/ChVehicleModelData.h"
-// #include "chrono_vehicle/utils/ChUtilsJSON.h"
+#include "chrono_vehicle/ChVehicleModelData.h"
+#include "chrono_vehicle/utils/ChUtilsJSON.h"
 
-// #include "chrono_thirdparty/filesystem/path.h"
+#include "chrono_thirdparty/filesystem/path.h"
 
 #include "CreateObjects.h"
 
-// using namespace chrono;
-// using namespace chrono::vehicle;
-// using namespace chrono::fsi;
+using namespace chrono;
+using namespace chrono::vehicle;
+using namespace chrono::fsi;
 
 // chrono::ChCoordsys<> CreateTerrain(ChSystem& sys,
 //                                    ChSystemFsi& sysFSI,
@@ -224,39 +224,39 @@
 //     return body;
 // }
 
-// std::shared_ptr<WheeledVehicle> CreateVehicle(PolarisModel model,
-//                                               ChSystem& sys,
-//                                               const ChCoordsys<>& init_pos) {
-//     std::string model_dir = (model == PolarisModel::ORIGINAL) ? "mrzr/JSON_orig/" : "mrzr/JSON_new/";
+std::shared_ptr<WheeledVehicle> CreateVehicle(PolarisModel model,
+                                              ChSystem& sys,
+                                              const ChCoordsys<>& init_pos) {
+    std::string model_dir = (model == PolarisModel::ORIGINAL) ? "mrzr/JSON_orig/" : "mrzr/JSON_new/";
 
-//     std::string vehicle_json = model_dir + "vehicle/MRZR.json";
-//     ////std::string powertrain_json = model_dir + "powertrain/MRZR_SimplePowertrain.json";
-//     std::string powertrain_json = model_dir + "powertrain/MRZR_SimpleMapPowertrain.json";
-//     std::string tire_json = model_dir + "tire/MRZR_RigidTire.json";
+    std::string vehicle_json = model_dir + "vehicle/MRZR.json";
+    ////std::string powertrain_json = model_dir + "powertrain/MRZR_SimplePowertrain.json";
+    std::string powertrain_json = model_dir + "powertrain/MRZR_SimpleMapPowertrain.json";
+    std::string tire_json = model_dir + "tire/MRZR_RigidTire.json";
 
-//     // Create and initialize the vehicle
-//     auto vehicle = chrono_types::make_shared<WheeledVehicle>(&sys, vehicle::GetDataFile(vehicle_json));
-//     vehicle->Initialize(init_pos);
-//     vehicle->GetChassis()->SetFixed(false);
-//     vehicle->SetChassisVisualizationType(VisualizationType::MESH);
-//     vehicle->SetSuspensionVisualizationType(VisualizationType::PRIMITIVES);
-//     vehicle->SetSteeringVisualizationType(VisualizationType::PRIMITIVES);
-//     vehicle->SetWheelVisualizationType(VisualizationType::MESH);
+    // Create and initialize the vehicle
+    auto vehicle = chrono_types::make_shared<WheeledVehicle>(&sys, vehicle::GetDataFile(vehicle_json));
+    vehicle->Initialize(init_pos);
+    vehicle->GetChassis()->SetFixed(false);
+    vehicle->SetChassisVisualizationType(VisualizationType::MESH);
+    vehicle->SetSuspensionVisualizationType(VisualizationType::PRIMITIVES);
+    vehicle->SetSteeringVisualizationType(VisualizationType::PRIMITIVES);
+    vehicle->SetWheelVisualizationType(VisualizationType::MESH);
 
-//     // Create and initialize the powertrain system
-//     auto powertrain = ReadPowertrainJSON(vehicle::GetDataFile(powertrain_json));
-//     vehicle->InitializePowertrain(powertrain);
+    // Create and initialize the powertrain system
+    auto powertrain = ReadPowertrainJSON(vehicle::GetDataFile(powertrain_json));
+    vehicle->InitializePowertrain(powertrain);
 
-//     // Create and initialize the tires
-//     for (auto& axle : vehicle->GetAxles()) {
-//         for (auto& wheel : axle->GetWheels()) {
-//             auto tire = ReadTireJSON(vehicle::GetDataFile(tire_json));
-//             vehicle->InitializeTire(tire, wheel, VisualizationType::MESH);
-//         }
-//     }
+    // Create and initialize the tires
+    for (auto& axle : vehicle->GetAxles()) {
+        for (auto& wheel : axle->GetWheels()) {
+            auto tire = ReadTireJSON(vehicle::GetDataFile(tire_json));
+            vehicle->InitializeTire(tire, wheel, VisualizationType::MESH);
+        }
+    }
 
-//     return vehicle;
-// }
+    return vehicle;
+}
 
 // void CreateWheelBCEMarkers(std::shared_ptr<WheeledVehicle> vehicle, ChSystemFsi& sysFSI) {
 //     // Create BCE markers for a tire
