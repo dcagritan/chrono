@@ -141,44 +141,6 @@ class MyDriver : public ChDriver {
     double m_delay;
 };
 
-// =============================================================================
-
-void CreateLuggedGeometry(std::shared_ptr<ChBody> wheel_body, std::shared_ptr<ChMaterialSurfaceSMC> wheel_material) {
-    std::string lugged_file("hmmwv/lugged_wheel_section.obj");
-    geometry::ChTriangleMeshConnected lugged_mesh;
-    ChConvexDecompositionHACDv2 lugged_convex;
-    utils::LoadConvexMesh(vehicle::GetDataFile(lugged_file), lugged_mesh, lugged_convex);
-    int num_hulls = lugged_convex.GetHullCount();
-
-    auto coll_model = wheel_body->GetCollisionModel();
-    coll_model->ClearModel();
-
-    // Assemble the tire contact from 15 segments, properly offset.
-    // Each segment is further decomposed in convex hulls.
-    for (int iseg = 0; iseg < 15; iseg++) {
-        ChQuaternion<> rot = Q_from_AngAxis(iseg * 24 * CH_C_DEG_TO_RAD, VECT_Y);
-        for (int ihull = 0; ihull < num_hulls; ihull++) {
-            std::vector<ChVector<> > convexhull;
-            lugged_convex.GetConvexHullResult(ihull, convexhull);
-            coll_model->AddConvexHull(wheel_material, convexhull, VNULL, rot);
-        }
-    }
-
-    // Add a cylinder to represent the wheel hub.
-    coll_model->AddCylinder(wheel_material, 0.223, 0.223, 0.126);
-    coll_model->BuildModel();
-
-    // Visualization
-    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
-        vehicle::GetDataFile("hmmwv/lugged_wheel.obj"), false, false);
-
-    auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
-    trimesh_shape->SetMesh(trimesh);
-    trimesh_shape->SetMutable(false);
-    trimesh_shape->SetName("lugged_wheel");
-    trimesh_shape->SetColor(ChColor(0.3f, 0.3f, 0.3f));
-    wheel_body->AddVisualShape(trimesh_shape);
-}
 
 // =============================================================================
 
@@ -186,69 +148,22 @@ int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
     // --------------------
-    // Create HMMWV vehicle
-    // --------------------
-    HMMWV_Full my_hmmwv;
-    my_hmmwv.SetContactMethod(ChContactMethod::SMC);
-    my_hmmwv.SetChassisFixed(false);
-    my_hmmwv.SetInitPosition(ChCoordsys<>(initLoc, initRot));
-    my_hmmwv.SetPowertrainType(PowertrainModelType::SHAFTS);
-    my_hmmwv.SetDriveType(DrivelineTypeWV::AWD);
-    switch (tire_type) {
-        case TireType::CYLINDRICAL:
-            my_hmmwv.SetTireType(TireModelType::RIGID_MESH);
-            break;
-        case TireType::LUGGED:
-            my_hmmwv.SetTireType(TireModelType::RIGID);
-            break;
-    }
-    my_hmmwv.Initialize();
-
-    my_hmmwv.SetChassisVisualizationType(VisualizationType::NONE);
-
     // Create the Chrono systems
+    // --------------------
     ChSystemNSC sys;
-
-    // Set SPH parameters and soil material properties
-
+    sys.SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
     const ChVector<> gravity(0, 0, -9.81);
     sys.Set_G_acc(gravity);
 
-    // Create vehicle
+    // --------------------
+    // Create the Polaris vehicle
+    // --------------------
     cout << "Create vehicle..." << endl;
     auto vehicle = CreateVehicle(model, sys, init_pos);
-
-    // -----------------------------------------------------------
-    // Set tire contact material, contact model, and visualization
-    // -----------------------------------------------------------
-    auto wheel_material = chrono_types::make_shared<ChMaterialSurfaceSMC>();
-    wheel_material->SetFriction(mu_t);
-    wheel_material->SetYoungModulus(Y_t);
-    wheel_material->SetRestitution(cr_t);
-
-    switch (tire_type) {
-        case TireType::CYLINDRICAL:
-            my_hmmwv.SetTireVisualizationType(VisualizationType::MESH);
-            break;
-        case TireType::LUGGED:
-            my_hmmwv.SetTireVisualizationType(VisualizationType::NONE);
-            for (auto& axle : my_hmmwv.GetVehicle().GetAxles()) {
-                CreateLuggedGeometry(axle->m_wheels[0]->GetSpindle(), wheel_material);
-                CreateLuggedGeometry(axle->m_wheels[1]->GetSpindle(), wheel_material);
-            }
-    }
-
-    
 
     // ------------------
     // Create the terrain
     // ------------------
-    ChSystem* system = my_hmmwv.GetSystem();
-    system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
-
-
-    
-
     // SCMDeformableTerrain terrain(system);
     SCMDeformableTerrain terrain(&sys);
     terrain.SetSoilParameters(2e6,   // Bekker Kphi
@@ -285,18 +200,6 @@ int main(int argc, char* argv[]) {
 
     // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";
     // terrain.WriteMeshVertices(vertices_filename);
-
-    // // ---------------------------------------
-    // // Create the vehicle Irrlicht application
-    // // ---------------------------------------
-    // auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
-    // vis->SetWindowTitle("HMMWV Deformable Soil Demo");
-    // vis->SetChaseCamera(trackPoint, 6.0, 0.5);
-    // vis->Initialize();
-    // vis->AddLightDirectional();
-    // vis->AddSkyBox();
-    // vis->AddLogo();
-    // vis->AttachVehicle(&my_hmmwv.GetVehicle());
 
     // ---------------------------------------
     // Create the vehicle Irrlicht application
@@ -339,7 +242,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Total vehicle mass: " << vehicle->GetMass() << std::endl;
 
     // Solver settings.
-    system->SetSolverMaxIterations(50);
+    sys.SetSolverMaxIterations(50);
 
     // Number of simulation steps between two 3D view render frames
     int render_steps = (int)std::ceil(render_step_size / step_size);
@@ -373,7 +276,7 @@ int main(int argc, char* argv[]) {
 
         if (step_number % render_steps == 0) {
             std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
-            terrain.WriteMeshVertices(vertices_filename);
+            // terrain.WriteMeshVertices(vertices_filename);
             std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
             if (img_output% render_steps == 0)
             {
@@ -390,7 +293,6 @@ int main(int argc, char* argv[]) {
         // // Update modules
         driver.Synchronize(time);
         terrain.Synchronize(time);
-        // my_hmmwv.Synchronize(time, driver_inputs, terrain);
         vehicle->Synchronize(time, driver_inputs, terrain);
         vis->Synchronize("", driver_inputs);
 
