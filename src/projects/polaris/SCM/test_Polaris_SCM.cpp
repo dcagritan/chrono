@@ -112,7 +112,7 @@ class MyDriver : public ChDriver {
     virtual void Synchronize(double time) override {
         m_throttle = 0;
         m_steering = 0;
-        m_braking = 0;
+        m_braking = 1;
 
         double eff_time = time - m_delay;
 
@@ -121,9 +121,15 @@ class MyDriver : public ChDriver {
             return;
 
         if (eff_time > 0.2)
+        { 
             m_throttle = 0.7;
+            m_braking = 0;
+        }
         else
+        { 
             m_throttle = 3.5 * eff_time;
+            m_braking = 0;
+        }
 
         if (eff_time < 2)
             m_steering = 0;
