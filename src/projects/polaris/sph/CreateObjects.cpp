@@ -230,8 +230,8 @@ std::shared_ptr<WheeledVehicle> CreateVehicle(PolarisModel model,
     std::string model_dir = (model == PolarisModel::ORIGINAL) ? "mrzr/JSON_orig/" : "mrzr/JSON_new/";
 
     std::string vehicle_json = model_dir + "vehicle/MRZR.json";
-    ////std::string powertrain_json = model_dir + "powertrain/MRZR_SimplePowertrain.json";
-    std::string powertrain_json = model_dir + "powertrain/MRZR_SimpleMapPowertrain.json";
+    std::string powertrain_json = model_dir + "powertrain/MRZR_SimplePowertrain.json";
+    //std::string powertrain_json = model_dir + "powertrain/MRZR_SimpleMapPowertrain.json";
     std::string tire_json = model_dir + "tire/MRZR_RigidTire.json";
 
     // Create and initialize the vehicle

@@ -64,10 +64,6 @@ class DataWriter {
     /// Enable/disable terminal messages (default: true).
     void SetVerbose(bool verbose) { m_verbose = verbose; }
 
-//     /// Set output level for SPH particles (default: ALL).
-//     /// By default, output contains particle positions, velocities, and forces.
-//     void SetParticleOutput(ParticleOutput val) { m_particle_output = val; }
-
     /// Enable/disable individual output files for MBS (default: true).
     /// If false, only the global MBS output file is written.
     void SetMBSOutput(bool val) { m_mbs_output = val; }
@@ -76,7 +72,7 @@ class DataWriter {
 //     void SetSamplingVolume(const chrono::ChVector<>& offset, const chrono::ChVector2<>& size);
 
     /// Initialize the data writer, specifying the output directory and output frequency parameters.
-    void Initialize(const std::string& dir, double major_FPS, double minor_FPS, int num_minor, double step_size);
+    void Initialize(const std::string& dir, double major_FPS, double step_size);
 
     /// Run the data writer at the current simulation frame.
     /// This function must be called at each simulation frame; output occurs only at those frames that are consistent
@@ -103,11 +99,11 @@ class DataWriter {
     virtual void WriteDataMBS(const std::string& filename) = 0;
 
 
-    int m_num_sample_boxes;
-    chrono::ChVector<> m_box_size;
-    chrono::ChVector<> m_box_offset;
-    double m_box_x;
-    double m_box_z;
+    // int m_num_sample_boxes;
+    // chrono::ChVector<> m_box_size;
+    // chrono::ChVector<> m_box_offset;
+    // double m_box_x;
+    // double m_box_z;
 
     std::vector<double> m_mbs_outputs;
 

@@ -59,13 +59,9 @@ DataWriter::~DataWriter() {
 
 void DataWriter::Initialize(const std::string& dir,
                             double major_FPS,
-                            double minor_FPS,
-                            int num_minor,
                             double step_size) {
     m_dir = dir;
-    m_out_frames = num_minor;
     m_major_skip = (int)std::round((1.0 / major_FPS) / step_size);
-    m_minor_skip = (int)std::round((1.0 / minor_FPS) / step_size);
     m_major_frame = -1;
     m_last_major = -1;
     m_minor_frame = 0;
@@ -82,10 +78,9 @@ void DataWriter::Initialize(const std::string& dir,
     std::string filename = m_dir + "/mbs.csv";
     m_mbs_stream.open(filename, std::ios_base::trunc);
 
-    cout << "Sampling box size:   " << m_box_size << endl;
-    cout << "Sampling box offset: " << m_box_offset << endl;
+    // cout << "Sampling box size:   " << m_box_size << endl;
+    // cout << "Sampling box offset: " << m_box_offset << endl;
     cout << "Major skip: " << m_major_skip << endl;
-    cout << "Minor skip: " << m_minor_skip << endl;
 }
 
 void DataWriter::Process(int sim_frame, double time) {
@@ -97,13 +92,11 @@ void DataWriter::Process(int sim_frame, double time) {
         m_major_frame++;
         m_minor_frame = 0;
         if (m_verbose)
+        { 
             cout << "Start collection " << m_major_frame << endl;
-    }
-    if (m_last_major >= 0 && (sim_frame - m_last_major) % m_minor_skip == 0 && m_minor_frame < m_out_frames) {
-        if (m_verbose)
-            cout << "    Output data " << m_major_frame << "/" << m_minor_frame << "  time: " << time << endl;
-        Write();
-        m_minor_frame++;
+            cout << "    Output data " << m_major_frame << "/"  << "  time: " << time << endl;
+            Write();
+        }
     }
     if (m_verbose)
         cout << std::flush;
@@ -114,7 +107,7 @@ void DataWriter::Write() {
 
     if (m_mbs_output) {
         std::string filename =
-            m_dir + "/mbs_" + std::to_string(m_major_frame) + "_" + std::to_string(m_minor_frame) + ".csv ";
+            m_dir + "/mbs_" + std::to_string(m_major_frame) + "_" +  ".csv ";
         WriteDataMBS(filename);
     }
 

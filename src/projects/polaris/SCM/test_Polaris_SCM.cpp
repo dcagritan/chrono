@@ -78,7 +78,7 @@ float cr_t = 0.1f;
 float mu_t = 0.8f;
 
 // Initial vehicle position and orientation
-ChVector<> initLoc(-3, -2, 0.6);
+ChVector<> initLoc(-3, 0, 0.6);
 ChQuaternion<> initRot(1, 0, 0, 0);
 ChCoordsys<> init_pos(initLoc, initRot);
 
@@ -146,7 +146,10 @@ class MyDriver : public ChDriver {
 
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
-
+    // Parse command line arguments
+    bool verbose = true;
+    bool wheel_output = true;      // save individual wheel output files
+    double output_major_fps = 50;
     // --------------------
     // Create the Chrono systems
     // --------------------
@@ -236,6 +239,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    DataWriterVehicle data_writer(&sys, vehicle);
+    data_writer.SetVerbose(verbose);
+    data_writer.SetMBSOutput(wheel_output);
+    data_writer.Initialize(out_dir, output_major_fps, step_size);
+    cout << "Simulation output data saved in: " << out_dir << endl;
+    cout << "===============================================================================" << endl;
+
     // ---------------
     // Simulation loop
     // ---------------
@@ -273,6 +283,8 @@ int main(int argc, char* argv[]) {
         vis->Render();
         tools::drawColorbar(vis.get(), 0, 0.1, "Sinkage", 30);
         vis->EndScene();
+
+        data_writer.Process(step_number, time);
 
         if (step_number % render_steps == 0) {
             std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
