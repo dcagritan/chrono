@@ -20,7 +20,6 @@
 
 #include "chrono/physics/ChSystem.h"
 #include "chrono/core/ChBezierCurve.h"
-#include "chrono_fsi/ChSystemFsi.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 enum class PolarisModel { ORIGINAL, MODIFIED };

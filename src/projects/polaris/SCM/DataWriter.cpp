@@ -26,13 +26,11 @@
 #include <thrust/execution_policy.h>
 
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
-#include "chrono_fsi/ChSystemFsi.h"
 
 #include "DataWriter.h"
 
 using namespace chrono;
 using namespace chrono::vehicle;
-using namespace chrono::fsi;
 
 using std::cout;
 using std::cin;

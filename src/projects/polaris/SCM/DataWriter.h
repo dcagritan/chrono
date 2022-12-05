@@ -30,7 +30,6 @@
 
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 #include "chrono/utils/ChFilters.h"
-#include "chrono_fsi/ChSystemFsi.h"
 
 /// Base class for a data writer.
 ///

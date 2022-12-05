@@ -34,7 +34,6 @@
 
 using namespace chrono;
 using namespace chrono::vehicle;
-using namespace chrono::fsi;
 
 // chrono::ChCoordsys<> CreateTerrain(ChSystem& sys,
 //                                    ChSystemFsi& sysFSI,
