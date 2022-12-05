@@ -182,8 +182,8 @@ void DataWriter::Write() {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-DataWriterVehicle::DataWriterVehicle(ChSystem* sysFSI, std::shared_ptr<WheeledVehicle> vehicle)
-    : DataWriter(sysFSI, 4), m_vehicle(vehicle) {
+DataWriterVehicle::DataWriterVehicle(ChSystem* sysFSI, std::shared_ptr<WheeledVehicle> vehicle, SCMDeformableTerrain& terrain)
+    : DataWriter(sysFSI, 4), m_vehicle(vehicle), m_terrain(terrain) {
     m_wheels[0] = vehicle->GetWheel(0, LEFT);
     m_wheels[1] = vehicle->GetWheel(0, RIGHT);
     m_wheels[2] = vehicle->GetWheel(1, LEFT);
@@ -260,16 +260,18 @@ void DataWriterVehicle::CollectDataMBS() {
     }
 
     for (int i = 0; i < 4; i++) {
-        const auto& t_force = m_wheels[i]->GetSpindle()->Get_accumulated_force();
-        m_mbs_outputs[start + 0] = t_force.x();
-        m_mbs_outputs[start + 1] = t_force.y();
-        m_mbs_outputs[start + 2] = t_force.z();
+        // const auto& t_force = m_wheels[i]->GetSpindle()->Get_accumulated_force();
+        const auto& t_force = m_terrain.GetContactForce(m_wheels[i]->GetSpindle());
+        m_mbs_outputs[start + 0] = t_force.force.x();
+        m_mbs_outputs[start + 1] = t_force.force.y();
+        m_mbs_outputs[start + 2] = t_force.force.z();
         start += 3;
 
-        const auto& t_torque = m_wheels[i]->GetSpindle()->Get_accumulated_torque();
-        m_mbs_outputs[start + 0] = t_torque.x();
-        m_mbs_outputs[start + 1] = t_torque.y();
-        m_mbs_outputs[start + 2] = t_torque.z();
+        // const auto& t_torque = m_wheels[i]->GetSpindle()->Get_accumulated_torque();
+        const auto& t_torque = m_terrain.GetContactForce(m_wheels[i]->GetSpindle());
+        m_mbs_outputs[start + 0] = t_torque.moment.x();
+        m_mbs_outputs[start + 1] = t_torque.moment.y();
+        m_mbs_outputs[start + 2] = t_torque.moment.z();
         start += 3;
     }
 }

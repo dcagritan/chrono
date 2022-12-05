@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    DataWriterVehicle data_writer(&sys, vehicle);
+    DataWriterVehicle data_writer(&sys, vehicle, terrain);
     data_writer.SetVerbose(verbose);
     data_writer.SetMBSOutput(wheel_output);
     data_writer.Initialize(out_dir, output_major_fps, step_size);

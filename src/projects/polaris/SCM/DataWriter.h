@@ -27,6 +27,8 @@
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/functional.h>
 #include <thrust/execution_policy.h>
+#include "chrono_vehicle/ChTerrain.h"
+#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
 
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 #include "chrono/utils/ChFilters.h"
@@ -152,7 +154,7 @@ class DataWriter {
 /// Tire forces and moments are assumed applied at the wheel/tire center and are given in the global frame.
 class DataWriterVehicle : public DataWriter {
   public:
-    DataWriterVehicle(chrono::ChSystem* sysFSI, std::shared_ptr<chrono::vehicle::WheeledVehicle> vehicle);
+    DataWriterVehicle(chrono::ChSystem* sysFSI, std::shared_ptr<chrono::vehicle::WheeledVehicle> vehicle, chrono::vehicle::SCMDeformableTerrain& terrain);
     ~DataWriterVehicle() {}
 
   private:
@@ -165,6 +167,7 @@ class DataWriterVehicle : public DataWriter {
 
     std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
     std::array<std::shared_ptr<chrono::vehicle::ChWheel>, 4> m_wheels;
+    chrono::vehicle::SCMDeformableTerrain& m_terrain;
 
     std::vector<int> m_vel_channels;
     std::vector<int> m_acc_channels;
