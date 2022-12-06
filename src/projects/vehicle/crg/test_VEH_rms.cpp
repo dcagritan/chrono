@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     double road_length = terrain.GetLength();
 
     // Create the driver system based on PID steering controller
-    ChPathFollowerDriver driver(my_hmmwv.GetVehicle(), path, "my_path", target_speed, path_is_closed);
+    ChPathFollowerDriver driver(my_hmmwv.GetVehicle(), path, "my_path", target_speed);
     driver.GetSteeringController().SetLookAheadDistance(5);
     driver.GetSteeringController().SetGains(0.5, 0, 0);
     driver.GetSpeedController().SetGains(0.4, 0, 0);

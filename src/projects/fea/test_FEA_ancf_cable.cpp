@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
 
         if (step_number == 1) {
             for (auto node : my_mesh->GetNodes()) {
-                cout << node->GetIndex() << " " << node->NodeGetOffset_x() << " " << node->NodeGetOffset_w() << endl;
+                cout << node->GetIndex() << " " << node->NodeGetOffsetX() << " " << node->NodeGetOffsetW() << endl;
             }
         }
 

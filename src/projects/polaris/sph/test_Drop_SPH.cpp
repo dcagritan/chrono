@@ -178,7 +178,7 @@ int main(int argc, char* argv[]) {
     // Create the Chrono systems
     ChSystemNSC sys;
     // ChSystemSMC sysMBS;
-    ChSystemFsi sysFSI(sys);
+    ChSystemFsi sysFSI(&sys);
 
     // Load SPH parameter file
     cout << "Load SPH parameter file..." << endl;

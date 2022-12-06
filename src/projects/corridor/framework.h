@@ -35,7 +35,7 @@ class Framework {
     Framework(const Scene& scene, bool render_coll = false);
     ~Framework();
 
-    unsigned int AddPath(std::shared_ptr<chrono::ChBezierCurve> curve, bool closed);
+    unsigned int AddPath(std::shared_ptr<chrono::ChBezierCurve> curve);
     unsigned int AddPath(const std::vector<GPScoord>& gps_points, bool closed);
     unsigned int AddPath(const std::vector<chrono::ChVector<>>& points, bool closed);
 

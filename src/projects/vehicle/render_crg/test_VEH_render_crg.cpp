@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
     double road_length = terrain.GetLength();
     double road_width = terrain.GetWidth();
 
-    ChPathFollowerDriverSR driver(my_hmmwv.GetVehicle(), path, "road_center", target_speed, path_is_closed,
+    ChPathFollowerDriverSR driver(my_hmmwv.GetVehicle(), path, "road_center", target_speed,
                                   my_hmmwv.GetVehicle().GetMaxSteeringAngle(), 3.2);
     driver.GetSteeringController().SetGains(0.1, 5);
     driver.GetSteeringController().SetPreviewTime(0.5);

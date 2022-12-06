@@ -66,8 +66,8 @@ int main(int argc, char* argv[]) {
     RigidTerrain terrain(&sys);
 
     // Create and initialize the first vehicle
-    M113_Vehicle vehicle_1(false, TrackShoeType::SINGLE_PIN, DoublePinTrackShoeType::ONE_CONNECTOR,
-                           DrivelineTypeTV::SIMPLE, BrakeType::SIMPLE, false, false, false, &sys, CollisionType::NONE);
+    M113_Vehicle_SinglePin vehicle_1(false, DrivelineTypeTV::SIMPLE, BrakeType::SIMPLE, false, false, false, &sys,
+                                     CollisionType::NONE);
     vehicle_1.Initialize(ChCoordsys<>(ChVector<>(-90.0, -5.5, 1.0), QUNIT));
     vehicle_1.SetChassisVisualizationType(VisualizationType::NONE);
     vehicle_1.SetSprocketVisualizationType(VisualizationType::PRIMITIVES);
@@ -96,8 +96,8 @@ int main(int argc, char* argv[]) {
     driver_1.Initialize();
 
     // Create and initialize the second vehicle
-    M113_Vehicle vehicle_2(false, TrackShoeType::SINGLE_PIN, DoublePinTrackShoeType::ONE_CONNECTOR,
-                           DrivelineTypeTV::SIMPLE, BrakeType::SIMPLE, false, false, false, &sys, CollisionType::NONE);
+    M113_Vehicle_SinglePin vehicle_2(false, DrivelineTypeTV::SIMPLE, BrakeType::SIMPLE, false, false, false, &sys,
+                                     CollisionType::NONE);
     vehicle_2.Initialize(ChCoordsys<>(ChVector<>(-90.0, +5.5, 1.0), QUNIT));
     vehicle_2.SetChassisVisualizationType(VisualizationType::NONE);
     vehicle_2.SetSprocketVisualizationType(VisualizationType::PRIMITIVES);

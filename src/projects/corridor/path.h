@@ -39,13 +39,12 @@ class Path {
     static PathList GetList() { return m_paths; }
 
   private:
-    Path(Framework* framework, std::shared_ptr<chrono::ChBezierCurve> curve, bool closed);
+    Path(Framework* framework, std::shared_ptr<chrono::ChBezierCurve> curve);
     Path(Framework* framework, const std::vector<GPScoord>& gps_points, double v_offset, bool closed);
     Path(Framework* framework, const std::vector<chrono::ChVector<>>& points, double v_offset, bool closed);
 
     unsigned int m_id;
     std::shared_ptr<chrono::ChBezierCurve> m_curve;
-    bool m_closed;
     chrono::ChColor m_color;
 
     static PathList m_paths;

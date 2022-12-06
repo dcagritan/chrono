@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
         auto path = ChBezierCurve::read(vehicle::GetDataFile(path_file));
         ChPathFollowerDriver driver(gd250.GetVehicle(), vehicle::GetDataFile(steering_controller_file),
                                     vehicle::GetDataFile(speed_controller_file), path, "my_path",
-                                    target_speed * mph_to_ms, false);
+                                    target_speed * mph_to_ms);
         driver.Initialize();
 
 #ifdef USE_IRRLICHT

@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 
     auto pos1 = framework.GetLocation(av::GPScoord(43.0726234, -89.40045));
     pos1.z() += 0.25;
-    auto circle_path = framework.AddPath(vehicle::CirclePath(pos1, 15, 80, false, 3), false);
+    auto circle_path = framework.AddPath(vehicle::CirclePath(pos1, 15, 80, false, 3));
 
     std::vector<ChVector<>> local_points = {ChVector<>(64.8927, 13.249, -0.481722),    //
                                             ChVector<>(80.3284, 12.7266, -0.603526),   //

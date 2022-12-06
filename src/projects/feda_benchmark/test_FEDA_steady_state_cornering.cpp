@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
     auto path = CirclePath(ChVector<>(0.0, 0, 0.5), turn_radius, 30.0, turn_left, 15);
 
     // Create the driver system
-    ChPathFollowerDriver driver(feda.GetVehicle(), path, "circle", target_speed, false);
+    ChPathFollowerDriver driver(feda.GetVehicle(), path, "circle", target_speed);
     driver.GetSteeringController().SetLookAheadDistance(5.0);
     driver.GetSteeringController().SetGains(0.5, 0.05, 0);
     driver.GetSpeedController().SetGains(0.4, 0.04, 0);

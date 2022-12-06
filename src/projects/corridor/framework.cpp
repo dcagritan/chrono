@@ -66,9 +66,9 @@ ChVector<> Framework::GetLocation(const GPScoord& gps) const {
 
 // Note: cannot use chrono_types::make_shared because the various constructors are not public.
 
-unsigned int Framework::AddPath(std::shared_ptr<chrono::ChBezierCurve> curve, bool closed) {
+unsigned int Framework::AddPath(std::shared_ptr<chrono::ChBezierCurve> curve) {
     auto id = Agent::GenerateID();
-    auto path = std::shared_ptr<Path>(new Path(this, curve, closed));
+    auto path = std::shared_ptr<Path>(new Path(this, curve));
     path->m_id = id;
     Path::m_paths.insert(std::make_pair(id, path));
 
@@ -137,7 +137,7 @@ unsigned int Framework::AddVehicle(Vehicle::Type type,
     vehicle->SetupLidar();
 
     // Set AV driver
-    vehicle->SetupDriver(path->m_curve, path->m_closed, target_speed);
+    vehicle->SetupDriver(path->m_curve, target_speed);
 
     return vehicle->GetId();
 }

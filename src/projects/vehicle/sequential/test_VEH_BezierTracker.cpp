@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     // Save "sentinel" pont and "target" (closest point on path to sentinel)
     std::ofstream out(out_dir + "/" + "track.dat", std::ios::out);
     for (int i = 0; i < 50; i++) {
-        ChBezierCurveTracker tracker(path, false);        
+        ChBezierCurveTracker tracker(path);        
         ChVector<> s = ChVector<>(110.0 * (i / 50.0), 0, 0);
         ChVector<> t;
         tracker.calcClosestPoint(s, t);
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
         out << t.x() << " " << t.y() << " " << t.z() << std::endl;
     }
     for (int i = 0; i < 50; i++) {
-        ChBezierCurveTracker tracker(path, false);
+        ChBezierCurveTracker tracker(path);
         ChVector<> s = ChVector<>(110, 110.0 * (i / 50.0), 0);
         ChVector<> t;
         tracker.calcClosestPoint(s, t);

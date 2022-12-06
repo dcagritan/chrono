@@ -157,9 +157,9 @@ int main(int argc, char* argv[]) {
     terrain.Initialize();
 
     //create the driver -> path follower
-    auto path = ChBezierCurve::read(vehicle::GetDataFile(path_file));
+    auto path = ChBezierCurve::read(vehicle::GetDataFile(path_file), true);
     ChPathFollowerDriver driver(wvp.GetVehicle(), vehicle::GetDataFile(steering_controller_file),
-                                vehicle::GetDataFile(speed_controller_file), path, "my_path", target_speed, true);
+                                vehicle::GetDataFile(speed_controller_file), path, "my_path", target_speed);
 
     driver.Initialize();
 

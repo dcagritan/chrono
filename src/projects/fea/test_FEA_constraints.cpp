@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
 
         auto dir_cnstr = chrono_types::make_shared<fea::ChLinkDirFrame>();
         dir_cnstr->Initialize(node, ground);
-        dir_cnstr->SetDirectionInAbsoluteCoords(node->D);
+        dir_cnstr->SetDirectionInAbsoluteCoords(node->GetD());
         sys.Add(dir_cnstr);
 
         base_cnstr.push_back(pos_cnstr);
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
 
         auto dir_cnstr = chrono_types::make_shared<fea::ChLinkDirFrame>();
         dir_cnstr->Initialize(node, ground);
-        dir_cnstr->SetDirectionInAbsoluteCoords(node->D);
+        dir_cnstr->SetDirectionInAbsoluteCoords(node->GetD());
         sys.Add(dir_cnstr);
 
         tip_cnstr.push_back(pos_cnstr);

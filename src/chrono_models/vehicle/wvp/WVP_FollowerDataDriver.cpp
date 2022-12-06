@@ -43,7 +43,7 @@ WVP_FollowerDataDriver::WVP_FollowerDataDriver(ChVehicle& vehicle,
                                                int steering_column,
                                                double time_til_steady)
     : ChDriver(vehicle),
-      m_steeringPID(steering_filename, path, false),
+      m_steeringPID(steering_filename, path),
       m_speedPID(speed_filename),
       m_pathName(path_name),
       m_target_speed(target_speed),

@@ -32,7 +32,7 @@
 //#undef CHRONO_OPENGL
 
 #ifdef CHRONO_OPENGL
-#include "chrono_opengl/ChVisualSystemOpenGL.h"
+    #include "chrono_opengl/ChVisualSystemOpenGL.h"
 #endif
 
 // Chrono utility header files
@@ -158,22 +158,22 @@ int out_fps = 60;
 double CreateParticles(ChSystem* system, double sphRatio) {
     // Create a particle generator and a mixture entirely made out of spheres
     double r = 1.01 * r_g;
-    utils::PDSampler<double> sampler(2 * r);
-    utils::Generator gen(system);
-    std::shared_ptr<utils::MixtureIngredient> m1;
+    chrono::utils::PDSampler<double> sampler(2 * r);
+    chrono::utils::Generator gen(system);
+    std::shared_ptr<chrono::utils::MixtureIngredient> m1;
     if (sphRatio == 1) {
-        m1 = gen.AddMixtureIngredient(utils::MixtureType::SPHERE, 1.0);
+        m1 = gen.AddMixtureIngredient(chrono::utils::MixtureType::SPHERE, 1.0);
         m1->setDefaultMaterial(mat_g);
         m1->setDefaultDensity(rho_g);
         m1->setDefaultSize(r_g);
     } else {
         if (sphRatio < 1) {
-            m1 = gen.AddMixtureIngredient(utils::MixtureType::ELLIPSOID, 1.0);
+            m1 = gen.AddMixtureIngredient(chrono::utils::MixtureType::ELLIPSOID, 1.0);
             m1->setDefaultMaterial(mat_g);
             m1->setDefaultDensity(rho_g);
             m1->setDefaultSize(ChVector<>(r_g, sphRatio * r_g, r_g));
         } else {
-            m1 = gen.AddMixtureIngredient(utils::MixtureType::ELLIPSOID, 1.0);
+            m1 = gen.AddMixtureIngredient(chrono::utils::MixtureType::ELLIPSOID, 1.0);
             m1->setDefaultMaterial(mat_g);
             m1->setDefaultDensity(rho_g);
             m1->setDefaultSize(ChVector<>(r_g / sphRatio, r_g, r_g / sphRatio));
@@ -307,48 +307,48 @@ int main(int argc, char* argv[]) {
     ChStreamOutAsciiFile statsStream(statsFileStream.str().c_str());
     statsStream.SetNumFormat("%16.4e");
 
-// --------------
-// Create system.
-// --------------
+    // --------------
+    // Create system.
+    // --------------
 
 #ifdef USE_SEQ
-// ----  Sequential
-#ifdef USE_SMC
+    // ----  Sequential
+    #ifdef USE_SMC
     std::cout << "Create SMC system" << std::endl;
     ChSystemSMC* system = new ChSystemSMC();
-#else
+    #else
     std::cout << "Create NSC system" << std::endl;
     ChSystemNSC* system = new ChSystemNSC();
-#endif
+    #endif
 
 #else
-// ----  Multicore
-#ifdef USE_SMC
+    // ----  Multicore
+    #ifdef USE_SMC
     std::cout << "Create multicore SMC system" << std::endl;
     ChSystemMulticoreSMC* system = new ChSystemMulticoreSMC();
-#else
+    #else
     std::cout << "Create multicore NSC system" << std::endl;
     ChSystemMulticoreNSC* system = new ChSystemMulticoreNSC();
-#endif
+    #endif
 
 #endif
 
     system->Set_G_acc(ChVector<>(0, 0, -9.81));
 
-// ---------------------
-// Edit system settings.
-// ---------------------
+    // ---------------------
+    // Edit system settings.
+    // ---------------------
 
 #ifdef USE_SEQ
 
     ////system->SetSolverType(ChSolver::Type::MINRES);
     system->SetMaxItersSolverSpeed(50);
     system->SetMaxItersSolverStab(50);
-////system->SetTol(0);
-////system->SetMaxPenetrationRecoverySpeed(1.5);
-////system->SetMinBounceSpeed(2.0);
-////system->SetSolverOverrelaxationParam(0.8);
-////system->SetSolverSharpnessParam(1.0);
+    ////system->SetTol(0);
+    ////system->SetMaxPenetrationRecoverySpeed(1.5);
+    ////system->SetMinBounceSpeed(2.0);
+    ////system->SetSolverOverrelaxationParam(0.8);
+    ////system->SetSolverSharpnessParam(1.0);
 
 #else
 
@@ -366,7 +366,7 @@ int main(int argc, char* argv[]) {
     system->GetSettings()->solver.use_full_inertia_tensor = false;
     system->GetSettings()->solver.tolerance = tolerance;
 
-#ifndef USE_SMC
+    #ifndef USE_SMC
     system->GetSettings()->solver.solver_mode = SolverMode::SLIDING;
     system->GetSettings()->solver.max_iteration_normal = max_iteration_normal;
     system->GetSettings()->solver.max_iteration_sliding = max_iteration_sliding;
@@ -375,7 +375,7 @@ int main(int argc, char* argv[]) {
     system->GetSettings()->solver.contact_recovery_speed = contact_recovery_speed;
     system->ChangeSolverType(SolverType::APGD);
     system->GetSettings()->collision.collision_envelope = 0.1 * r_g;
-#endif
+    #endif
 
     system->GetSettings()->collision.bins_per_axis = vec3(20, 20, 20);
 
@@ -409,10 +409,11 @@ int main(int argc, char* argv[]) {
         ChVector<> size = ChVector<>(hdimX, hdimY, hthick);
         for (int i = 0; i <= 2 * (int)(size.x() / r_g); i++) {
             for (int j = 0; j <= 2 * (int)(size.y() / r_g); j++) {
-                utils::AddEllipsoidGeometry(ground.get(), mat_g, r_e,                                                //
-                                            pos + size - ChVector<>((double)i * r_e.x(), (double)j * r_e.y(), 0.0),  //
-                                            ChQuaternion<>(1, 0, 0, 0),                                              //
-                                            true);
+                chrono::utils::AddEllipsoidGeometry(
+                    ground.get(), mat_g, r_e,                                                //
+                    pos + size - ChVector<>((double)i * r_e.x(), (double)j * r_e.y(), 0.0),  //
+                    ChQuaternion<>(1, 0, 0, 0),                                              //
+                    true);
             }
         }
 
@@ -423,10 +424,11 @@ int main(int argc, char* argv[]) {
         r_e = ChVector<>(sphereRatio * r_g, r_g, r_g);
         for (int i = 0; i <= 2 * (int)(size.y() / r_g); i++) {
             for (int j = 0; j <= 2 * (int)(size.z() / r_g); j++) {
-                utils::AddEllipsoidGeometry(ground.get(), mat_g, r_e,                                                //
-                                            pos + size - ChVector<>(0.0, (double)i * r_e.y(), (double)j * r_e.z()),  //
-                                            ChQuaternion<>(1, 0, 0, 0),                                              //
-                                            visible_walls);
+                chrono::utils::AddEllipsoidGeometry(
+                    ground.get(), mat_g, r_e,                                                //
+                    pos + size - ChVector<>(0.0, (double)i * r_e.y(), (double)j * r_e.z()),  //
+                    ChQuaternion<>(1, 0, 0, 0),                                              //
+                    visible_walls);
             }
         }
 
@@ -437,10 +439,11 @@ int main(int argc, char* argv[]) {
         r_e = ChVector<>(sphereRatio * r_g, r_g, r_g);
         for (int i = 0; i <= 2 * (int)(size.y() / r_g); i++) {
             for (int j = 0; j <= 2 * (int)(size.z() / r_g); j++) {
-                utils::AddEllipsoidGeometry(ground.get(), mat_g, r_e,                                                //
-                                            pos + size - ChVector<>(0.0, (double)i * r_e.y(), (double)j * r_e.z()),  //
-                                            ChQuaternion<>(1, 0, 0, 0),                                              //
-                                            visible_walls);
+                chrono::utils::AddEllipsoidGeometry(
+                    ground.get(), mat_g, r_e,                                                //
+                    pos + size - ChVector<>(0.0, (double)i * r_e.y(), (double)j * r_e.z()),  //
+                    ChQuaternion<>(1, 0, 0, 0),                                              //
+                    visible_walls);
             }
         }
 
@@ -451,10 +454,11 @@ int main(int argc, char* argv[]) {
         r_e = ChVector<>(r_g, sphereRatio * r_g, r_g);
         for (int i = 0; i <= 2 * (int)(size.x() / r_g); i++) {
             for (int j = 0; j <= 2 * (int)(size.z() / r_g); j++) {
-                utils::AddEllipsoidGeometry(ground.get(), mat_g, r_e,                                                //
-                                            pos + size - ChVector<>((double)i * r_e.x(), 0.0, (double)j * r_e.z()),  //
-                                            ChQuaternion<>(1, 0, 0, 0),                                              //
-                                            visible_walls);
+                chrono::utils::AddEllipsoidGeometry(
+                    ground.get(), mat_g, r_e,                                                //
+                    pos + size - ChVector<>((double)i * r_e.x(), 0.0, (double)j * r_e.z()),  //
+                    ChQuaternion<>(1, 0, 0, 0),                                              //
+                    visible_walls);
             }
         }
 
@@ -465,16 +469,17 @@ int main(int argc, char* argv[]) {
         r_e = ChVector<>(r_g, sphereRatio * r_g, r_g);
         for (int i = 0; i <= 2 * (int)(size.x() / r_g); i++) {
             for (int j = 0; j <= 2 * (int)(size.z() / r_g); j++) {
-                utils::AddEllipsoidGeometry(ground.get(), mat_g, r_e,                                                //
-                                            pos + size - ChVector<>((double)i * r_e.x(), 0.0, (double)j * r_e.z()),  //
-                                            ChQuaternion<>(1, 0, 0, 0),                                              //
-                                            visible_walls);
+                chrono::utils::AddEllipsoidGeometry(
+                    ground.get(), mat_g, r_e,                                                //
+                    pos + size - ChVector<>((double)i * r_e.x(), 0.0, (double)j * r_e.z()),  //
+                    ChQuaternion<>(1, 0, 0, 0),                                              //
+                    visible_walls);
             }
         }
     } else {
-        utils::AddBoxGeometry(ground.get(), mat_g, ChVector<>(hdimX, hdimY, hthick),  //
-                              ChVector<>(0, 0, -hthick), ChQuaternion<>(1, 0, 0, 0),  //
-                              true);
+        chrono::utils::AddBoxGeometry(ground.get(), mat_g, ChVector<>(hdimX, hdimY, hthick),  //
+                                      ChVector<>(0, 0, -hthick), ChQuaternion<>(1, 0, 0, 0),  //
+                                      true);
     }
 
     ground->GetCollisionModel()->BuildModel();
@@ -616,7 +621,7 @@ int main(int argc, char* argv[]) {
             if (povray_output) {
                 char filename[100];
                 sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(), out_frame + 1);
-                utils::WriteVisualizationAssets(system, filename);
+                chrono::utils::WriteVisualizationAssets(system, filename);
             }
 
             out_frame++;

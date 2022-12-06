@@ -55,8 +55,8 @@ ChCoordsys<> Vehicle::GetPosition() const {
     return ChCoordsys<>(GetVehicle().GetPos(), GetVehicle().GetRot());
 }
 
-void Vehicle::SetupDriver(std::shared_ptr<chrono::ChBezierCurve> curve, bool closed, double target_speed) {
-    m_steeringPID = new ChPathSteeringController(curve, closed);
+void Vehicle::SetupDriver(std::shared_ptr<chrono::ChBezierCurve> curve, double target_speed) {
+    m_steeringPID = new ChPathSteeringController(curve);
     m_speedPID = new ChSpeedController();
     m_target_speed = target_speed;
 

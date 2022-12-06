@@ -233,7 +233,7 @@ int main(int argc, char* argv[]) {
         // Create the driver
         auto path = ChBezierCurve::read(vehicle::GetDataFile(path_file));
         ChPathFollowerDriver driver(marder.GetVehicle(), vehicle::GetDataFile(steering_controller_file),
-                                    vehicle::GetDataFile(speed_controller_file), path, "my_path", 0.0, false);
+                                    vehicle::GetDataFile(speed_controller_file), path, "my_path", 0.0);
         driver.Initialize();
 
         // ---------------------------------------

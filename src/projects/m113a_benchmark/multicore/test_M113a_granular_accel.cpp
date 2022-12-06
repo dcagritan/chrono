@@ -30,7 +30,7 @@
 //#undef CHRONO_OPENGL
 
 #ifdef CHRONO_OPENGL
-#include "chrono_opengl/ChVisualSystemOpenGL.h"
+    #include "chrono_opengl/ChVisualSystemOpenGL.h"
 #endif
 
 // Chrono utility header files
@@ -209,9 +209,10 @@ double CreateParticles(ChSystem* system) {
 
     // Create a particle generator and a mixture entirely made out of spheres
     double r = 1.01 * r_g;
-    utils::PDSampler<double> sampler(2 * r);
-    utils::Generator gen(system);
-    std::shared_ptr<utils::MixtureIngredient> m1 = gen.AddMixtureIngredient(utils::MixtureType::SPHERE, 1.0);
+    chrono::utils::PDSampler<double> sampler(2 * r);
+    chrono::utils::Generator gen(system);
+    std::shared_ptr<chrono::utils::MixtureIngredient> m1 =
+        gen.AddMixtureIngredient(chrono::utils::MixtureType::SPHERE, 1.0);
     m1->setDefaultMaterial(mat_g);
     m1->setDefaultDensity(rho_g);
     m1->setDefaultSize(r_g);
@@ -273,48 +274,48 @@ int main(int argc, char* argv[]) {
         }
     }
 
-// --------------
-// Create system.
-// --------------
+    // --------------
+    // Create system.
+    // --------------
 
 #ifdef USE_SEQ
-// ----  Sequential
-#ifdef USE_SMC
+    // ----  Sequential
+    #ifdef USE_SMC
     std::cout << "Create SMC system" << std::endl;
     ChSystemSMC* system = new ChSystemSMC();
-#else
+    #else
     std::cout << "Create NSC system" << std::endl;
     ChSystemNSC* system = new ChSystemNSC();
-#endif
+    #endif
 
 #else
-// ----  Multicore
-#ifdef USE_SMC
+    // ----  Multicore
+    #ifdef USE_SMC
     std::cout << "Create multicore SMC system" << std::endl;
     ChSystemMulticoreSMC* system = new ChSystemMulticoreSMC();
-#else
+    #else
     std::cout << "Create multicore NSC system" << std::endl;
     ChSystemMulticoreNSC* system = new ChSystemMulticoreNSC();
-#endif
+    #endif
 
 #endif
 
     system->Set_G_acc(ChVector<>(0, 0, -9.80665));
 
-// ---------------------
-// Edit system settings.
-// ---------------------
+    // ---------------------
+    // Edit system settings.
+    // ---------------------
 
 #ifdef USE_SEQ
 
     ////system->SetSolverType(ChSolver::Type::MINRES);
     system->SetMaxItersSolverSpeed(50);
     system->SetMaxItersSolverStab(50);
-////system->SetTol(0);
-////system->SetMaxPenetrationRecoverySpeed(1.5);
-////system->SetMinBounceSpeed(2.0);
-////system->SetSolverOverrelaxationParam(0.8);
-////system->SetSolverSharpnessParam(1.0);
+    ////system->SetTol(0);
+    ////system->SetMaxPenetrationRecoverySpeed(1.5);
+    ////system->SetMinBounceSpeed(2.0);
+    ////system->SetSolverOverrelaxationParam(0.8);
+    ////system->SetSolverSharpnessParam(1.0);
 
 #else
 
@@ -333,7 +334,7 @@ int main(int argc, char* argv[]) {
     system->GetSettings()->solver.tolerance = tolerance;
     system->GetSettings()->collision.narrowphase_algorithm = ChNarrowphase::Algorithm::HYBRID;
 
-#ifndef USE_SMC
+    #ifndef USE_SMC
     system->GetSettings()->solver.solver_mode = SolverMode::SLIDING;
     system->GetSettings()->solver.max_iteration_normal = max_iteration_normal;
     system->GetSettings()->solver.max_iteration_sliding = max_iteration_sliding;
@@ -342,11 +343,11 @@ int main(int argc, char* argv[]) {
     system->GetSettings()->solver.contact_recovery_speed = contact_recovery_speed;
     system->ChangeSolverType(SolverType::APGD);
     system->GetSettings()->collision.collision_envelope = 0.001;
-#else
+    #else
     system->GetSettings()->solver.contact_force_model = ChSystemSMC::Hertz;
     system->GetSettings()->solver.tangential_displ_mode = ChSystemSMC::TangentialDisplacementModel::OneStep;
     system->GetSettings()->solver.use_material_properties = true;
-#endif
+    #endif
 
     system->GetSettings()->collision.bins_per_axis = vec3(10, 10, 10);
 
@@ -383,31 +384,31 @@ int main(int argc, char* argv[]) {
     ground->GetCollisionModel()->ClearModel();
 
     // Bottom box
-    utils::AddBoxGeometry(ground.get(), mat_g,                                    //
-                          ChVector<>(hdimX, hdimY, hthick),                       //
-                          ChVector<>(0, 0, -hthick), ChQuaternion<>(1, 0, 0, 0),  //
-                          true);
+    chrono::utils::AddBoxGeometry(ground.get(), mat_g,                                    //
+                                  ChVector<>(hdimX, hdimY, hthick),                       //
+                                  ChVector<>(0, 0, -hthick), ChQuaternion<>(1, 0, 0, 0),  //
+                                  true);
     if (terrain_type == GRANULAR_TERRAIN) {
         // Front box
-        utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
-                              ChVector<>(hthick, hdimY, hdimZ + hthick),                                   //
-                              ChVector<>(+hdimX + hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
-                              visible_walls);
+        chrono::utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
+                                      ChVector<>(hthick, hdimY, hdimZ + hthick),                                   //
+                                      ChVector<>(+hdimX + hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
+                                      visible_walls);
         // Rear box
-        utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
-                              ChVector<>(hthick, hdimY, hdimZ + hthick),                                   //
-                              ChVector<>(-hdimX - hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
-                              visible_walls);
+        chrono::utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
+                                      ChVector<>(hthick, hdimY, hdimZ + hthick),                                   //
+                                      ChVector<>(-hdimX - hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
+                                      visible_walls);
         // Left box
-        utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
-                              ChVector<>(hdimX, hthick, hdimZ + hthick),                                   //
-                              ChVector<>(0, +hdimY + hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
-                              visible_walls);
+        chrono::utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
+                                      ChVector<>(hdimX, hthick, hdimZ + hthick),                                   //
+                                      ChVector<>(0, +hdimY + hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
+                                      visible_walls);
         // Right box
-        utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
-                              ChVector<>(hdimX, hthick, hdimZ + hthick),                                   //
-                              ChVector<>(0, -hdimY - hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
-                              visible_walls);
+        chrono::utils::AddBoxGeometry(ground.get(), mat_g,                                                         //
+                                      ChVector<>(hdimX, hthick, hdimZ + hthick),                                   //
+                                      ChVector<>(0, -hdimY - hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0),  //
+                                      visible_walls);
     }
 
     ground->GetCollisionModel()->BuildModel();
@@ -464,13 +465,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    utils::CSV_writer csv("\t");
+    chrono::utils::CSV_writer csv("\t");
     csv.stream().setf(std::ios::scientific | std::ios::showpos);
     csv.stream().precision(6);
 
-// ---------------
-// Simulation loop
-// ---------------
+    // ---------------
+    // Simulation loop
+    // ---------------
 
 #ifdef CHRONO_OPENGL
     // Initialize OpenGL
@@ -518,8 +519,7 @@ int main(int argc, char* argv[]) {
         csv << powertrain->GetMotorSpeed() << powertrain->GetMotorTorque();
         csv << powertrain->GetOutputTorque() << m113.GetDriveline()->GetDriveshaftSpeed();
         // Chassis Position & Velocity
-        csv << m113.GetChassis()->GetPos().x() << m113.GetChassis()->GetPos().y()
-            << m113.GetChassis()->GetPos().z();
+        csv << m113.GetChassis()->GetPos().x() << m113.GetChassis()->GetPos().y() << m113.GetChassis()->GetPos().z();
         csv << vel_CG.x() << vel_CG.y() << vel_CG.z();
         csv << std::endl;
 
@@ -538,7 +538,7 @@ int main(int argc, char* argv[]) {
             if (povray_output) {
                 char filename[100];
                 sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(), out_frame + 1);
-                utils::WriteVisualizationAssets(system, filename);
+                chrono::utils::WriteVisualizationAssets(system, filename);
             }
 
             out_frame++;

@@ -115,7 +115,6 @@ class ProxyTire : public RigidTire {
     ProxyTire(const std::string& filename) : RigidTire(filename) {}
     ProxyTire(const rapidjson::Document& d) : RigidTire(d) {}
     virtual TerrainForce ReportTireForce(ChTerrain* terrain) const override { return m_force; }
-    virtual TerrainForce GetTireForce() const { return m_force; }
     TerrainForce m_force;
 };
 

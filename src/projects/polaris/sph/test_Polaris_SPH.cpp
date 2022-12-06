@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
 
     // Create the Chrono systems
     ChSystemNSC sys;
-    ChSystemFsi sysFSI(sys);
+    ChSystemFsi sysFSI(&sys);
 
     // Set SPH parameters and soil material properties
 

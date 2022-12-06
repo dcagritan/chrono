@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
 
     // Create the Chrono systems
     ChSystemNSC sys;
-    ChSystemFsi sysFSI(sys);
+    ChSystemFsi sysFSI(&sys);
 
     const ChVector<> gravity(0, 0, -9.81);
     sysFSI.Set_G_acc(gravity);

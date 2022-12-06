@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
     patch->GetGroundBody()->AddVisualShape(path_asset);
 
     // Create the PID lateral controller
-    ChPathSteeringController steeringPID(path, false);
+    ChPathSteeringController steeringPID(path);
     steeringPID.SetLookAheadDistance(5);
     steeringPID.SetGains(0.8, 0, 0);
     steeringPID.Reset(my_hmmwv.GetVehicle());

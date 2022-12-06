@@ -66,7 +66,7 @@ class Vehicle : public Agent {
     void ProcessMessageSPAT(std::shared_ptr<MessageSPAT> msg);
     void ProcessMessageVEH(std::shared_ptr<MessageVEH> msg);
 
-    void SetupDriver(std::shared_ptr<chrono::ChBezierCurve> curve, bool closed, double target_speed);
+    void SetupDriver(std::shared_ptr<chrono::ChBezierCurve> curve, double target_speed);
     void AdvanceDriver(double step);
 
     void SetupLidar();

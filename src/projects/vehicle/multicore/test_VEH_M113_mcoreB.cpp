@@ -62,7 +62,7 @@ using std::endl;
 
 // Dimensions
 double hdimX = 60;  ////5.5; //// 2.5;
-double hdimY = 3;    ////2.5;
+double hdimY = 3;   ////2.5;
 double hthick = 0.25;
 
 // -----------------------------------------------------------------------------
@@ -71,7 +71,7 @@ double hthick = 0.25;
 
 // Initial vehicle position and orientation
 ChVector<> initLoc(-hdimX + 8, 0, 1);
-//ChVector<> initLoc(0, 0, 1);
+// ChVector<> initLoc(0, 0, 1);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
 // -----------------------------------------------------------------------------
@@ -113,18 +113,18 @@ int out_fps = 60;
 // of '=' characters corresponding to 100%.
 
 void progressbar(unsigned int x, unsigned int n, unsigned int w = 50) {
-  if ((x != n) && (x % (n / 100 + 1) != 0))
-    return;
+    if ((x != n) && (x % (n / 100 + 1) != 0))
+        return;
 
-  float ratio = x / (float)n;
-  unsigned int c = (unsigned int)(ratio * w);
+    float ratio = x / (float)n;
+    unsigned int c = (unsigned int)(ratio * w);
 
-  std::cout << std::setw(3) << (int)(ratio * 100) << "% [";
-  for (unsigned int ix = 0; ix < c; ix++)
-    std::cout << "=";
-  for (unsigned int ix = c; ix < w; ix++)
-    std::cout << " ";
-  std::cout << "]\r" << std::flush;
+    std::cout << std::setw(3) << (int)(ratio * 100) << "% [";
+    for (unsigned int ix = 0; ix < c; ix++)
+        std::cout << "=";
+    for (unsigned int ix = c; ix < w; ix++)
+        std::cout << " ";
+    std::cout << "]\r" << std::flush;
 }
 
 // =============================================================================
@@ -144,7 +144,6 @@ int main(int argc, char* argv[]) {
 #endif
 
     system->Set_G_acc(ChVector<>(0, 0, -9.81));
-
 
     // ---------------------
     // Edit system settings.
@@ -197,11 +196,11 @@ int main(int argc, char* argv[]) {
     ground->SetCollide(true);
 
     ground->GetCollisionModel()->ClearModel();
-    utils::AddBoxGeometry(ground.get(),                                           //
-                          mat_g,                                                  //
-                          ChVector<>(hdimX, hdimY, hthick),                       //
-                          ChVector<>(0, 0, -hthick), ChQuaternion<>(1, 0, 0, 0),  //
-                          true);
+    chrono::utils::AddBoxGeometry(ground.get(),                                           //
+                                  mat_g,                                                  //
+                                  ChVector<>(hdimX, hdimY, hthick),                       //
+                                  ChVector<>(0, 0, -hthick), ChQuaternion<>(1, 0, 0, 0),  //
+                                  true);
     ground->GetCollisionModel()->BuildModel();
 
     system->AddBody(ground);
@@ -237,7 +236,8 @@ int main(int argc, char* argv[]) {
 
     ////m113.GetVehicle().SetCollide(TrackCollide::NONE);
     ////m113.GetVehicle().SetCollide(TrackCollide::WHEELS_LEFT | TrackCollide::WHEELS_RIGHT);
-    ////m113.GetVehicle().SetCollide(TrackCollide::ALL & (~TrackCollide::SPROCKET_LEFT) & (~TrackCollide::SPROCKET_RIGHT));
+    ////m113.GetVehicle().SetCollide(TrackCollide::ALL & (~TrackCollide::SPROCKET_LEFT) &
+    ///(~TrackCollide::SPROCKET_RIGHT));
 
     // Create the driver system
     ////ChDataDriver driver(m113.GetVehicle(), vehicle::GetDataFile("M113/driver/Acceleration.txt"));
