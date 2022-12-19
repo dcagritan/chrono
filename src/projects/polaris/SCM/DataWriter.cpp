@@ -105,7 +105,7 @@ void DataWriter::Write() {
 
     if (m_mbs_output) {
         std::string filename =
-            m_dir + "/mbs_" + std::to_string(m_major_frame) + "_" +  ".csv ";
+            m_dir + "/mbs_" + std::to_string(m_major_frame) + "_" +  ".csv";
         WriteDataMBS(filename);
     }
 

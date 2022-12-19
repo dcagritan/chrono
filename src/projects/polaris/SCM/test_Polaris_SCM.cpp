@@ -288,7 +288,7 @@ int main(int argc, char* argv[]) {
 
         if (step_number % render_steps == 0) {
             std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
-            // terrain.WriteMeshVertices(vertices_filename);
+            terrain.WriteMeshVertices(vertices_filename);
             std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
             if (img_output% render_steps == 0)
             {
