@@ -87,7 +87,7 @@ ChCoordsys<> init_pos(initLoc, initRot);
 // -----------------------------------------------------------------------------
 
 // Simulation step size
-double step_size = 1e-3;
+double step_size = 2e-3;
 
 // Time interval between two render frames (1/FPS)
 double render_step_size = 2.0 / 100;
@@ -154,7 +154,8 @@ int main(int argc, char* argv[]) {
     // Create the Chrono systems
     // --------------------
     ChSystemNSC sys;
-    sys.SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
+    // sys.SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
+    sys.SetNumThreads(1);
     const ChVector<> gravity(0, 0, -9.81);
     sys.Set_G_acc(gravity);
 
@@ -262,20 +263,14 @@ int main(int argc, char* argv[]) {
     int render_frame = 0;
 
     ChTimer<> timer;
+    ChTimer<> timer_all;
 
     while (vis->Run()) {
         double time = sys.GetChTime();
 
         if (step_number == 800) {
-            std::cout << "\nstart timer at t = " << time << std::endl;
-            timer.start();
-        }
-        if (step_number == 1400) {
-            timer.stop();
-            std::cout << "stop timer at t = " << time << std::endl;
-            std::cout << "elapsed: " << timer() << std::endl;
-            std::cout << "\nSCM stats for last step:" << std::endl;
-            terrain.PrintStepStatistics(std::cout);
+            std::cout << "\nstart timers at t = " << time << std::endl;
+            timer_all.start();
         }
 
         // Render scene
@@ -284,12 +279,10 @@ int main(int argc, char* argv[]) {
         tools::drawColorbar(vis.get(), 0, 0.1, "Sinkage", 30);
         vis->EndScene();
 
-        data_writer.Process(step_number, time);
-
         if (step_number % render_steps == 0) {
-            std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
+            // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
             // terrain.WriteMeshVertices(vertices_filename);
-            std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
+            // std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
             if (img_output% render_steps == 0)
             {
             char filename[100];
@@ -299,19 +292,66 @@ int main(int argc, char* argv[]) {
             render_frame++;
         }
 
+        if (step_number == 800) {
+            timer.start();
+        }
         // // Driver inputs
         DriverInputs driver_inputs = driver.GetInputs();
-
+        if (step_number == 800) {
+            // timer_driver_GetInputs.stop();
+            timer.stop();
+            std::cout << "timer_driver_inputs elapsed: " << timer() << std::endl;
+            timer.reset();
+            timer.start();
+        }
         // // Update modules
         driver.Synchronize(time);
+        if (step_number == 800) {
+            timer.stop();
+            std::cout << "timer_driver_Synchronize elapsed: " << timer() <<std::endl;
+            timer.reset();
+            timer.start();
+        }
         terrain.Synchronize(time);
+        if (step_number == 800) {
+            timer.stop();
+            std::cout << "timer_terrain_Synchronize elapsed: " << timer() <<std::endl;
+            timer.reset();
+            timer.start();
+        }
         vehicle->Synchronize(time, driver_inputs, terrain);
+        if (step_number == 800) {
+            timer.stop();
+            std::cout << "timer_vehicle_Synchronize elapsed: " << timer() <<std::endl;
+            timer.reset();
+            timer.start();
+        }
         vis->Synchronize("", driver_inputs);
-
+        if (step_number == 800) {
+            timer.stop();
+            std::cout << "timer_vis_Synchronize elapsed: " << timer() <<std::endl;
+            timer.reset();
+            timer.start();
+        }
         // Advance dynamics
         sys.DoStepDynamics(step_size);
+        if (step_number == 800) {
+            timer.stop();
+            std::cout << "timer_sys_DoStepDynamics elapsed: " << timer() <<std::endl;
+            timer.reset();
+            timer.start();
+        }
         vis->Advance(step_size);
-
+        if (step_number == 800) {
+            timer.stop();
+            timer_all.stop();
+            std::cout << "timer_vis_Advance elapsed: " << timer() <<std::endl;
+            std::cout << "elapsed: " << timer() << std::endl;
+            std::cout << "timer_all: " << timer_all() << std::endl;
+            timer.reset();
+            timer_all.reset();
+            break;
+        }
         // Increment frame number
         step_number++;
     }
