@@ -64,12 +64,6 @@ void DataWriter::Initialize(const std::string& dir,
     m_last_major = -1;
     m_minor_frame = 0;
 
-    // Sanity check
-    if (m_minor_skip * m_out_frames > m_major_skip) {
-        cout << "Error: Incompatible output frequencies!" << endl;
-        throw std::runtime_error("Incompatible output frequencies");
-    }
-
     // Resize vectors
     m_mbs_outputs.resize(GetNumChannelsMBS());
 

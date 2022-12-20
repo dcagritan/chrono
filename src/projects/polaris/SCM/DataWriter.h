@@ -119,8 +119,6 @@ class DataWriter {
 
     std::string m_dir;
     int m_major_skip;
-    int m_minor_skip;
-    int m_out_frames;
     int m_major_frame;
     int m_minor_frame;
     int m_last_major;
