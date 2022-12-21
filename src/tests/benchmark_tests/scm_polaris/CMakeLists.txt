@@ -4,7 +4,9 @@
 # Requires the SynChrono and Chrono::Vehicle modules 
 #--------------------------------------------------------------
 
-
+if(NOT ENABLE_MODULE_VEHICLE OR NOT ENABLE_MODULE_SYNCHRONO)
+  return()
+endif()  
 
 # ------------------------------------------------------------------------------
 
@@ -49,7 +51,7 @@ foreach(PROGRAM ${TESTS})
 
     set_target_properties(${PROGRAM} PROPERTIES COMPILE_FLAGS "${CXX_FLAGS} ${SYN_CXX_FLAGS}")
     set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
-    target_link_libraries(${PROGRAM} ${LIBRARIES})
+    target_link_libraries(${PROGRAM} ${LIBRARIES} benchmark_main)
 
     install(TARGETS ${PROGRAM} DESTINATION ${CH_INSTALL_DEMO})
 endforeach(PROGRAM)
