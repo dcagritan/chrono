@@ -9,31 +9,26 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Author: Radu Serban
-// =============================================================================
-//
-// Chrono::Vehicle + Chrono::Multicore demo program for simulating a HMMWV vehicle
-// over rigid or granular material.
-//
-// Contact uses the SMC (penalty) formulation.
-//
-// The global reference frame has Z up.
-// All units SI.
-// =============================================================================
+
 
 #include <cstdio>
 #include <cmath>
 #include <vector>
 
+#include <iostream>
 #include "chrono/physics/ChSystemNSC.h"
+#include "chrono/core/ChTimer.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 #include "chrono/utils/ChBenchmark.h"
+#include <benchmark/benchmark.h>
 
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/ChDriver.h"
 #include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
+#include "chrono_vehicle/utils/ChUtilsJSON.h"
 
 
 #include "chrono_models/vehicle/hmmwv/HMMWV.h"
@@ -142,90 +137,384 @@ class MyDriver : public ChDriver {
     double m_delay;
 };
 
-template <int N>
-class SCMPolarisTest : public utils::ChBenchmarkTest {
-  public:
-    SCMPolarisTest();
-    ~SCMPolarisTest() { delete m_system; }
+// Benchmarking fixture: create system and add bodies
+class SCMPolarisFixture : public ::benchmark::Fixture {
+public:
+    void SetUp(const ::benchmark::State& st) override {
+        // Parse command line arguments
 
-    ChSystem* GetSystem() override { return m_system; }
-    void ExecuteStep() override { m_system->DoStepDynamics(m_step); }
+    current_time=0.0;
+    time_step=step_size;
+    bool verbose = true;
+    bool wheel_output = true;      // save individual wheel output files
+    // --------------------
+    // Create the Chrono systems
+    // --------------------
+    m_system = new ChSystemNSC;
+    m_system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
+    const ChVector<> gravity(0, 0, -9.81);
+    m_system->Set_G_acc(gravity);
 
-    // void SimulateVis();
+    // --------------------
+    // Create the Polaris vehicle
+    // --------------------
+    // cout << "Create vehicle..." << endl;
+    // auto vehicle = CreateVehicle(model, m_system, init_pos);
 
-  private:
+    std::string model_dir = (model == PolarisModel::ORIGINAL) ? "mrzr/JSON_orig/" : "mrzr/JSON_new/";
+
+    std::string vehicle_json = model_dir + "vehicle/MRZR.json";
+    ////std::string powertrain_json = model_dir + "powertrain/MRZR_SimplePowertrain.json";
+    std::string powertrain_json = model_dir + "powertrain/MRZR_SimpleMapPowertrain.json";
+    std::string tire_json = model_dir + "tire/MRZR_RigidTire.json";
+
+    // Create and initialize the vehicle
+    m_vehicle = new WheeledVehicle(m_system, vehicle::GetDataFile(vehicle_json));
+    // auto vehicle = chrono_types::make_shared<WheeledVehicle>(m_system, vehicle::GetDataFile(vehicle_json));
+    m_vehicle->Initialize(init_pos);
+    m_vehicle->GetChassis()->SetFixed(false);
+    m_vehicle->SetChassisVisualizationType(VisualizationType::MESH);
+    m_vehicle->SetSuspensionVisualizationType(VisualizationType::PRIMITIVES);
+    m_vehicle->SetSteeringVisualizationType(VisualizationType::PRIMITIVES);
+    m_vehicle->SetWheelVisualizationType(VisualizationType::MESH);
+
+    // Create and initialize the powertrain system
+    auto powertrain = ReadPowertrainJSON(vehicle::GetDataFile(powertrain_json));
+    m_vehicle->InitializePowertrain(powertrain);
+
+    // Create and initialize the tires
+    for (auto& axle : m_vehicle->GetAxles()) {
+        for (auto& wheel : axle->GetWheels()) {
+            auto tire = ReadTireJSON(vehicle::GetDataFile(tire_json));
+            m_vehicle->InitializeTire(tire, wheel, VisualizationType::MESH);
+        }
+    }
+
+    // ------------------
+    // Create the terrain
+    // ------------------
+    m_terrain = new SCMDeformableTerrain(m_system);
+    // SCMDeformableTerrain terrain(m_system);
+    m_terrain->SetSoilParameters(2e6,   // Bekker Kphi
+                                0,     // Bekker Kc
+                                1.1,   // Bekker n exponent
+                                0,     // Mohr cohesive limit (Pa)
+                                30,    // Mohr friction limit (degrees)
+                                0.01,  // Janosi shear coefficient (m)
+                                2e8,   // Elastic stiffness (Pa/m), before plastic yield
+                                3e4    // Damping (Pa s/m), proportional to negative vertical speed (optional)
+    );
+
+    m_terrain->SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
+    m_terrain->Initialize(terrainLength, terrainWidth, delta);
+    // auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+    m_vis = new ChWheeledVehicleVisualSystemIrrlicht;
+    m_vis->SetWindowTitle("HMMWV Deformable Soil Demo");
+    m_vis->SetChaseCamera(trackPoint, 6.0, 0.5);
+    m_vis->Initialize();
+    m_vis->AddLightDirectional();
+    m_vis->AddSkyBox();
+    m_vis->AddLogo();
+    // ChVehicle* castedvehicle = m_vehicle.get();
+    // auto castedvehicle = std::static_pointer_cast<ChVehicle>(vehicle);
+    // ChVehicle* castedvehicle = (ChVehicle*)vehicle
+    m_vis->AttachVehicle(m_vehicle);
+
+    // --------------------
+    // Create driver system
+    // --------------------
+    // MyDriver driver(*castedvehicle, 0.5);
+    // driver.Initialize();
+
+    m_driver = new MyDriver(*m_vehicle, 0.5);
+    m_driver->Initialize();;
+
+
+    // ---------------
+    // Simulation loop
+    // ---------------
+    std::cout << "Total vehicle mass: " << m_vehicle->GetMass() << std::endl;
+
+    // Solver settings.
+    m_system->SetSolverMaxIterations(50);
+
+
+    // Initialize simulation frame counter
+    int step_number = 0;
+
+    // // double time = m_system->GetChTime();
+     for (step_number;step_number<2000;step_number++)
+     { 
+        // // Render scene
+        // m_vis->BeginScene();
+        // m_vis->Render();
+        // tools::drawColorbar(m_vis, 0, 0.1, "Sinkage", 30);
+        // m_vis->EndScene();
+
+        // Driver inputs
+        m_driver_inputs = m_driver->GetInputs();
+
+        // // Update modules
+        m_driver->Synchronize(current_time);
+        m_terrain->Synchronize(current_time);
+        m_vehicle->Synchronize(current_time, m_driver_inputs, *m_terrain);
+        m_vis->Synchronize("", m_driver_inputs);
+
+        // Advance dynamics
+        m_system->DoStepDynamics(time_step);
+        m_vis->Advance(step_size);
+
+        // Increment time
+        current_time+=time_step;
+     }
+     std::cout<<"current_time= "<<current_time<<std::endl;
+
+    }
+
+    void TearDown(const ::benchmark::State&) override {
+        delete m_system;
+        delete m_driver;
+        delete m_vehicle;
+        delete m_terrain;
+        delete m_vis;
+    }
+
+public:
+    double current_time;
+    double time_step;
     ChSystem* m_system;
-    double m_length;
-    double m_step;
+    MyDriver* m_driver;
+    WheeledVehicle* m_vehicle;
+    SCMDeformableTerrain* m_terrain;
+    ChVehicleVisualSystemIrrlicht* m_vis;
+    DriverInputs m_driver_inputs;
+    
 };
 
-template <int N>
-SCMPolarisTest<N>::SCMPolarisTest() : m_length(0.25), m_step(1e-3) {
-    // Parse command line arguments
-    // bool verbose = true;
-    // bool wheel_output = true;      // save individual wheel output files
-    // double output_major_fps = 50;
-    // std::cout<<"Hhh"<<std::endl;
-    // // --------------------
-    // // Create the Chrono systems
-    // // --------------------
-    m_system= new ChSystemNSC;
-    // m_system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
-    // const ChVector<> gravity(0, 0, -9.81);
-    // m_system->Set_G_acc(gravity);
+// Utility macros for benchmarking body operations with different signatures
+// #define BM_BODY_OP_TIME(OP)                                                 \
+//     BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {          \
+//         m_system->OP(1e-3);   \
+//         st.SetItemsProcessed(st.iterations());                 \
+//     }                                                                       \
+//     BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMicrosecond);
 
-    // // --------------------
-    // // Create the Polaris vehicle
-    // // --------------------
-    // cout << "Create vehicle..." << endl;
-    // auto vehicle = CreateVehicle(model, *m_system, init_pos);
+
+#define BM_DRIVER_OP_VOID(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_driver->GetInputs();                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);    
+    // BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond);  
+
+
+#define BM_DRIVER_SYNCRONIZE_TIME(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_driver->Synchronize(current_time);                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);     
+
+
+#define BM_TERRAIN_SYNCRONIZE_TIME(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_terrain->Synchronize(current_time);                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);    
+
+#define BM_VEHICLE_SYNCRONIZE_TIME(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_vehicle->Synchronize(current_time, m_driver_inputs, *m_terrain);                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);               
+
+    
+
+#define BM_DRIVER_OP_TIME(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_driver->OP(current_time);                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);       
+
+#define BM_SYSTEM_OP_TIMESTEP(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_system->OP(1e-3);                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);      
+    // BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond);    
+
+
+#define BM_VIS_OP_TIMESTEP(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_vis->Advance(1e-3);                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);      
+    // BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond);        
+
+#define BM_DRIVER_OP_TIME(OP)                                                 \
+    BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+        for (auto _ : st) {                                                 \
+                m_driver->OP(current_time);                                         \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations()); \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(1);    
+
+// #define BM_BODY_OP_TIMESTEP(OP)                                                 \
+//     BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+//         for (auto _ : st) {                                                 \
+//                 this->SayHello();                                         \
+//         }                                                                   \
+//         st.SetItemsProcessed(st.iterations()); \
+//     }                                                                       \
+//     BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMillisecond)->Iterations(2);    
+    
+
+// #define BM_BODY_OP_TIME(OP)                                                 \
+//     BENCHMARK_DEFINE_F(SCMPolarisFixture, OP)(benchmark::State & st) {      \
+//         for (auto _ : st) {                                                 \
+//                 m_driver->OP(801*(1e-3));                                         \
+//         }                                                                   \
+//         st.SetItemsProcessed(st.iterations()); \
+//     }                                                                       \
+//     BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMicrosecond);      
+
+    // #define BM_BODY_OP_TIME(OP)                                                 \
+    // BENCHMARK_DEFINE_F(SCMPolarisFixture, OP){          \
+    //            std::cout<<"sss"<<std::endl;                                 \
+    //             m_system->OP(1e-3);                                         \
+    //     st.SetItemsProcessed(st.iterations() * m_system->Get_bodylist().size()); \
+    // }                                                                       \
+    // BENCHMARK_REGISTER_F(SCMPolarisFixture, OP)->Unit(benchmark::kMicrosecond);   
+
+// #define BM_BODY_OP_VOID(OP)                                                 \
+//     BENCHMARK_DEFINE_F(SystemFixture, OP)(benchmark::State & st) {          \
+//         for (auto _ : st) {                                                 \
+//             for (auto body : sys->Get_bodylist()) {                         \
+//                 body->OP();                                                 \
+//             }                                                               \
+//         }                                                                   \
+//         st.SetItemsProcessed(st.iterations() * sys->Get_bodylist().size()); \
+//     }                                                                       \
+//     BENCHMARK_REGISTER_F(SystemFixture, OP)->Unit(benchmark::kMicrosecond);
+
+// #define BM_BODY_OP_STEP(OP)                                                 \
+//     BENCHMARK_DEFINE_F(SystemFixture, OP)(benchmark::State & st) {          \
+//         for (auto _ : st) {                                                 \
+//             for (auto body : sys->Get_bodylist()) {                         \
+//                 body->OP(time_step);                                        \
+//             }                                                               \
+//         }                                                                   \
+//         st.SetItemsProcessed(st.iterations() * sys->Get_bodylist().size()); \
+//     }                                                                       \
+//     BENCHMARK_REGISTER_F(SystemFixture, OP)->Unit(benchmark::kMicrosecond);
+
+// // Benchmark individual operations
+
+BM_DRIVER_OP_VOID(DriverGetInput)
+BM_DRIVER_SYNCRONIZE_TIME(DriverSynchronize)
+BM_TERRAIN_SYNCRONIZE_TIME(TerrainSynchronize)  
+BM_VEHICLE_SYNCRONIZE_TIME(VehicleSynchronize)  
+BM_SYSTEM_OP_TIMESTEP(DoStepDynamics)
+BM_VIS_OP_TIMESTEP(VisAdvance)
+
+
+// Benchmark all operations in a single loop
+BENCHMARK_DEFINE_F(SCMPolarisFixture, SingleLoop1)(benchmark::State& st) {
+    for (auto _ : st) {
+        m_driver->Synchronize(current_time);
+        
+    }
+    st.SetItemsProcessed(st.iterations());
 }
+BENCHMARK_REGISTER_F(SCMPolarisFixture, SingleLoop1)->Unit(benchmark::kMillisecond)->Iterations(1);  
 
-// template <int N>
-// void SCMPolarisTest<N>::SimulateVis() {
-// #ifdef CHRONO_IRRLICHT
-//     double offset = N * m_length;
+// Benchmark all operations in a single loop
+BENCHMARK_DEFINE_F(SCMPolarisFixture, SingleLoop2)(benchmark::State& st) {
+    for (auto _ : st) {
+        m_driver->Synchronize(current_time);
+        m_terrain->Synchronize(current_time);
+        m_vehicle->Synchronize(current_time, m_driver_inputs, *m_terrain);
+        m_vis->Synchronize("", m_driver_inputs);
+        
+    }
+    st.SetItemsProcessed(st.iterations());
+}
+BENCHMARK_REGISTER_F(SCMPolarisFixture, SingleLoop2)->Unit(benchmark::kMillisecond)->Iterations(1);
 
-//     // Create the Irrlicht visualization system
-//     auto vis = chrono_types::make_shared<irrlicht::ChVisualSystemIrrlicht>();
-//     vis->AttachSystem(m_system);
-//     vis->SetWindowSize(800, 600);
-//     vis->SetWindowTitle("Pendulum chain");
-//     vis->Initialize();
-//     vis->AddLogo();
-//     vis->AddSkyBox();
-//     vis->AddTypicalLights();
-//     vis->AddCamera(ChVector<>(0, -offset / 2, offset), ChVector<>(0, -offset / 2, 0));
+// Benchmark all operations in a single loop
+BENCHMARK_DEFINE_F(SCMPolarisFixture, SingleLoop3)(benchmark::State& st) {
+    for (auto _ : st) {
+        m_driver->Synchronize(current_time);
+        m_terrain->Synchronize(current_time);
+        m_vehicle->Synchronize(current_time, m_driver_inputs, *m_terrain);
+        m_vis->Synchronize("", m_driver_inputs);
+        // Advance dynamics
+        m_system->DoStepDynamics(time_step);
+        
+    }
+    st.SetItemsProcessed(st.iterations());
+}
+BENCHMARK_REGISTER_F(SCMPolarisFixture, SingleLoop3)->Unit(benchmark::kMillisecond)->Iterations(1);
 
-//     while (vis->Run()) {
-//         vis->BeginScene();
-//         vis->Render();
-//         m_system->DoStepDynamics(m_step);
-//         vis->EndScene();
+// Benchmark all operations in a single loop
+BENCHMARK_DEFINE_F(SCMPolarisFixture, SingleLoop4)(benchmark::State& st) {
+    for (auto _ : st) {
+        m_driver->Synchronize(current_time);
+        m_terrain->Synchronize(current_time);
+        m_vehicle->Synchronize(current_time, m_driver_inputs, *m_terrain);
+        m_vis->Synchronize("", m_driver_inputs);
+        // Advance dynamics
+        m_system->DoStepDynamics(time_step);
+        m_vis->Advance(step_size);
+    }
+    st.SetItemsProcessed(st.iterations());
+}
+BENCHMARK_REGISTER_F(SCMPolarisFixture, SingleLoop4)->Unit(benchmark::kMillisecond)->Iterations(1);
+
+
+// BM_DRIVER_OP_TIME(Synchronize)
+// BM_BODY_OP_TIME(Synchronize)
+// BM_BODY_OP_TIME(UpdateForces)
+// BM_BODY_OP_TIME(UpdateMarkers)
+// BM_BODY_OP_VOID(ClampSpeed)
+// BM_BODY_OP_VOID(ComputeGyro)
+
+// Benchmark all operations in a single loop
+// BENCHMARK_DEFINE_F(SystemFixture, SingleLoop)(benchmark::State& st) {
+//     for (auto _ : st) {
+//         for (auto body : sys->Get_bodylist()) {
+//             std::cout<<"Here in the body"<<std::endl;
+//             body->UpdateTime(current_time);
+//             body->UpdateForces(current_time);
+//             body->UpdateMarkers(current_time);
+//             body->ClampSpeed();
+//             body->ComputeGyro();
+//         }
 //     }
-// #endif
+//     st.SetItemsProcessed(st.iterations() * sys->Get_bodylist().size());
 // }
+// BENCHMARK_REGISTER_F(SystemFixture, SingleLoop)->Unit(benchmark::kMicrosecond);
+////BENCHMARK_REGISTER_F(SystemFixture, SingleLoop)->Unit(benchmark::kMicrosecond)->Iterations(1);
 
-// =============================================================================
-
-#define NUM_SKIP_STEPS 2000  // number of steps for hot start
-#define NUM_SIM_STEPS 1000   // number of simulation steps for each benchmark
-
-CH_BM_SIMULATION_LOOP(SCMPolaris04, SCMPolarisTest<4>,  NUM_SKIP_STEPS, NUM_SIM_STEPS, 5);
-
-
-// =============================================================================
-
-int main(int argc, char* argv[]) {
-    ::benchmark::Initialize(&argc, argv);
-
-// #ifdef CHRONO_IRRLICHT
-//     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) {
-//         SCMPolarisTest<4> test;
-//         test.SimulateVis();
-//         return 0;
-//     }
-// #endif
-
-    ::benchmark::RunSpecifiedBenchmarks();
-}
+////BENCHMARK_MAIN();
