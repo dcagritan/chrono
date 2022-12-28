@@ -13,6 +13,7 @@ endif()
 set(TESTS
     btest_SCM_SYNscaling
     btest_SCM_VEHscaling
+    btest_SCM_VEH_HMMWV_Fixtures
     )
 
 # ------------------------------------------------------------------------------
