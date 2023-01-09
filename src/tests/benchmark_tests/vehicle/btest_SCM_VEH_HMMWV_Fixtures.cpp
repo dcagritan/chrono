@@ -89,6 +89,12 @@ class HmmwvScmFixtureTest : public ::benchmark::Fixture {
 
     ChSystem* GetSystem() { return m_hmmwv->GetSystem(); }
     void ExecuteStep();
+    void Synchronize();
+    void DriverGetInput();
+    void DriverAdvance();
+    void TerrainAdvance();
+    void VehicleAdvance();
+    void AdvancePowerTrain();
 
     void SimulateVis();
 
@@ -101,10 +107,12 @@ class HmmwvScmFixtureTest : public ::benchmark::Fixture {
     SCMDeformableTerrain* m_terrain;
 
     double m_step;
+    double aux_time;
 };
 
 void HmmwvScmFixtureTest::SetUp(const ::benchmark::State& st) {
     m_step=2e-3;
+    aux_time=0.0;
     PowertrainModelType powertrain_model = PowertrainModelType::SHAFTS;
     DrivelineTypeWV drive_type = DrivelineTypeWV::AWD;
     TireModelType tire_type = TireModelType::RIGID_MESH;
@@ -185,6 +193,48 @@ void HmmwvScmFixtureTest::ExecuteStep() {
     m_hmmwv->Advance(m_step);
 }
 
+void HmmwvScmFixtureTest::Synchronize() {
+    // std::cout<<"aux_time= "<<aux_time<<std::endl;
+
+    // Driver inputs
+    DriverInputs driver_inputs = m_driver->GetInputs();
+
+    // Update modules (process inputs from other modules)
+    m_driver->Synchronize(aux_time);
+    m_terrain->Synchronize(aux_time);
+    m_hmmwv->Synchronize(aux_time, driver_inputs, *m_terrain);
+    aux_time+=m_step;
+}
+
+void HmmwvScmFixtureTest::DriverGetInput() {
+    double time = m_hmmwv->GetSystem()->GetChTime();
+    // std::cout<<"aux_time= "<<aux_time<<std::endl;
+
+    // Driver inputs
+    DriverInputs driver_inputs = m_driver->GetInputs();
+    aux_time+=m_step;
+}
+
+void HmmwvScmFixtureTest::DriverAdvance() {
+    // Advance simulation for one timestep for all modules
+    m_driver->Advance(m_step);
+}
+
+void HmmwvScmFixtureTest::TerrainAdvance() {
+    // Advance simulation for one timestep for all modules
+    m_terrain->Advance(m_step);
+}
+
+void HmmwvScmFixtureTest::VehicleAdvance() {
+    // Advance simulation for one timestep for all modules
+    m_hmmwv->Advance(m_step);
+}
+
+// void HmmwvScmFixtureTest::AdvancePowerTrain() {
+//     // Advance simulation for one timestep for all modules
+//     auto powertrain = m_hmmwv->GetPowertrain()->Advance(m_step);
+// }
+
 void HmmwvScmFixtureTest::SimulateVis() {
 #ifdef CHRONO_IRRLICHT
     auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
@@ -220,5 +270,10 @@ void HmmwvScmFixtureTest::SimulateVis() {
         }                                                                   \
         st.SetItemsProcessed(st.iterations());                              \
     }                                                                       \
-    BENCHMARK_REGISTER_F(HmmwvScmFixtureTest, OP)->Unit(benchmark::kMillisecond);
+    BENCHMARK_REGISTER_F(HmmwvScmFixtureTest, OP)->Unit(benchmark::kMicrosecond);
+BM_EXECUTION_TIME(Synchronize)
 BM_EXECUTION_TIME(ExecuteStep)
+BM_EXECUTION_TIME(DriverGetInput)
+BM_EXECUTION_TIME(DriverAdvance)
+BM_EXECUTION_TIME(TerrainAdvance)
+BM_EXECUTION_TIME(VehicleAdvance)
