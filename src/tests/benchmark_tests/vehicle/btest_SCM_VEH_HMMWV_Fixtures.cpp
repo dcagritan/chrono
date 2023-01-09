@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Radu Serban
+// Authors: Radu Serban, Deniz Cagri Tanyildiz
 // =============================================================================
 //
 // Benchmark test for HMMWV on SCM terrain.
@@ -18,6 +18,7 @@
 
 #include "chrono/utils/ChBenchmark.h"
 #include "chrono/physics/ChBodyEasy.h"
+#include <benchmark/benchmark.h>
 
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
@@ -36,8 +37,6 @@ using namespace chrono::vehicle::hmmwv;
 
 // =============================================================================
 
-#define MESH_TIRE 0
-#define CYL_TIRE 1
 
 double patch_size = 50.0;
 int num_div = 1000;
@@ -77,14 +76,13 @@ class HmmwvScmDriver : public ChDriver {
 
 // =============================================================================
 
-template <int TIRE_TYPE, bool OBJECTS>
-class HmmwvScmTest : public utils::ChBenchmarkTest {
+class HmmwvScmFixtureTest : public ::benchmark::Fixture {
   public:
-    HmmwvScmTest();
-    ~HmmwvScmTest();
+    void SetUp(const ::benchmark::State& st) override;
+    void TearDown(const ::benchmark::State&) override;
 
-    ChSystem* GetSystem() override { return m_hmmwv->GetSystem(); }
-    void ExecuteStep() override;
+    ChSystem* GetSystem() { return m_hmmwv->GetSystem(); }
+    void ExecuteStep();
 
     void SimulateVis();
 
@@ -99,12 +97,12 @@ class HmmwvScmTest : public utils::ChBenchmarkTest {
     double m_step;
 };
 
-template <int TIRE_TYPE, bool OBJECTS>
-HmmwvScmTest<TIRE_TYPE, OBJECTS>::HmmwvScmTest() : m_step(2e-3) {
+void HmmwvScmFixtureTest::SetUp(const ::benchmark::State& st) {
+    m_step=2e-3;
     PowertrainModelType powertrain_model = PowertrainModelType::SHAFTS;
     DrivelineTypeWV drive_type = DrivelineTypeWV::AWD;
-    TireModelType tire_type = (TIRE_TYPE == MESH_TIRE) ? TireModelType::RIGID_MESH : TireModelType::RIGID;
-    VisualizationType tire_vis = (TIRE_TYPE == MESH_TIRE) ? VisualizationType::MESH : VisualizationType::PRIMITIVES;
+    TireModelType tire_type = TireModelType::RIGID_MESH;
+    VisualizationType tire_vis = VisualizationType::MESH;
 
     // Create the HMMWV vehicle, set parameters, and initialize.
     m_hmmwv = new HMMWV_Full();
@@ -155,36 +153,17 @@ HmmwvScmTest<TIRE_TYPE, OBJECTS>::HmmwvScmTest() : m_step(2e-3) {
     // Custom driver
     m_driver = new HmmwvScmDriver(m_hmmwv->GetVehicle(), 1.0);
     m_driver->Initialize();
-
-    // Create falling objects
-    if (OBJECTS) {
-        auto sph_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
-        sph_mat->SetFriction(0.2f);
-        for (int i = 0; i < 20; i++) {
-            auto sphere = chrono_types::make_shared<ChBodyEasySphere>(0.5,       // radius size
-                                                                      500,       // density
-                                                                      true,      // visualization?
-                                                                      true,      // collision?
-                                                                      sph_mat);  // contact material
-            sphere->SetPos(
-                ChVector<>((2 * ChRandom() - 1) * 0.45 * patch_size, (2 * ChRandom() - 1) * 0.45 * patch_size, 1.0));
-            m_hmmwv->GetSystem()->Add(sphere);
-
-            m_terrain->AddMovingPatch(sphere, ChVector<>(0, 0, 0), ChVector<>(0.6, 0.6, 0.6));
-        }
-    }
 }
 
-template <int TIRE_TYPE, bool OBJECTS>
-HmmwvScmTest<TIRE_TYPE, OBJECTS>::~HmmwvScmTest() {
+void HmmwvScmFixtureTest::TearDown(const ::benchmark::State&) {
     delete m_hmmwv;
     delete m_terrain;
     delete m_driver;
 }
 
-template <int TIRE_TYPE, bool OBJECTS>
-void HmmwvScmTest<TIRE_TYPE, OBJECTS>::ExecuteStep() {
+void HmmwvScmFixtureTest::ExecuteStep() {
     double time = m_hmmwv->GetSystem()->GetChTime();
+    std::cout<<"time= "<<time<<std::endl;
 
     // Driver inputs
     DriverInputs driver_inputs = m_driver->GetInputs();
@@ -200,12 +179,11 @@ void HmmwvScmTest<TIRE_TYPE, OBJECTS>::ExecuteStep() {
     m_hmmwv->Advance(m_step);
 }
 
-template <int TIRE_TYPE, bool OBJECTS>
-void HmmwvScmTest<TIRE_TYPE, OBJECTS>::SimulateVis() {
+void HmmwvScmFixtureTest::SimulateVis() {
 #ifdef CHRONO_IRRLICHT
     auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
     vis->AttachVehicle(&m_hmmwv->GetVehicle());
-    vis->SetWindowTitle("HMMWV SMC benchmark");
+    vis->SetWindowTitle("HMMWV SCM benchmark");
     vis->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 6.0, 0.5);
     vis->Initialize();
     vis->AddTypicalLights();
@@ -216,7 +194,7 @@ void HmmwvScmTest<TIRE_TYPE, OBJECTS>::SimulateVis() {
         vis->BeginScene();
         vis->Render();
         ExecuteStep();
-        vis->Synchronize("SMC test", driver_inputs);
+        vis->Synchronize("SCM test", driver_inputs);
         vis->Advance(m_step);
         vis->EndScene();
     }
@@ -225,36 +203,14 @@ void HmmwvScmTest<TIRE_TYPE, OBJECTS>::SimulateVis() {
 
 // =============================================================================
 
-#define NUM_SKIP_STEPS 500  // number of steps for hot start (2e-3 * 500 = 1s)
-#define NUM_SIM_STEPS 2000  // number of simulation steps for each benchmark (2e-3 * 2000 = 4s)
-#define REPEATS 10
-
-// NOTE: trick to prevent erros in expanding macros due to types that contain a comma.
-typedef HmmwvScmTest<MESH_TIRE, false> mesh_0_test_type;
-typedef HmmwvScmTest<CYL_TIRE, false> cyl_0_test_type;
-typedef HmmwvScmTest<MESH_TIRE, true> mesh_1_test_type;
-typedef HmmwvScmTest<CYL_TIRE, true> cyl_1_test_type;
-
-CH_BM_SIMULATION_ONCE(HmmwvSCM_MESH_0, mesh_0_test_type, NUM_SKIP_STEPS, NUM_SIM_STEPS, REPEATS);
-CH_BM_SIMULATION_ONCE(HmmwvSCM_CYL_0, cyl_0_test_type, NUM_SKIP_STEPS, NUM_SIM_STEPS, REPEATS);
-CH_BM_SIMULATION_ONCE(HmmwvSCM_MESH_1, mesh_1_test_type, NUM_SKIP_STEPS, NUM_SIM_STEPS, REPEATS);
-CH_BM_SIMULATION_ONCE(HmmwvSCM_CYL_1, cyl_1_test_type, NUM_SKIP_STEPS, NUM_SIM_STEPS, REPEATS);
-
-// =============================================================================
-
-int main(int argc, char* argv[]) {
-    ::benchmark::Initialize(&argc, argv);
-
-#ifdef CHRONO_IRRLICHT
-    if (::benchmark::ReportUnrecognizedArguments(argc, argv)) {
-        HmmwvScmTest<MESH_TIRE, true> test;
-        ////HmmwvScmTest<MESH_TIRE, false> test;
-        ////HmmwvScmTest<CYL_TIRE, true> test;
-        ////HmmwvScmTest<CYL_TIRE, false> test;
-        test.SimulateVis();
-        return 0;
-    }
-#endif
-
-    ::benchmark::RunSpecifiedBenchmarks();
-}
+// Utility macros for benchmarking body operations with different signatures
+#define BM_EXECUTION_TIME(OP)                                                 \
+    BENCHMARK_DEFINE_F(HmmwvScmFixtureTest, OP)(benchmark::State & st) {        \
+        for (auto _ : st) {                                                 \
+            OP();                                            \
+        }                                                                   \
+        st.SetItemsProcessed(st.iterations());                              \
+    }                                                                       \
+    BENCHMARK_REGISTER_F(HmmwvScmFixtureTest, OP)->Unit(benchmark::kMillisecond);
+BM_EXECUTION_TIME(ExecuteStep)
+BM_EXECUTION_TIME(SimulateVis)
