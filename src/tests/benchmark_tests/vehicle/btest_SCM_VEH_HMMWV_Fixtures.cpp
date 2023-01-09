@@ -38,8 +38,14 @@ using namespace chrono::vehicle::hmmwv;
 // =============================================================================
 
 
-double patch_size = 50.0;
-int num_div = 1000;
+// Terrain parameters
+double terrainLength = 16.0;  // size in X direction
+double terrainWidth = 8.0;    // size in Y direction
+double delta = 0.05;          // SCM grid spacing
+
+// Initial vehicle position and orientation
+ChVector<> initLoc(-5, -2, 0.6);
+ChQuaternion<> initRot(1, 0, 0, 0);
 
 // =============================================================================
 
@@ -108,18 +114,18 @@ void HmmwvScmFixtureTest::SetUp(const ::benchmark::State& st) {
     m_hmmwv = new HMMWV_Full();
     m_hmmwv->SetContactMethod(ChContactMethod::SMC);
     m_hmmwv->SetChassisFixed(false);
-    m_hmmwv->SetInitPosition(
-        ChCoordsys<>(ChVector<>(5.0 - patch_size / 2, 5.0 - patch_size / 2, 0.7), Q_from_AngZ(CH_C_PI / 4)));
+    m_hmmwv->SetInitPosition(ChCoordsys<>(initLoc, initRot));
     m_hmmwv->SetPowertrainType(powertrain_model);
+    m_hmmwv->SetInitPosition(ChCoordsys<>(initLoc, initRot));
     m_hmmwv->SetDriveType(drive_type);
     m_hmmwv->SetTireType(tire_type);
     m_hmmwv->SetTireStepSize(m_step);
     m_hmmwv->SetAerodynamicDrag(0.5, 5.0, 1.2);
     m_hmmwv->Initialize();
 
-    m_hmmwv->SetChassisVisualizationType(VisualizationType::PRIMITIVES);
-    m_hmmwv->SetSuspensionVisualizationType(VisualizationType::PRIMITIVES);
-    m_hmmwv->SetSteeringVisualizationType(VisualizationType::PRIMITIVES);
+    m_hmmwv->SetChassisVisualizationType(VisualizationType::NONE);
+    m_hmmwv->SetSuspensionVisualizationType(VisualizationType::NONE);
+    m_hmmwv->SetSteeringVisualizationType(VisualizationType::NONE);
     m_hmmwv->SetWheelVisualizationType(VisualizationType::NONE);
     m_hmmwv->SetTireVisualizationType(tire_vis);
 
@@ -148,7 +154,7 @@ void HmmwvScmFixtureTest::SetUp(const ::benchmark::State& st) {
 
     m_terrain->SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
 
-    m_terrain->Initialize(patch_size, patch_size, patch_size / num_div);
+    m_terrain->Initialize(terrainLength, terrainWidth, delta);
 
     // Custom driver
     m_driver = new HmmwvScmDriver(m_hmmwv->GetVehicle(), 1.0);
@@ -163,7 +169,7 @@ void HmmwvScmFixtureTest::TearDown(const ::benchmark::State&) {
 
 void HmmwvScmFixtureTest::ExecuteStep() {
     double time = m_hmmwv->GetSystem()->GetChTime();
-    std::cout<<"time= "<<time<<std::endl;
+    // std::cout<<"time= "<<time<<std::endl;
 
     // Driver inputs
     DriverInputs driver_inputs = m_driver->GetInputs();
@@ -186,7 +192,10 @@ void HmmwvScmFixtureTest::SimulateVis() {
     vis->SetWindowTitle("HMMWV SCM benchmark");
     vis->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 6.0, 0.5);
     vis->Initialize();
-    vis->AddTypicalLights();
+
+    vis->AddLightDirectional();
+    vis->AddSkyBox();
+    vis->AddLogo();
 
     while (vis->Run()) {
         DriverInputs driver_inputs = m_driver->GetInputs();
@@ -213,4 +222,3 @@ void HmmwvScmFixtureTest::SimulateVis() {
     }                                                                       \
     BENCHMARK_REGISTER_F(HmmwvScmFixtureTest, OP)->Unit(benchmark::kMillisecond);
 BM_EXECUTION_TIME(ExecuteStep)
-BM_EXECUTION_TIME(SimulateVis)
