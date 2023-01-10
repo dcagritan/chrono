@@ -67,7 +67,7 @@ double terrainLength = 16.0;  // size in X direction
 double terrainWidth = 8.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing
 
-double throttlemagnitude=3.5;
+double throttlemagnitude=0.7;
 double steeringmagnitude=0.6;
 
 // -----------------------------------------------------------------------------
@@ -130,12 +130,12 @@ class MyDriver : public ChDriver {
 
         if (eff_time > 0.2)
         { 
-            m_throttle = 0.7;
+            m_throttle = throttlemagnitude;
             m_braking = 0;
         }
         else
         { 
-            m_throttle = throttlemagnitude * eff_time;
+            m_throttle = 3.5 * eff_time;
             m_braking = 0;
         }
 
