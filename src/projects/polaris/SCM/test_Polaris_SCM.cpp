@@ -63,8 +63,10 @@ bool GetProblemSpecs(int argc,
 // Terrain parameters
 // -----------------------------------------------------------------------------
 
-double terrainLength = 16.0;  // size in X direction
-double terrainWidth = 8.0;    // size in Y direction
+// double terrainLength = 16.0;  // size in X direction
+// double terrainWidth = 8.0;    // size in Y direction
+double terrainLength = 32.0;  // size in X direction
+double terrainWidth = 16.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing
 
 double throttlemagnitude=0.7;
