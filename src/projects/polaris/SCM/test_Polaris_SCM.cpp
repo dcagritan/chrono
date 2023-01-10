@@ -225,7 +225,7 @@ int main(int argc, char* argv[]) {
                     terrainLength ,                       ///< [in] terrain dimension in the X direction
                     terrainWidth,                       ///< [in] terrain dimension in the Y direction
                     0.0,                        ///< [in] minimum height (black level)
-                    3.0,                        ///< [in] maximum height (white level)
+                    1.0,                        ///< [in] maximum height (white level)
                     delta                        ///< [in] grid spacing (may be slightly decreased)
     );
 
