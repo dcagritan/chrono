@@ -65,8 +65,8 @@ bool GetProblemSpecs(int argc,
 
 // double terrainLength = 16.0;  // size in X direction
 // double terrainWidth = 8.0;    // size in Y direction
-double terrainLength = 32.0;  // size in X direction
-double terrainWidth = 16.0;    // size in Y direction
+double terrainLength = 40.0;  // size in X direction
+double terrainWidth = 20.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing
 
 double throttlemagnitude=0.7;
@@ -88,7 +88,7 @@ float cr_t = 0.1f;
 float mu_t = 0.8f;
 
 // Initial vehicle position and orientation
-ChVector<> initLoc(-3, 0, 0.6);
+ChVector<> initLoc(-3, 0, 2.0);
 ChQuaternion<> initRot(1, 0, 0, 0);
 ChCoordsys<> init_pos(initLoc, initRot);
 
@@ -111,6 +111,9 @@ const std::string img_dir = out_dir + "/IMG";
 
 // Visualization output
 bool img_output = false;
+
+// Vertices output
+bool ver_output = true;
 
 // =============================================================================
 
@@ -227,7 +230,7 @@ int main(int argc, char* argv[]) {
                     terrainLength ,                       ///< [in] terrain dimension in the X direction
                     terrainWidth,                       ///< [in] terrain dimension in the Y direction
                     0.0,                        ///< [in] minimum height (black level)
-                    1.0,                        ///< [in] maximum height (white level)
+                    3.0,                        ///< [in] maximum height (white level)
                     delta                        ///< [in] grid spacing (may be slightly decreased)
     );
 
@@ -323,20 +326,24 @@ int main(int argc, char* argv[]) {
         tools::drawColorbar(vis.get(), 0, 0.1, "Sinkage", 30);
         vis->EndScene();
 
-        // data_writer.Process(step_number, time);
+        if (ver_output)
+         data_writer.Process(step_number, time);
 
-        // if (step_number % render_steps == 0) {
-        //     std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
-        //     terrain.WriteMeshVertices(vertices_filename);
-        //     std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
-        //     if (img_output% render_steps == 0)
-        //     {
-        //     char filename[100];
-        //     sprintf(filename, "%s/img_%03d.jpg", img_dir.c_str(), render_frame + 1);
-        //     vis->WriteImageToFile(filename);
-        //     }
-        //     render_frame++;
-        // }
+        if (step_number % render_steps == 0) {
+            if (ver_output)
+            { 
+            std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
+            terrain.WriteMeshVertices(vertices_filename);
+            std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
+            }
+            if (img_output% render_steps == 0)
+            {
+            char filename[100];
+            sprintf(filename, "%s/img_%03d.jpg", img_dir.c_str(), render_frame + 1);
+            vis->WriteImageToFile(filename);
+            }
+            render_frame++;
+        }
 
         // // Driver inputs
         DriverInputs driver_inputs = driver.GetInputs();
