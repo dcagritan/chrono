@@ -220,14 +220,14 @@ int main(int argc, char* argv[]) {
     ////terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
     terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
 
-    terrain.Initialize(terrainLength, terrainWidth, delta);
-    // terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
-    //                 terrainLength ,                       ///< [in] terrain dimension in the X direction
-    //                 terrainWidth,                       ///< [in] terrain dimension in the Y direction
-    //                 0.0,                        ///< [in] minimum height (black level)
-    //                 3.0,                        ///< [in] maximum height (white level)
-    //                 delta                        ///< [in] grid spacing (may be slightly decreased)
-    // );
+    // terrain.Initialize(terrainLength, terrainWidth, delta);
+    terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
+                    terrainLength ,                       ///< [in] terrain dimension in the X direction
+                    terrainWidth,                       ///< [in] terrain dimension in the Y direction
+                    0.0,                        ///< [in] minimum height (black level)
+                    3.0,                        ///< [in] maximum height (white level)
+                    delta                        ///< [in] grid spacing (may be slightly decreased)
+    );
 
 
     // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";
