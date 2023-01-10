@@ -36,6 +36,7 @@
 
 #include "chrono_models/vehicle/hmmwv/HMMWV.h"
 
+#include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
 
 #include "DataWriter.h"
@@ -50,6 +51,10 @@ using namespace chrono::vehicle::hmmwv;
 using std::cout;
 using std::endl;
 
+bool GetProblemSpecs(int argc,
+                     char** argv,
+                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude);
+
 // =============================================================================
 // USER SETTINGS
 // =============================================================================
@@ -61,6 +66,9 @@ using std::endl;
 double terrainLength = 16.0;  // size in X direction
 double terrainWidth = 8.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing
+
+double throttlemagnitude=3.5;
+double steeringmagnitude=0.6;
 
 // -----------------------------------------------------------------------------
 // Vehicle parameters
@@ -127,14 +135,14 @@ class MyDriver : public ChDriver {
         }
         else
         { 
-            m_throttle = 3.5 * eff_time;
+            m_throttle = throttlemagnitude * eff_time;
             m_braking = 0;
         }
 
         if (eff_time < 2)
             m_steering = 0;
         else
-            m_steering = 0.6 * std::sin(CH_C_2PI * (eff_time - 2) / 6);
+            m_steering = steeringmagnitude * std::sin(CH_C_2PI * (eff_time - 2) / 6);
     }
 
   private:
@@ -146,6 +154,18 @@ class MyDriver : public ChDriver {
 
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+    std::string terrain_dir;
+    double tend = 10;
+    if (!GetProblemSpecs(argc, argv,                                 
+                         terrain_dir, tend, throttlemagnitude, steeringmagnitude)) 
+    {
+        return 1;
+    }
+    // // Check input files exist
+    // if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/path.txt")).exists()) {
+    //     std::cout << "Input file path.txt not found in directory " << terrain_dir << std::endl;
+    //     return 1;
+    // }
     // Parse command line arguments
     bool verbose = true;
     bool wheel_output = true;      // save individual wheel output files
@@ -163,6 +183,8 @@ int main(int argc, char* argv[]) {
     // --------------------
     cout << "Create vehicle..." << endl;
     auto vehicle = CreateVehicle(model, sys, init_pos);
+    double x_max = (terrainLength/2.0 - 3.0);
+    double y_max = (terrainWidth/2.0 - 3.0);
 
     // ------------------
     // Create the terrain
@@ -198,14 +220,14 @@ int main(int argc, char* argv[]) {
     ////terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
     terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
 
-    // terrain.Initialize(terrainLength, terrainWidth, delta);
-    terrain.Initialize("../data/vehicle/heightmap_indexlaw_-3.0_sigma_5.0_0.png",  ///< [in] filename for the height map (image file)
-                    100.0 ,                       ///< [in] terrain dimension in the X direction
-                    50.0,                       ///< [in] terrain dimension in the Y direction
-                    -1.0,                        ///< [in] minimum height (black level)
-                    0.0,                        ///< [in] maximum height (white level)
-                    delta                        ///< [in] grid spacing (may be slightly decreased)
-    );
+    terrain.Initialize(terrainLength, terrainWidth, delta);
+    // terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
+    //                 terrainLength ,                       ///< [in] terrain dimension in the X direction
+    //                 terrainWidth,                       ///< [in] terrain dimension in the Y direction
+    //                 0.0,                        ///< [in] minimum height (black level)
+    //                 3.0,                        ///< [in] maximum height (white level)
+    //                 delta                        ///< [in] grid spacing (may be slightly decreased)
+    // );
 
 
     // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";
@@ -272,6 +294,14 @@ int main(int argc, char* argv[]) {
 
     while (vis->Run()) {
         double time = sys.GetChTime();
+        if (time > tend)
+            break;
+
+        const auto& veh_loc = vehicle->GetPos();
+        // std::cout<<"veh_loc ="<<veh_loc<<std::endl;
+        // Stop before end of patch
+        // if (veh_loc.x() > x_max || veh_loc.y() > y_max )
+        //     break;
 
         if (step_number == 800) {
             std::cout << "\nstart timer at t = " << time << std::endl;
@@ -324,4 +354,34 @@ int main(int argc, char* argv[]) {
     }
 
     return 0;
+}
+
+bool GetProblemSpecs(int argc,
+                     char** argv,
+                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude) 
+    {
+    ChCLI cli(argv[0], "Polaris SPH terrain simulation");
+
+    cli.AddOption<std::string>("Problem setup", "terrain_dir", "Directory with terrain specification data");
+    cli.AddOption<double>("Simulation", "tend", "Simulation end time [s]", std::to_string(tend));
+    cli.AddOption<double>("Simulation", "throttlemagnitude", "Simulation throttle magnitude ", std::to_string(throttlemagnitude));
+    cli.AddOption<double>("Simulation", "steeringmagnitude", "Simulation steering magnitude ", std::to_string(steeringmagnitude));
+    if (!cli.Parse(argc, argv)) {
+        cli.Help();
+        return false;
+    }
+
+    try {
+        terrain_dir = cli.Get("terrain_dir").as<std::string>();
+    } catch (std::domain_error&) {
+        cout << "\nERROR: Missing terrain specification directory!\n\n" << endl;
+        cli.Help();
+        return false;
+    }
+    tend = cli.GetAsType<double>("tend");
+    throttlemagnitude = cli.GetAsType<double>("throttlemagnitude");
+    steeringmagnitude = cli.GetAsType<double>("steeringmagnitude");
+
+
+    return true;
 }
