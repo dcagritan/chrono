@@ -188,9 +188,10 @@ void HmmwvScmFixtureTest::ExecuteStep() {
     m_hmmwv->Synchronize(time, driver_inputs, *m_terrain);
 
     // Advance simulation for one timestep for all modules
-    m_driver->Advance(m_step);
-    m_terrain->Advance(m_step);
-    m_hmmwv->Advance(m_step);
+    // m_driver->Advance(m_step);
+    // m_terrain->Advance(m_step);
+    // m_hmmwv->Advance(m_step);
+    m_hmmwv->GetSystem()->DoStepDynamics(m_step);
 }
 
 void HmmwvScmFixtureTest::Synchronize() {
@@ -270,10 +271,10 @@ void HmmwvScmFixtureTest::SimulateVis() {
         }                                                                   \
         st.SetItemsProcessed(st.iterations());                              \
     }                                                                       \
-    BENCHMARK_REGISTER_F(HmmwvScmFixtureTest, OP)->Unit(benchmark::kMicrosecond);
-BM_EXECUTION_TIME(Synchronize)
+    BENCHMARK_REGISTER_F(HmmwvScmFixtureTest, OP)->Unit(benchmark::kMillisecond);
+// BM_EXECUTION_TIME(Synchronize)
 BM_EXECUTION_TIME(ExecuteStep)
-BM_EXECUTION_TIME(DriverGetInput)
-BM_EXECUTION_TIME(DriverAdvance)
-BM_EXECUTION_TIME(TerrainAdvance)
-BM_EXECUTION_TIME(VehicleAdvance)
+// BM_EXECUTION_TIME(DriverGetInput)
+// BM_EXECUTION_TIME(DriverAdvance)
+// BM_EXECUTION_TIME(TerrainAdvance)
+// BM_EXECUTION_TIME(VehicleAdvance)
