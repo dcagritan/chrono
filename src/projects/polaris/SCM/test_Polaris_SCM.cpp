@@ -100,7 +100,7 @@ ChCoordsys<> init_pos(initLoc, initRot);
 double step_size = 1e-3;
 
 // Time interval between two render frames (1/FPS)
-double render_step_size = 2.0 / 100;
+double render_step_size = 4.0 / 100;
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
     // Parse command line arguments
     bool verbose = true;
     bool wheel_output = true;      // save individual wheel output files
-    double output_major_fps = 50;
+    double output_major_fps = 1.0/render_step_size;
     // --------------------
     // Create the Chrono systems
     // --------------------
@@ -230,7 +230,7 @@ int main(int argc, char* argv[]) {
                     terrainLength ,                       ///< [in] terrain dimension in the X direction
                     terrainWidth,                       ///< [in] terrain dimension in the Y direction
                     0.0,                        ///< [in] minimum height (black level)
-                    3.0,                        ///< [in] maximum height (white level)
+                    1.5,                        ///< [in] maximum height (white level)
                     delta                        ///< [in] grid spacing (may be slightly decreased)
     );
 
@@ -327,11 +327,14 @@ int main(int argc, char* argv[]) {
         vis->EndScene();
 
         if (ver_output)
-         data_writer.Process(step_number, time);
+        { 
+            data_writer.Process(step_number, time); 
+        }
+
 
         if (step_number % render_steps == 0) {
             if (ver_output)
-            { 
+            {   
             std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
             terrain.WriteMeshVertices(vertices_filename);
             std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
