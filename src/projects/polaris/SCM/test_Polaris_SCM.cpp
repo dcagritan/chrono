@@ -336,7 +336,10 @@ int main(int argc, char* argv[]) {
             if (ver_output)
             {   
             std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
-            terrain.WriteMeshVertices(vertices_filename);
+            if (step_number==0)
+             terrain.WriteMeshVertices(vertices_filename);
+            else
+             terrain.WriteMeshVerticesinz(vertices_filename);
             std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
             }
             if (img_output% render_steps == 0)
