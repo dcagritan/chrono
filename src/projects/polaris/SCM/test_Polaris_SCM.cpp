@@ -53,7 +53,7 @@ using std::endl;
 
 bool GetProblemSpecs(int argc,
                      char** argv,
-                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude);
+                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude, double& render_step_size);
 
 // =============================================================================
 // USER SETTINGS
@@ -100,7 +100,7 @@ ChCoordsys<> init_pos(initLoc, initRot);
 double step_size = 1e-3;
 
 // Time interval between two render frames (1/FPS)
-double render_step_size = 4.0 / 100;
+double render_step_size = 2.0 / 100;
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
     std::string terrain_dir;
     double tend = 10;
     if (!GetProblemSpecs(argc, argv,                                 
-                         terrain_dir, tend, throttlemagnitude, steeringmagnitude)) 
+                         terrain_dir, tend, throttlemagnitude, steeringmagnitude, render_step_size)) 
     {
         return 1;
     }
@@ -370,7 +370,7 @@ int main(int argc, char* argv[]) {
 
 bool GetProblemSpecs(int argc,
                      char** argv,
-                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude) 
+                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude, double& render_step_size) 
     {
     ChCLI cli(argv[0], "Polaris SPH terrain simulation");
 
@@ -378,6 +378,7 @@ bool GetProblemSpecs(int argc,
     cli.AddOption<double>("Simulation", "tend", "Simulation end time [s]", std::to_string(tend));
     cli.AddOption<double>("Simulation", "throttlemagnitude", "Simulation throttle magnitude ", std::to_string(throttlemagnitude));
     cli.AddOption<double>("Simulation", "steeringmagnitude", "Simulation steering magnitude ", std::to_string(steeringmagnitude));
+    cli.AddOption<double>("Simulation", "render_step_size", "Simulation render and output step size ", std::to_string(render_step_size));
     if (!cli.Parse(argc, argv)) {
         cli.Help();
         return false;
@@ -393,6 +394,7 @@ bool GetProblemSpecs(int argc,
     tend = cli.GetAsType<double>("tend");
     throttlemagnitude = cli.GetAsType<double>("throttlemagnitude");
     steeringmagnitude = cli.GetAsType<double>("steeringmagnitude");
+    steeringmagnitude = cli.GetAsType<double>("render_step_size");
 
 
     return true;
