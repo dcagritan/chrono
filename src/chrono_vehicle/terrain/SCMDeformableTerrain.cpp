@@ -134,13 +134,13 @@ void SCMDeformableTerrain::WriteMeshVertices(const std::string& filename) const{
         return;
     }
     std::ofstream mf(filename);
-    mf <<"#index,x,y,z"<< std::endl;
+    mf <<"#x,y,z"<< std::endl;
     auto trimesh = m_ground->m_trimesh_shape->GetMesh();
     std::vector<geometry::ChTriangleMeshConnected> meshes = {*trimesh};
     int v_counter = 0;
     for (auto& m : meshes) {
         for (auto& v : m.m_vertices) {
-            mf <<v_counter<< ", " << v.x() << ", " << v.y() << ", " << v.z() << std::endl;
+            mf << ", " << v.x() << ", " << v.y() << ", " << v.z() << std::endl;
             v_counter++;
         }
     }
@@ -154,13 +154,13 @@ void SCMDeformableTerrain::WriteMeshVerticesinz(const std::string& filename) con
         return;
     }
     std::ofstream mf(filename);
-    mf <<"#index,z"<< std::endl;
+    mf <<"#z"<< std::endl;
     auto trimesh = m_ground->m_trimesh_shape->GetMesh();
     std::vector<geometry::ChTriangleMeshConnected> meshes = {*trimesh};
     int v_counter = 0;
     for (auto& m : meshes) {
         for (auto& v : m.m_vertices) {
-            mf <<v_counter<< ", " << v.z() << std::endl;
+            mf << ", " << v.z() << std::endl;
             v_counter++;
         }
     }
