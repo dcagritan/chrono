@@ -37,7 +37,7 @@ using namespace chrono::vehicle::hmmwv;
 
 // =============================================================================
 
-// Type of tire model (RIGID, TMEASY, FIALA, PAC89, or PACEJKA)
+// Type of tire model (RIGID, TMEASY, FIALA, PAC89)
 TireModelType tire_model = TireModelType::TMEASY;
 
 // Simulation step size, end time
@@ -113,9 +113,6 @@ int main(int argc, char* argv[]) {
             break;
         case TireModelType::PAC89:
             modelname = "pac89";
-            break;
-        case TireModelType::PACEJKA:
-            modelname = "pacejka";
             break;
         case TireModelType::RIGID:
             modelname = "rigid";

@@ -35,7 +35,7 @@ using namespace chrono::vehicle::hmmwv;
 // =============================================================================
 // Problem parameters
 
-// Type of tire model (LUGRE, FIALA, PACEJKA, or TMEASY)
+// Type of tire model (FIALA, or TMEASY)
 TireModelType tire_model = TireModelType::TMEASY;
 
 // OpenCRG input file

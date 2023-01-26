@@ -42,7 +42,7 @@ using namespace chrono::vehicle::hmmwv;
 // Contact method type
 ChContactMethod contact_method = ChContactMethod::SMC;
 
-// Type of tire model (RIGID, LUGRE, FIALA, or PACEJKA)
+// Type of tire model (RIGID, FIALA)
 TireModelType tire_model = TireModelType::RIGID;
 
 // Visualization type for vehicle parts (PRIMITIVES, MESH, or NONE)

@@ -29,7 +29,6 @@
 #include "chrono_vehicle/wheeled_vehicle/tire/ChTMeasyTire.h"
 #include "chrono_vehicle/wheeled_vehicle/tire/ChFialaTire.h"
 #include "chrono_vehicle/wheeled_vehicle/tire/ChPac89Tire.h"
-#include "chrono_vehicle/wheeled_vehicle/tire/ChPacejkaTire.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
 
@@ -40,7 +39,7 @@ using namespace chrono::vehicle::hmmwv;
 
 // =============================================================================
 
-// Type of tire model (FIALA, PACEJKA, PAC89, or TMEASY)
+// Type of tire model (FIALA, PAC89, PAC02, or TMEASY)
 TireModelType tire_model = TireModelType::FIALA;
 
 // Simulation step size
@@ -80,7 +79,6 @@ int main(int argc, char* argv[]) {
     ChTMeasyTire* FR_TMeasy = nullptr;
     ChFialaTire* FR_Fiala = nullptr;
     ChPac89Tire* FR_Pac89 = nullptr;
-    ChPacejkaTire* FR_Pacejka = nullptr;
     switch (tire_model) {
         case TireModelType::TMEASY:
             FR_TMeasy = static_cast<ChTMeasyTire*>(FR_tire.get());
@@ -93,10 +91,6 @@ int main(int argc, char* argv[]) {
         case TireModelType::PAC89:
             FR_Pac89 = static_cast<ChPac89Tire*>(FR_tire.get());
             outfile = "pac89.out";
-            break;
-        case TireModelType::PACEJKA:
-            FR_Pacejka = static_cast<ChPacejkaTire*>(FR_tire.get());
-            outfile = "pacejka.out";
             break;
     }
 
@@ -202,14 +196,6 @@ int main(int argc, char* argv[]) {
                 case TireModelType::FIALA:
                     csv << FR_Fiala->GetSlipAngle_internal() << FR_Fiala->GetCamberAngle_internal()
                         << FR_Fiala->GetLongitudinalSlip_internal();
-                    break;
-                case TireModelType::PAC89:
-                    csv << FR_Pac89->GetSlipAngle_internal() << FR_Pac89->GetCamberAngle_internal()
-                        << FR_Pac89->GetLongitudinalSlip_internal();
-                    break;
-                case TireModelType::PACEJKA:
-                    csv << FR_Pacejka->GetSlipAngle_internal() << FR_Pacejka->GetCamberAngle_internal()
-                        << FR_Pacejka->GetLongitudinalSlip_internal();
                     break;
             }
             csv << std::endl;

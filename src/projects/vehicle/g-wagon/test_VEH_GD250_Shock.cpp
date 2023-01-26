@@ -52,17 +52,6 @@ using namespace chrono::utils;
 using namespace chrono::vehicle;
 using namespace chrono::vehicle::gwagon;
 
-// JSON file for vehicle model
-std::string vehicle_file("hmmwv/vehicle/HMMWV_Vehicle.json");
-
-// JSON file for powertrain (simple)
-std::string simplepowertrain_file("generic/powertrain/SimplePowertrain.json");
-
-// JSON files tire models
-std::string tmeasy_tire_file("hmmwv/tire/HMMWV_TMeasy_converted.json");
-std::string fiala_tire_file("hmmwv/tire/HMMWV_Fiala_converted.json");
-std::string pacejka_tire_file("hmmwv/tire/HMMWV_pacejka.json");
-
 // Tire collision type
 ChTire::CollisionType collision_type = ChTire::CollisionType::ENVELOPE;
 

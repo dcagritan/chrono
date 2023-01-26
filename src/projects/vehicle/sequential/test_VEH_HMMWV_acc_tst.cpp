@@ -52,7 +52,7 @@ PowertrainModelType powertrain_model = PowertrainModelType::SHAFTS;
 // Drive type (FWD, RWD, or AWD)
 DrivelineTypeWV drive_type = DrivelineTypeWV::AWD;
 
-// Type of tire model (RIGID, RIGID_MESH, ANCF, REISSNER, TMEASY, PACEJKA, LUGRE, FIALA, PAC89, PAC02)
+// Type of tire model (RIGID, RIGID_MESH, ANCF, REISSNER, TMEASY, FIALA, PAC89, PAC02)
 TireModelType tire_model = TireModelType::TMEASY;
 
 // Contact method

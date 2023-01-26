@@ -23,25 +23,19 @@
 #include "chrono_thirdparty/filesystem/path.h"
 
 namespace chrono {
-    namespace vehicle {
-        namespace gwagon {
+namespace vehicle {
+namespace gwagon {
 
-// -----------------------------------------------------------------------------
-// Static variables
-// -----------------------------------------------------------------------------
+const double GD250_Wheel::m_mass = 12.0;
+const ChVector<> GD250_Wheel::m_inertia(0.240642, 0.410903, 0.240642);
 
-            const double GD250_Wheel::m_mass = 12.0;
-            const ChVector<> GD250_Wheel::m_inertia(0.240642, 0.410903, 0.240642);
+const double GD250_Wheel::m_radius = 0.2032;
+const double GD250_Wheel::m_width = 0.1524;
 
-            const double GD250_Wheel::m_radius = 0.2032;
-            const double GD250_Wheel::m_width = 0.1524;
+GD250_Wheel::GD250_Wheel(const std::string& name) : ChWheel(name) {
+    m_vis_mesh_file = "g-wagon/gd250_rim.obj";
+}
 
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-            GD250_Wheel::GD250_Wheel(const std::string& name) : ChWheel(name) {
-                m_vis_mesh_file = "g-wagon/gd250_rim.obj";
-            }
-
-        }  // end namespace uaz
-    }  // end namespace vehicle
+}  // namespace gwagon
+}  // end namespace vehicle
 }  // end namespace chrono

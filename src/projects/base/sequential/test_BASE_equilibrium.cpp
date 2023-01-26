@@ -98,12 +98,12 @@ int main(int argc, char* argv[]) {
 
     // Perform equilibrium analysis.
     std::cout << "Body1 pos: " << body1->GetPos() << std::endl;
-    auto analysis = chrono_types::make_shared<ChStaticNonLinearAnalysis>(system);
-    analysis->SetMaxIterations(50);
-    analysis->SetCorrectionTolerance(1e-4, 1e-8);
-    ///analysis->SetResidualTolerance(1e-8);
-    analysis->SetIncrementalSteps(6);
-    analysis->SetVerbose(true);
+    ChStaticNonLinearAnalysis analysis;
+    analysis.SetMaxIterations(50);
+    analysis.SetCorrectionTolerance(1e-4, 1e-8);
+    ///analysis.SetResidualTolerance(1e-8);
+    analysis.SetIncrementalSteps(6);
+    analysis.SetVerbose(true);
     system.DoStaticAnalysis(analysis);
     std::cout << "Body1 pos: " << body1->GetPos() << std::endl;
     std::cout << "Reaction force rev1: " << rev1->Get_react_force() << std::endl;

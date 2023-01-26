@@ -8,6 +8,7 @@ endif()
 
 set(FEA_DEMOS_IRR_MKL
     test_FEA_ancf_cable
+    test_FEA_ancf_cable2
     test_FEA_constraints
     test_FEA_ancf_shell
     test_FEA_ancf_beam3_Princeton

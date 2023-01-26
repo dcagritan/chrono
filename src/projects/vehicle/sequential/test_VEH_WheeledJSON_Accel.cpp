@@ -62,7 +62,7 @@ std::string vehicle_json = "generic/vehicle/Vehicle_RigidRigidSuspension.json";
 bool add_powertrain = false;
 std::string powertrain_json = "hmmwv/powertrain/HMMWV_ShaftsPowertrain.json";
 
-// Type of tire model (RIGID, RIGID_MESH, PACEJKA, LUGRE, FIALA, PAC89, PAC02, TMEASY)
+// Type of tire model (RIGID, RIGID_MESH, FIALA, PAC89, PAC02, TMEASY)
 TireModelType tire_model = TireModelType::TMEASY;
 
 enum class TerrainType { FLAT, RIGID };
