@@ -997,6 +997,8 @@ static const std::vector<ChVector2<int>> neighbors4{
 
 // Reset the list of forces, and fills it with forces from a soil contact model.
 void SCMDeformableSoil::ComputeInternalForces() {
+    m_timer_computeinternalforces.reset();
+    m_timer_computeinternalforces.start();
     // Initialize list of modified visualization mesh vertices (use any externally modified vertices)
     std::vector<int> modified_vertices = m_external_modified_vertices;
     m_external_modified_vertices.clear();
@@ -1599,6 +1601,9 @@ void SCMDeformableSoil::ComputeInternalForces() {
     }
 
     m_timer_visualization.stop();
+
+    m_timer_computeinternalforces.stop();
+    std::cout << "m_timer_computeinternalforces = " <<  m_timer_computeinternalforces() << std::endl;
 }
 
 void SCMDeformableSoil::AddMaterialToNode(double amount, NodeRecord& nr) {

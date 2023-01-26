@@ -307,26 +307,26 @@ int main(int argc, char* argv[]) {
             std::cout << "\nstart timer at t = " << time << std::endl;
             timer.start();
         }
-        if (step_number == 1400) {
-            timer.stop();
-            std::cout << "stop timer at t = " << time << std::endl;
-            std::cout << "elapsed: " << timer() << std::endl;
-            std::cout << "\nSCM stats for last step:" << std::endl;
-            terrain.PrintStepStatistics(std::cout);
-        }
+        // if (step_number == 1400) {
+        //     timer.stop();
+        //     std::cout << "stop timer at t = " << time << std::endl;
+        //     std::cout << "elapsed: " << timer() << std::endl;
+        //     std::cout << "\nSCM stats for last step:" << std::endl;
+        //     terrain.PrintStepStatistics(std::cout);
+        // }
 
-        // Render scene
-        vis->BeginScene();
-        vis->Render();
-        tools::drawColorbar(vis.get(), 0, 0.1, "Sinkage", 30, 200);
-        vis->EndScene();
+        // // Render scene
+        // vis->BeginScene();
+        // vis->Render();
+        // tools::drawColorbar(vis.get(), 0, 0.1, "Sinkage", 30, 200);
+        // vis->EndScene();
 
-        if (img_output && step_number % render_steps == 0) {
-            char filename[100];
-            sprintf(filename, "%s/img_%03d.jpg", img_dir.c_str(), render_frame + 1);
-            vis->WriteImageToFile(filename);
-            render_frame++;
-        }
+        // if (img_output && step_number % render_steps == 0) {
+        //     char filename[100];
+        //     sprintf(filename, "%s/img_%03d.jpg", img_dir.c_str(), render_frame + 1);
+        //     vis->WriteImageToFile(filename);
+        //     render_frame++;
+        // }
 
         // Driver inputs
         DriverInputs driver_inputs = driver.GetInputs();
@@ -335,11 +335,27 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         terrain.Synchronize(time);
         my_hmmwv.Synchronize(time, driver_inputs, terrain);
-        vis->Synchronize("", driver_inputs);
+        // vis->Synchronize("", driver_inputs);
 
         // Advance dynamics
         system->DoStepDynamics(step_size);
-        vis->Advance(step_size);
+        // vis->Advance(step_size);
+
+        if (step_number == 800) {
+            
+            timer.stop();
+            // std::cout << "timer = " << timer() << std::endl;
+            std::cout << "GetTimerStep = " << system->GetTimerStep() << std::endl;
+            std::cout << "GetTimerAdvance = " << system->GetTimerAdvance() << std::endl;
+            std::cout << "GetTimerLSsolve = " << system->GetTimerLSsolve() << std::endl;
+            std::cout << "GetTimerLSsetup = " << system->GetTimerLSsetup() << std::endl;
+            std::cout << "GetTimerJacobian = " << system->GetTimerJacobian() << std::endl;
+            std::cout << "GetTimerCollision = " << system->GetTimerCollision() << std::endl;
+            std::cout << "GetTimerSetup = " <<  system->GetTimerSetup() << std::endl;
+            std::cout << "GetTimerUpdate = " <<  system->GetTimerUpdate() << std::endl;
+            timer.reset();
+            break;
+        }
 
         // Increment frame number
         step_number++;
