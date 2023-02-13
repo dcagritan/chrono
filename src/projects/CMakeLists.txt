@@ -145,7 +145,7 @@ if(BUILD_PROJECTS_SYNCHRONO)
   add_subdirectory(synchrono)
 endif()
 
-option(BUILD_PROJECTS_POLARIS "Build Polaris MRZR projects" ON)
+option(BUILD_PROJECTS_POLARIS "Build Polaris projects" ON)
 mark_as_advanced(FORCE BUILD_PROJECTS_POLARIS)
 if(BUILD_PROJECTS_POLARIS)
   add_subdirectory(polaris)

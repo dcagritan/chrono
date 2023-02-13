@@ -24,7 +24,6 @@
 #include "chrono/utils/ChUtilsSamplers.h"
 #include "chrono/assets/ChTriangleMeshShape.h"
 
-#include "chrono_gpu/ChGpuData.h"
 #include "chrono_gpu/physics/ChSystemGpu.h"
 #include "chrono_gpu/utils/ChGpuJsonParser.h"
 #include "chrono_gpu/utils/ChGpuVisualization.h"
@@ -42,7 +41,7 @@ bool render = true;
 float render_fps = 2000;
 
 int main(int argc, char* argv[]) {
-    std::string inputJson = GetChronoDataFile("gpu/demo_GPU_mixer.json");
+    std::string inputJson = GetChronoDataFile("gpu/mixer.json");
     if (argc == 2) {
         inputJson = std::string(argv[1]);
     } else if (argc > 2) {
@@ -160,7 +159,7 @@ int main(int argc, char* argv[]) {
         gpu_vis.AddProxyBody(mixer);
 
         gpu_vis.SetTitle("Chrono::Gpu mixer demo");
-        gpu_vis.SetCameraPosition(ChVector<>(0, -100, 75), ChVector<>(0, 0, 0));
+        gpu_vis.UpdateCamera(ChVector<>(0, -100, 75), ChVector<>(0, 0, 0));
         gpu_vis.SetCameraMoveScale(1.0f);
         gpu_vis.Initialize();
     }

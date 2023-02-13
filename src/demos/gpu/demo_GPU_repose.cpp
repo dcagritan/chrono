@@ -20,7 +20,6 @@
 #include "chrono/core/ChGlobal.h"
 #include "chrono/utils/ChUtilsSamplers.h"
 
-#include "chrono_gpu/ChGpuData.h"
 #include "chrono_gpu/physics/ChSystemGpu.h"
 #include "chrono_gpu/utils/ChGpuJsonParser.h"
 #include "chrono_gpu/utils/ChGpuVisualization.h"
@@ -34,7 +33,7 @@ using namespace chrono::gpu;
 bool render = true;
 
 int main(int argc, char* argv[]) {
-    std::string inputJson = GetChronoDataFile("gpu/demo_GPU_repose.json");
+    std::string inputJson = GetChronoDataFile("gpu/repose.json");
     if (argc == 2) {
         inputJson = std::string(argv[1]);
     } else if (argc > 2) {
@@ -156,7 +155,7 @@ int main(int argc, char* argv[]) {
     ChGpuVisualization gpu_vis(&gpu_sys);
     if (render) {
         gpu_vis.SetTitle("Chrono::Gpu repose demo");
-        gpu_vis.SetCameraPosition(ChVector<>(0, -30, -10), ChVector<>(0, 0, -20));
+        gpu_vis.UpdateCamera(ChVector<>(0, -30, -10), ChVector<>(0, 0, -20));
         gpu_vis.SetCameraMoveScale(1.0f);
         gpu_vis.Initialize();
     }

@@ -45,7 +45,7 @@
 
 ////#undef CHRONO_IRRLICHT
 #ifdef CHRONO_IRRLICHT
-#include "chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 #endif
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
@@ -519,7 +519,7 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         m113.Synchronize(time, driver_inputs, shoe_forces_left, shoe_forces_right);
 #ifdef CHRONO_IRRLICHT
-        vis->Synchronize("", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 #endif
 
         // Advance systems

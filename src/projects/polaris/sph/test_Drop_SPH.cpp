@@ -215,7 +215,7 @@ int main(int argc, char* argv[]) {
     if (run_time_vis) {
         visFSI.SetTitle("Object drop test");
         visFSI.SetSize(1280, 720);
-        visFSI.SetCameraPosition(init_pos.pos + ChVector<>(-7, 0, 6), init_pos.pos + ChVector<>(1, 0, 0.5));
+        visFSI.UpdateCamera(init_pos.pos + ChVector<>(-7, 0, 6), init_pos.pos + ChVector<>(1, 0, 0.5));
         visFSI.SetCameraMoveScale(1.0f);
         visFSI.EnableFluidMarkers(run_time_vis_particles);
         visFSI.EnableRigidBodyMarkers(run_time_vis_bce);

@@ -17,7 +17,7 @@
 #ifndef AV_IRRAPP_H
 #define AV_IRRAPP_H
 
-#include "chrono_vehicle/utils/ChVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/ChVehicleVisualSystemIrrlicht.h"
 #include "vehicle.h"
 
 namespace av {

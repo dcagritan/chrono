@@ -27,7 +27,7 @@
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/utils/ChVehiclePath.h"
 
 #include "chrono_models/vehicle/feda/FEDA.h"
@@ -243,7 +243,7 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         terrain.Synchronize(time);
         feda.Synchronize(time, driver_inputs, terrain);
-        vis->Synchronize("Path Follower Driver", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 
 #ifdef CHRONO_POSTPROCESS
         if ((time >= T1) && (step_number % 5000 == 0)) {

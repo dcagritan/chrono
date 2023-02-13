@@ -26,7 +26,7 @@
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/utils/ChVehiclePath.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/hmmwv/HMMWV.h"
 
@@ -231,7 +231,7 @@ int main(int argc, char* argv[]) {
         hmmwv_1.Synchronize(time, driver_inputs_1, terrain);
         hmmwv_2.Synchronize(time, driver_inputs_2, terrain);
         terrain.Synchronize(time);
-        vis->Synchronize(modelname, driver_inputs_2);
+        vis->Synchronize(time, driver_inputs_2);
 
         // Advance simulation for one timestep for all modules.
         driver_1.Advance(step_size);

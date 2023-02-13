@@ -25,7 +25,7 @@
 
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/hmmwv/HMMWV.h"
 
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
         // Update modules (process inputs from other modules)
         hmmwv.Synchronize(time, driver_inputs, terrain);
         terrain.Synchronize(time);
-        vis->Synchronize(modelname, driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 
         // Advance simulation for one timestep for all modules.
         hmmwv.Advance(step_size);

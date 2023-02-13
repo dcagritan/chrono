@@ -25,7 +25,7 @@
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
-#include "chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/utils/ChVehiclePath.h"
 
 #include "chrono_models/vehicle/m113/M113_SimpleCVTPowertrain.h"
@@ -225,7 +225,7 @@ int main(int argc, char* argv[]) {
         vehicle_1.Synchronize(time, driver_inputs_1, shoe_forces_left_1, shoe_forces_right_1);
         vehicle_2.Synchronize(time, driver_inputs_2, shoe_forces_left_2, shoe_forces_right_2);
         terrain.Synchronize(time);
-        vis->Synchronize("", driver_inputs_2);
+        vis->Synchronize(time, driver_inputs_2);
 
         // Advance simulation for one timestep for all modules.
         driver_1.Advance(step_size);

@@ -37,7 +37,7 @@
 // Uncomment the following line to unconditionally disable Irrlicht support
 //#undef CHRONO_IRRLICHT
 #ifdef CHRONO_IRRLICHT
-#include "chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 #endif
 
 #include "../terrain/RigidTerrainSlope.h"
@@ -354,7 +354,7 @@ int main(int argc, char* argv[]) {
         vehicle.Synchronize(time, driver_inputs, shoe_forces_left, shoe_forces_right);
         terrain.Synchronize(time);
 #ifdef CHRONO_IRRLICHT
-        vis->Synchronize("Follower driver", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 #endif
 
         // Advance simulation for one timestep for all modules

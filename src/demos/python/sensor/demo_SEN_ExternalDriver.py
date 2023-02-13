@@ -124,7 +124,7 @@ def main():
         patch_mat.SetRestitution(0.01)
         patch_mat.SetYoungModulus(2e7)
     patch = terrain.AddPatch(patch_mat, 
-                             chrono.ChVectorD(0, 0, 0), chrono.ChVectorD(0, 0, 1), 
+                             chrono.CSYSNORM, 
                              300, 50)
     patch.SetTexture(veh.GetDataFile("terrain/textures/tile4.jpg"), 200, 200)
     patch.SetColor(chrono.ChColor(0.8, 0.8, 0.5))
@@ -200,7 +200,7 @@ def main():
         terrain.Synchronize(time)
         my_hmmwv.Synchronize(time, driver_inputs, terrain)
         if USE_IRRLICHT:
-            app.Synchronize("", driver_inputs)
+            app.Synchronize(time, driver_inputs)
 
         # Advance simulation for one timestep for all modules
         driver.Advance(step_size)

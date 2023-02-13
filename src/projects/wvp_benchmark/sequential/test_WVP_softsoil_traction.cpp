@@ -29,8 +29,8 @@
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 
 #ifdef USE_IRRLICHT
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #endif
 
 #include "chrono/motion_functions/ChFunction.h"
@@ -392,7 +392,7 @@ int main(int argc, char* argv[]) {
         terrain->Synchronize(time);
         wvp.Synchronize(time, driver_inputs, *terrain);
 #ifdef USE_IRRLICHT
-        vis->Synchronize("Follower driver", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 #endif
 
         // Advance simulation for one timestep for all modules

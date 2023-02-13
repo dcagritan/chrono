@@ -48,19 +48,19 @@ int main(int argc, char* argv[]) {
     ground->SetBodyFixed(true);
     ground->SetCollide(false);
 
-    auto body1 = chrono_types::make_shared<ChBodyEasyCylinder>(0.1, 1.0, 1000, false, true);
+    auto body1 = chrono_types::make_shared<ChBodyEasyCylinder>(0.1, 1.0, 1000);
     body1->SetPos(ChVector<>(0.5, 0, 0));
     body1->SetRot(Q_ROTATE_Y_TO_X);
     body1->GetVisualShape(0)->SetColor(ChColor(1.0f, 0.0f, 0.0f));
     system.AddBody(body1);
 
-    auto body2 = chrono_types::make_shared<ChBodyEasyCylinder>(0.1, 1.0, 1000, false, true);
+    auto body2 = chrono_types::make_shared<ChBodyEasyCylinder>(0.1, 1.0, 1000);
     body2->SetPos(ChVector<>(2.5, 0, 0));
     body2->SetRot(Q_ROTATE_Y_TO_X);
     body2->GetVisualShape(0)->SetColor(ChColor(0.0f, 1.0f, 0.0f));
     system.AddBody(body2);
 
-    auto body3 = chrono_types::make_shared<ChBodyEasyCylinder>(0.1, 2.0, 1000, false, true);
+    auto body3 = chrono_types::make_shared<ChBodyEasyCylinder>(0.1, 2.0, 1000);
     body3->SetPos(ChVector<>(2.0, 0, 0));
     body3->SetRot(Q_ROTATE_Y_TO_X);
     body3->GetVisualShape(0)->SetColor(ChColor(0.0f, 0.0f, 1.0f));
@@ -88,8 +88,8 @@ int main(int argc, char* argv[]) {
     auto spring = chrono_types::make_shared<ChLinkTSDA>();
     spring->Initialize(ground, body1, true, ChVector<>(1.5, 1, 0), ChVector<>(0, 0.5, 0));
     spring->SetRestLength(0.5);
-    spring->SetSpringCoefficient(3e2);
-    spring->SetDampingCoefficient(2e2);
+    spring->SetSpringCoefficient(2e2);
+    spring->SetDampingCoefficient(1e2);
     system.AddLink(spring);
 
     auto spring_shape = chrono_types::make_shared<ChSpringShape>(0.05, 80, 15);
@@ -99,9 +99,9 @@ int main(int argc, char* argv[]) {
     // Perform equilibrium analysis.
     std::cout << "Body1 pos: " << body1->GetPos() << std::endl;
     ChStaticNonLinearAnalysis analysis;
-    analysis.SetMaxIterations(50);
+    analysis.SetMaxIterations(150);
     analysis.SetCorrectionTolerance(1e-4, 1e-8);
-    ///analysis.SetResidualTolerance(1e-8);
+    ////analysis.SetResidualTolerance(1e-8);
     analysis.SetIncrementalSteps(6);
     analysis.SetVerbose(true);
     system.DoStaticAnalysis(analysis);

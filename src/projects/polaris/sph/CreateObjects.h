@@ -23,8 +23,6 @@
 #include "chrono_fsi/ChSystemFsi.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
-enum class PolarisModel { ORIGINAL, MODIFIED };
-
 chrono::ChCoordsys<> CreateTerrain(chrono::ChSystem& sys,
                                    chrono::fsi::ChSystemFsi& sysFSI,
                                    const std::string& terrain_dir,
@@ -35,8 +33,7 @@ chrono::ChCoordsys<> CreateTerrain(chrono::ChSystem& sys,
 std::shared_ptr<chrono::ChBezierCurve> CreatePath(const std::string& terrain_dir, double ramp_length);
 std::shared_ptr<chrono::ChBody> CreateSentinel(chrono::ChSystem& sys, const chrono::ChCoordsys<>& init_pos);
 
-std::shared_ptr<chrono::vehicle::WheeledVehicle> CreateVehicle(PolarisModel model,
-                                                               chrono::ChSystem& sys,
+std::shared_ptr<chrono::vehicle::WheeledVehicle> CreateVehicle(chrono::ChSystem& sys,
                                                                const chrono::ChCoordsys<>& init_pos);
 
 void CreateWheelBCEMarkers(std::shared_ptr<chrono::vehicle::WheeledVehicle> vehicle, chrono::fsi::ChSystemFsi& sysFSI);

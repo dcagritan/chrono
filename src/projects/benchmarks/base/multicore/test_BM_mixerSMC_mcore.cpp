@@ -126,7 +126,7 @@ void MixerTestSMC<N>::SimulateVis() {
     vis.SetWindowSize(1280, 720);
     vis.SetRenderMode(opengl::WIREFRAME);
     vis.Initialize();
-    vis.SetCameraPosition(ChVector<>(0, -2, 3), ChVector<>(0, 0, 0));
+    vis.AddCamera(ChVector<>(0, -2, 3), ChVector<>(0, 0, 0));
     vis.SetCameraVertical(CameraVerticalDir::Z);
 
     while (vis.Run()) {

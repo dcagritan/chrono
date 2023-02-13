@@ -1,5 +1,5 @@
 #=============================================================================
-# CMake configuration file for various Polaris MRZR tests
+# CMake configuration file for various Polaris tests
 #=============================================================================
 
 if(NOT ENABLE_MODULE_IRRLICHT)

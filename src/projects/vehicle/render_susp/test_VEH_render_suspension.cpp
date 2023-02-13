@@ -37,10 +37,11 @@
 #include "chrono/core/ChStream.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
-#include "chrono_vehicle/utils/ChVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/ChVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 #include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRig.h"
-#include "chrono_vehicle/wheeled_vehicle/test_rig/ChDataDriverSTR.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigInteractiveDriverIRR.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigDataDriver.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
 
@@ -108,7 +109,7 @@ int main(int argc, char* argv[]) {
 
     // Create and attach the driver system.
     std::string driver_file("hmmwv/suspensionTest/ST_inputs.dat");
-    auto driver = chrono_types::make_shared<ChDataDriverSTR>(vehicle::GetDataFile(driver_file));
+    auto driver = chrono_types::make_shared<ChSuspensionTestRigDataDriver>(vehicle::GetDataFile(driver_file));
     rig.SetDriver(driver);
 
     // Initialize suspension test rig.
@@ -141,7 +142,7 @@ int main(int argc, char* argv[]) {
         rig.Advance(step_size);
 
         // Update visualization app
-        vis->Synchronize("", {rig.GetSteeringInput(), 0, 0});
+        vis->Synchronize(rig.GetVehicle().GetChTime(), {rig.GetSteeringInput(), 0, 0});
         vis->Advance(step_size);
 
         // Save POV-Ray file once the rig is at specified ride height

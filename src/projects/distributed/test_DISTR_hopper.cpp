@@ -460,7 +460,7 @@ int main(int argc, char* argv[]) {
     vis.SetWindowSize(1280, 720);
     vis.SetRenderMode(opengl::WIREFRAME);
     vis.Initialize();
-    vis.SetCameraPosition(ChVector<>(-20 * rad_max, -100 * rad_max, 0), ChVector<>(0, 0, 0));
+    vis.AddCamera(ChVector<>(-20 * rad_max, -100 * rad_max, 0), ChVector<>(0, 0, 0));
     vis.SetCameraVertical(CameraVerticalDir::Z);
 
     for (int i = 0; vis.Run(); i++) {

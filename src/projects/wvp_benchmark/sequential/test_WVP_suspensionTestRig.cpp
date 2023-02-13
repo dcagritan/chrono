@@ -45,9 +45,9 @@
 
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRig.h"
-#include "chrono_vehicle/wheeled_vehicle/test_rig/ChIrrGuiDriverSTR.h"
-#include "chrono_vehicle/wheeled_vehicle/test_rig/ChDataDriverSTR.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigInteractiveDriverIRR.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigDataDriver.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/wvp/WVP_Vehicle.h"
 #include "chrono_models/vehicle/wvp/WVP_RigidTire.h"
@@ -117,11 +117,11 @@ int main(int argc, char* argv[]) {
     // Create and initialize the driver system.
     if (use_data_driver) {
         // Driver with inputs from file
-        auto driver = chrono_types::make_shared<ChDataDriverSTR>(vehicle::GetDataFile(driver_file));
+        auto driver = chrono_types::make_shared<ChSuspensionTestRigDataDriver>(vehicle::GetDataFile(driver_file));
         rig.SetDriver(driver);
     } else {
         // Interactive driver
-        auto driver = chrono_types::make_shared<ChIrrGuiDriverSTR>(*vis);
+        auto driver = chrono_types::make_shared<ChSuspensionTestRigInteractiveDriverIRR>(*vis);
         driver->SetSteeringDelta(1.0 / 50);
         driver->SetDisplacementDelta(1.0 / 250);
         rig.SetDriver(driver);
@@ -171,7 +171,7 @@ int main(int argc, char* argv[]) {
         rig.Advance(step_size);
 
         // Update visualization app
-        vis->Synchronize(rig.GetDriverMessage(), {rig.GetSteeringInput(), 0, 0});
+        vis->Synchronize(rig.GetVehicle().GetChTime(), {rig.GetSteeringInput(), 0, 0});
         vis->Advance(step_size);
 
         // Increment frame number

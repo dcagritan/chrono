@@ -12,7 +12,7 @@
 // Authors: Radu Serban
 // =============================================================================
 //
-// Main driver function for a Polaris MRZR specified through JSON files.
+// Main driver function for a Polaris specified through JSON files.
 //
 // The vehicle reference frame has Z up, X towards the front of the vehicle, and
 // Y pointing to the left.
@@ -31,7 +31,7 @@
 
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledTrailer.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
 
@@ -40,22 +40,13 @@ using namespace chrono::vehicle;
 
 // =============================================================================
 
-enum class MRZR_MODEL { ORIGINAL, MODIFIED };
-
-MRZR_MODEL model = MRZR_MODEL::MODIFIED;
-
-// -----------------------------------------------------------------------------
-
 int main(int argc, char* argv[]) {
-    std::string model_dir = (model == MRZR_MODEL::ORIGINAL) ? "mrzr/JSON_orig/" : "mrzr/JSON_new/";
-
-    std::string vehicle_json = model_dir + "vehicle/MRZR.json";
-    ////std::string powertrain_json = model_dir + "powertrain/MRZR_SimplePowertrain.json";
-    std::string powertrain_json = model_dir + "powertrain/MRZR_SimpleMapPowertrain.json";
-
-    ////std::string tire_json = model_dir + "tire/MRZR_RigidTire.json";
-    std::string tire_json = model_dir + "tire/MRZR_TMeasyTire.json";
-    ////std::string tire_json = model_dir + "tire/MRZR_Pac02Tire.json";
+    std::string vehicle_json = "Polaris/Polaris.json";
+    ////std::string powertrain_json = "Polaris/Polaris_SimplePowertrain.json";
+    std::string powertrain_json = "Polaris/Polaris_SimpleMapPowertrain.json";
+    ////std::string tire_json = "Polaris/Polaris_RigidTire.json";
+    std::string tire_json = "Polaris/Polaris_TMeasyTire.json";
+    ////std::string tire_json = "Polaris/Polaris_Pac02Tire.json";
 
     // Create the vehicle system
     auto contact_method = ChContactMethod::SMC;
@@ -144,7 +135,7 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         vehicle.Synchronize(time, driver_inputs, terrain);
         terrain.Synchronize(time);
-        vis->Synchronize("Polaris MRZR", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 
         // Advance simulation for one timestep for all modules
         driver.Advance(step_size);

@@ -26,7 +26,7 @@
 #include "chrono/utils/ChUtilsCreators.h"
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono/assets/ChObjFileShape.h"
+#include "chrono/assets/ChModelFileShape.h"
 
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
 #include "chrono_sensor/ChSensorManager.h"
@@ -224,7 +224,7 @@ int main(int argc, char* argv[]) {
     float intensity = 1.0;
     auto manager = chrono_types::make_shared<ChSensorManager>(&sys);
     manager->scene->AddPointLight({100, 100, 100}, {intensity, intensity, intensity}, 500);
-    manager->scene->SetAmbientLight({.1, .1, .1});
+    manager->scene->SetAmbientLight({0.1f, 0.1f, 0.1f});
     Background b;
     b.mode = BackgroundMode::ENVIRONMENT_MAP;
     b.env_tex = GetChronoDataFile("sensor/textures/quarry_01_4k.hdr");

@@ -263,7 +263,7 @@ int main(int argc, char* argv[]) {
     vis.SetWindowSize(1280, 720);
     vis.SetRenderMode(opengl::WIREFRAME);
     vis.Initialize();
-    vis.SetCameraPosition(initLoc - ChVector<>(3.5, 4, 0), initLoc - ChVector<>(3.5, 0, 0));
+    vis.AddCamera(initLoc - ChVector<>(3.5, 4, 0), initLoc - ChVector<>(3.5, 0, 0));
     vis.SetCameraVertical(CameraVerticalDir::Z);
 
     // Number of simulation steps between two 3D view render frames
