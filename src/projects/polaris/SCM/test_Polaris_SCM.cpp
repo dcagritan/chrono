@@ -88,7 +88,7 @@ float cr_t = 0.1f;
 float mu_t = 0.8f;
 
 // Initial vehicle position and orientation
-ChVector<> initLoc(-3, 0, 2.0);
+ChVector<> initLoc(-3, 0, 0.5);
 ChQuaternion<> initRot(1, 0, 0, 0);
 ChCoordsys<> init_pos(initLoc, initRot);
 
@@ -97,10 +97,10 @@ ChCoordsys<> init_pos(initLoc, initRot);
 // -----------------------------------------------------------------------------
 
 // Simulation step size
-double step_size = 1e-3;
+double step_size = 5e-4;
 
 // Time interval between two render frames (1/FPS)
-double render_step_size = 2.0 / 100;
+double render_step_size = 5e-4;
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
@@ -225,14 +225,14 @@ int main(int argc, char* argv[]) {
     ////terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
     terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
 
-    // terrain.Initialize(terrainLength, terrainWidth, delta);
-    terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
-                    terrainLength ,                       ///< [in] terrain dimension in the X direction
-                    terrainWidth,                       ///< [in] terrain dimension in the Y direction
-                    0.0,                        ///< [in] minimum height (black level)
-                    1.5,                        ///< [in] maximum height (white level)
-                    delta                        ///< [in] grid spacing (may be slightly decreased)
-    );
+    terrain.Initialize(terrainLength, terrainWidth, delta);
+    // terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
+    //                 terrainLength ,                       ///< [in] terrain dimension in the X direction
+    //                 terrainWidth,                       ///< [in] terrain dimension in the Y direction
+    //                 0.0,                        ///< [in] minimum height (black level)
+    //                 1.5,                        ///< [in] maximum height (white level)
+    //                 delta                        ///< [in] grid spacing (may be slightly decreased)
+    // );
 
 
     // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";
