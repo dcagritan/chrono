@@ -68,7 +68,7 @@ MRZR_MODEL model = MRZR_MODEL::MODIFIED;
 double target_speed = 7;
 
 // NN model
-std::string NN_module_name = "terrain/sph/wrapped_gnn_cpu.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu.pt";
 
 // Initial vehicle position and orientation
 ChVector<> initLoc(0, 0, 0.05);
@@ -464,15 +464,12 @@ void NNterrain::Advance(double step) {
 
 // -----------------------------------------------------------------------------
 
+
 std::shared_ptr<WheeledVehicle> CreateVehicle(ChSystem& sys, const ChCoordsys<>& init_pos) {
-    std::string model_dir = (model == MRZR_MODEL::ORIGINAL) ? "mrzr/JSON_orig/" : "mrzr/JSON_new/";
-
-    std::string vehicle_json = model_dir + "vehicle/MRZR.json";
-    ////std::string powertrain_json = model_dir + "powertrain/MRZR_SimplePowertrain.json";
-    std::string powertrain_json = model_dir + "powertrain/MRZR_SimpleMapPowertrain.json";
-    std::string tire_json = model_dir + "tire/MRZR_RigidTire.json";
-
-    std::string tire_coll_obj = "mrzr/meshes_new/Polaris_tire_collision.obj";
+    std::string vehicle_json = "Polaris/Polaris.json";
+    ////std::string powertrain_json = "Polaris/Polaris_SimplePowertrain.json";
+    std::string powertrain_json = "Polaris/Polaris_SimpleMapPowertrain.json";
+    std::string tire_json = "Polaris/Polaris_RigidTire.json";
 
     // Create and initialize the vehicle
     auto vehicle = chrono_types::make_shared<WheeledVehicle>(&sys, vehicle::GetDataFile(vehicle_json));
