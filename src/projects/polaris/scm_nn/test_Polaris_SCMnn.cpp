@@ -142,7 +142,7 @@ class NNterrain : public ChTerrain {
     std::array<size_t, 4> m_num_particles;
 
     torch::jit::script::Module module;
-    std::array<std::vector<ChVector<>>, 4> m_particle_forces;
+    std::array<std::vector<ChVector<>>, 4> m_particle_displacements;
     std::array<TerrainForce, 4> m_tire_forces;
 
     ChTimer<> m_timer_data_in;
@@ -299,16 +299,11 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
         auto part_pos = torch::empty({(int)m_num_particles[i], 3}, torch::kFloat32);
         auto part_vel = torch::empty({(int)m_num_particles[i], 3}, torch::kFloat32);
         float* part_pos_data = part_pos.data<float>();
-        float* part_vel_data = part_vel.data<float>();
         for (const auto& part : m_wheel_particles[i]) {
             ChVector<float> p(part->GetPos());
             *part_pos_data++ = p.x();
             *part_pos_data++ = p.y();
             *part_pos_data++ = p.z();
-            ChVector<float> v(part->GetPos_dt());
-            *part_vel_data++ = v.x();
-            *part_vel_data++ = v.y();
-            *part_vel_data++ = v.z();
 
             if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
                 w_contact[i] = true;
@@ -352,7 +347,6 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
         // Prepare the tuple input for this wheel
         std::vector<torch::jit::IValue> tuple;
         tuple.push_back(part_pos);
-        tuple.push_back(part_vel);
         tuple.push_back(w_pos_t);
         tuple.push_back(w_rot_t);
         tuple.push_back(w_linvel_t);
@@ -361,12 +355,6 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
         // Add this wheel's tuple to NN model inputs
         inputs.push_back(torch::ivalue::Tuple::create(tuple));
     }
-
-    // Load vehicle data (1 tensor)
-    auto drv_inputs = torch::tensor(
-        {(float)driver_inputs.m_steering, (float)driver_inputs.m_throttle, (float)driver_inputs.m_braking},
-        torch::kFloat32);
-    inputs.push_back(drv_inputs);
 
     // Verbose flag
     inputs.push_back(m_verbose);
@@ -411,14 +399,14 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
     // Loop over all vehicle wheels
     for (int i = 0; i < 4; i++) {
         // Outputs for this wheel
-        const auto& part_frc = outputs.toTuple()->elements()[i].toTensor();
+        const auto& part_disp = outputs.toTuple()->elements()[i].toTensor();
         const auto& tire_frc = outputs.toTuple()->elements()[i + 4].toTensor();
 
-        // Extract particle forces
-        m_particle_forces[i].resize(m_num_particles[i]);
+        // Extract particle displacements
+        m_particle_displacements[i].resize(m_num_particles[i]);
         for (size_t j = 0; j < m_num_particles[i]; j++) {
-            m_particle_forces[i][j] =
-                ChVector<>(part_frc[j][0].item<float>(), part_frc[j][1].item<float>(), part_frc[j][2].item<float>());
+            m_particle_displacements[i][j] =
+                ChVector<>(part_disp[j][0].item<float>(), part_disp[j][1].item<float>(), part_disp[j][2].item<float>());  
         }
 
         // Extract tire forces
@@ -448,10 +436,8 @@ void NNterrain::Advance(double step) {
     double step2 = step * step / 2;
     for (int i = 0; i < 4; i++) {
         for (size_t j = 0; j < m_num_particles[i]; j++) {
-            auto v = m_wheel_particles[i][j]->GetPos_dt() + m_particle_forces[i][j] * step;
-            auto p = m_wheel_particles[i][j]->GetPos() + v * step + m_particle_forces[i][j] * step2;
+            auto p = m_wheel_particles[i][j]->GetPos()+m_particle_displacements[i][j];
             m_wheel_particles[i][j]->SetPos(p);
-            m_wheel_particles[i][j]->SetPos_dt(v);
         }
     }
 }
