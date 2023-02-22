@@ -44,7 +44,7 @@ message(STATUS "TorchCluster_INCLUDE_DIR ${TorchCluster_INCLUDE_DIR}")
 #--------------------------------------------------------------
 
 
-set(PROGRAM test_Polaris_SPHnn)
+set(PROGRAM test_Polaris_SCMnn)
 
 message(STATUS "...add ${PROGRAM}")
 
