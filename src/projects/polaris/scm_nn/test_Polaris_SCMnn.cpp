@@ -45,11 +45,6 @@
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
 
-// #include <torch/torch.h>
-// #include <torch/script.h>
-// #include <torchscatter/scatter.h>
-// #include <torchcluster/cluster.h>
-
 using namespace chrono;
 using namespace chrono::vehicle;
 
@@ -63,8 +58,6 @@ using std::endl;
 // Speed controller target speed (in m/s)
 double target_speed = 7;
 
-// // NN model
-// std::string NN_module_name = "terrain/scm/wrapped_gnn_markers_cpu.pt";
 
 // -----------------------------------------------------------------------------
 
@@ -141,7 +134,6 @@ class NNterrain : public ChTerrain {
     std::array<std::vector<ChAparticle*>, 4> m_wheel_particles;
     std::array<size_t, 4> m_num_particles;
 
-    // torch::jit::script::Module module;
     std::array<std::vector<ChVector<>>, 4> m_particle_displacements;
     std::array<TerrainForce, 4> m_tire_forces;
 
@@ -168,26 +160,6 @@ NNterrain::NNterrain(ChSystem& sys, std::shared_ptr<WheeledVehicle> vehicle)
     m_box_offset = ChVector<>(0.0, 0.0, 0.0);
 }
 
-// bool NNterrain::Load(const std::string& pt_file) {
-//     std::cout << "cuda version " << scatter::cuda_version() << std::endl;
-//     torch::Tensor tensor = torch::eye(3);
-//     std::cout << tensor << std::endl;
-
-//     std::ifstream is(pt_file, std::ios_base::binary);
-//     try {
-//         // Deserialize the ScriptModule from a file using torch::jit::load().
-//         module = torch::jit::load(is);
-//     } catch (const c10::Error& e) {
-//         cerr << "Load error: " << e.msg() << endl;
-//         return false;
-//     } catch (const std::exception& e) {
-//         cerr << "Load error other: " << e.what() << endl;
-//         return false;
-//     }
-//     cout << "Loaded model " << pt_file << endl;
-//     is.close();
-//     return true;
-// }
 
 void NNterrain::Create(const std::string& terrain_dir, bool vis) {
     m_particles = chrono_types::make_shared<ChParticleCloud>();
@@ -253,7 +225,6 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
 
     // Prepare NN model inputs
     const auto& p_all = m_particles->GetParticles();
-    // std::vector<torch::jit::IValue> inputs;
 
     m_timer_data_in.start();
 
@@ -294,27 +265,6 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
             return;
         }
 
-        // // Load particle positions and velocities
-        // w_contact[i] = false;
-        // auto part_pos = torch::empty({(int)m_num_particles[i], 3}, torch::kFloat32);
-        // auto part_vel = torch::empty({(int)m_num_particles[i], 3}, torch::kFloat32);
-        // float* part_pos_data = part_pos.data<float>();
-        // for (const auto& part : m_wheel_particles[i]) {
-        //     ChVector<float> p(part->GetPos());
-        //     *part_pos_data++ = p.x();
-        //     *part_pos_data++ = p.y();
-        //     *part_pos_data++ = p.z();
-
-        //     if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
-        //         w_contact[i] = true;
-        // }
-
-        // // Load wheel position, orientation, linear velocity, and angular velocity
-        // auto w_pos_t = torch::from_blob((void*)w_pos[i].data(), {3}, torch::kFloat32);
-        // auto w_rot_t = torch::from_blob((void*)w_rot[i].data(), {4}, torch::kFloat32);
-        // auto w_linvel_t = torch::from_blob((void*)w_linvel[i].data(), {3}, torch::kFloat32);
-        // auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
-
 #if 0
         if (i == 0) {
             std::cout << "------------------" << std::endl;
@@ -344,24 +294,11 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
         }
 #endif
 
-        // Prepare the tuple input for this wheel
-        // std::vector<torch::jit::IValue> tuple;
-        // tuple.push_back(part_pos);
-        // tuple.push_back(w_pos_t);
-        // tuple.push_back(w_rot_t);
-        // tuple.push_back(w_linvel_t);
-        // tuple.push_back(w_angvel_t);
-
-        // // Add this wheel's tuple to NN model inputs
-        // inputs.push_back(torch::ivalue::Tuple::create(tuple));
     }
 
-    // Verbose flag
-    // inputs.push_back(m_verbose);
 
     m_timer_data_in.stop();
 
-    // Invoke NN model
 
 #if 0
     for (int i = 0; i < 4; i++) {
@@ -379,18 +316,6 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
     }
 #endif
 
-    m_timer_model_eval.start();
-    // torch::jit::IValue outputs;
-    // try {
-    //     outputs = module.forward(inputs);
-    // } catch (const c10::Error& e) {
-    //     cerr << "Execute error: " << e.msg() << endl;
-    //     return;
-    // } catch (const std::exception& e) {
-    //     cerr << "Execute error other: " << e.what() << endl;
-    //     return;
-    // }
-    m_timer_model_eval.stop();
 
     // Extract outputs
 
@@ -398,9 +323,6 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
 
     // Loop over all vehicle wheels
     for (int i = 0; i < 4; i++) {
-        // Outputs for this wheel
-        // const auto& part_disp = outputs.toTuple()->elements()[i].toTensor();
-        // const auto& tire_frc = outputs.toTuple()->elements()[i + 4].toTensor();
 
         // Extract particle displacements
         m_particle_displacements[i].resize(m_num_particles[i]);
@@ -537,9 +459,6 @@ int main(int argc, char* argv[]) {
     NNterrain terrain(sys, vehicle);
     terrain.SetVerbose(verbose_nn);
     terrain.Create(terrain_dir);
-    // if (!terrain.Load(vehicle::GetDataFile(NN_module_name))) {
-    //     return 1;
-    // }
 
 #ifdef CHRONO_OPENGL
     opengl::ChVisualSystemOpenGL vis;
@@ -584,12 +503,6 @@ int main(int argc, char* argv[]) {
         } else {
             ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 1) / 0.5);
         }
-
-        // if (verbose)
-        //     cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
-        //          << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
-        //          << "   timers = " << terrain.GetTimerDataIn() << " " << terrain.GetTimerModelEval() << " "
-        //          << terrain.GetTimerDataOut() << endl;
 
         if (verbose)
             cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
