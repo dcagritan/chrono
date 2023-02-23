@@ -45,10 +45,10 @@
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include <torch/torch.h>
-#include <torch/script.h>
-#include <torchscatter/scatter.h>
-#include <torchcluster/cluster.h>
+// #include <torch/torch.h>
+// #include <torch/script.h>
+// #include <torchscatter/scatter.h>
+// #include <torchcluster/cluster.h>
 
 using namespace chrono;
 using namespace chrono::vehicle;
@@ -63,8 +63,8 @@ using std::endl;
 // Speed controller target speed (in m/s)
 double target_speed = 7;
 
-// NN model
-std::string NN_module_name = "terrain/scm/wrapped_gnn_markers_cpu.pt";
+// // NN model
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_markers_cpu.pt";
 
 // -----------------------------------------------------------------------------
 
@@ -141,7 +141,7 @@ class NNterrain : public ChTerrain {
     std::array<std::vector<ChAparticle*>, 4> m_wheel_particles;
     std::array<size_t, 4> m_num_particles;
 
-    torch::jit::script::Module module;
+    // torch::jit::script::Module module;
     std::array<std::vector<ChVector<>>, 4> m_particle_displacements;
     std::array<TerrainForce, 4> m_tire_forces;
 
@@ -168,26 +168,26 @@ NNterrain::NNterrain(ChSystem& sys, std::shared_ptr<WheeledVehicle> vehicle)
     m_box_offset = ChVector<>(0.0, 0.0, 0.0);
 }
 
-bool NNterrain::Load(const std::string& pt_file) {
-    std::cout << "cuda version " << scatter::cuda_version() << std::endl;
-    torch::Tensor tensor = torch::eye(3);
-    std::cout << tensor << std::endl;
+// bool NNterrain::Load(const std::string& pt_file) {
+//     std::cout << "cuda version " << scatter::cuda_version() << std::endl;
+//     torch::Tensor tensor = torch::eye(3);
+//     std::cout << tensor << std::endl;
 
-    std::ifstream is(pt_file, std::ios_base::binary);
-    try {
-        // Deserialize the ScriptModule from a file using torch::jit::load().
-        module = torch::jit::load(is);
-    } catch (const c10::Error& e) {
-        cerr << "Load error: " << e.msg() << endl;
-        return false;
-    } catch (const std::exception& e) {
-        cerr << "Load error other: " << e.what() << endl;
-        return false;
-    }
-    cout << "Loaded model " << pt_file << endl;
-    is.close();
-    return true;
-}
+//     std::ifstream is(pt_file, std::ios_base::binary);
+//     try {
+//         // Deserialize the ScriptModule from a file using torch::jit::load().
+//         module = torch::jit::load(is);
+//     } catch (const c10::Error& e) {
+//         cerr << "Load error: " << e.msg() << endl;
+//         return false;
+//     } catch (const std::exception& e) {
+//         cerr << "Load error other: " << e.what() << endl;
+//         return false;
+//     }
+//     cout << "Loaded model " << pt_file << endl;
+//     is.close();
+//     return true;
+// }
 
 void NNterrain::Create(const std::string& terrain_dir, bool vis) {
     m_particles = chrono_types::make_shared<ChParticleCloud>();
