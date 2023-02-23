@@ -585,11 +585,16 @@ int main(int argc, char* argv[]) {
             ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 1) / 0.5);
         }
 
+        // if (verbose)
+        //     cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
+        //          << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
+        //          << "   timers = " << terrain.GetTimerDataIn() << " " << terrain.GetTimerModelEval() << " "
+        //          << terrain.GetTimerDataOut() << endl;
+
         if (verbose)
             cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
                  << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
-                 << "   timers = " << terrain.GetTimerDataIn() << " " << terrain.GetTimerModelEval() << " "
-                 << terrain.GetTimerDataOut() << endl;
+                 << endl;         
 
         // Synchronize subsystems
         driver.Synchronize(t);
