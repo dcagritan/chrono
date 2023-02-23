@@ -18,28 +18,6 @@ if(ENABLE_MODULE_PARDISO_MKL)
     list(APPEND LIBRARIES "ChronoEngine_pardisomkl")
 endif()
 
-#--------------------------------------------------------------
-
-find_package(Torch QUIET)
-if(NOT Torch_FOUND)
-  message(STATUS "Torch package not found - disabling Polaris NN test")
-  return()
-endif()
-
-find_package(TorchCluster QUIET)
-if(NOT TorchCluster_FOUND)
-  message(STATUS "TorchCluster package not found - disabling Polaris NN test")
-  return()
-endif()
-
-find_package(TorchScatter QUIET)
-if(NOT TorchScatter_FOUND)
-  message(STATUS "TorchScatter package not found - disabling Polaris NN test")
-  return()
-endif()
-
-message(STATUS "TorchScatter_INCLUDE_DIR ${TorchScatter_INCLUDE_DIR}")
-message(STATUS "TorchCluster_INCLUDE_DIR ${TorchCluster_INCLUDE_DIR}")
 
 #--------------------------------------------------------------
 
@@ -59,10 +37,5 @@ set_target_properties(${PROGRAM} PROPERTIES
 set_property(TARGET ${PROGRAM} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
 
-target_include_directories(${PROGRAM} PRIVATE ${TorchScatter_INCLUDE_DIR})
-target_include_directories(${PROGRAM} PRIVATE ${TorchCluster_INCLUDE_DIR})
 
 target_link_libraries(${PROGRAM} ${LIBRARIES})
-target_link_libraries(${PROGRAM} ${TORCH_LIBRARIES})
-target_link_libraries(${PROGRAM} TorchScatter::TorchScatter)
-target_link_libraries(${PROGRAM} TorchCluster::TorchCluster)
