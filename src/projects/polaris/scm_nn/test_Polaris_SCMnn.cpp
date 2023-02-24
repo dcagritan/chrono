@@ -445,14 +445,14 @@ int main(int argc, char* argv[]) {
     ChCoordsys<> init_pos(ChVector<>(4, 0, 0.02 + 4 * std::sin(slope)), Q_from_AngX(banking) * Q_from_AngY(-slope));
     auto vehicle = CreateVehicle(sys, init_pos);
 
-    // Create driver
-    auto path = ChBezierCurve::read(vehicle::GetDataFile(terrain_dir + "/path.txt"));
-    double x_max = path->getPoint(path->getNumPoints() - 1).x() - 3.0;
-    ChPathFollowerDriver driver(*vehicle, path, "my_path", target_speed);
-    driver.GetSteeringController().SetLookAheadDistance(2.0);
-    driver.GetSteeringController().SetGains(1.0, 0, 0);
-    driver.GetSpeedController().SetGains(0.6, 0.05, 0);
-    driver.Initialize();
+    // // Create driver
+    // auto path = ChBezierCurve::read(vehicle::GetDataFile(terrain_dir + "/path.txt"));
+    // double x_max = path->getPoint(path->getNumPoints() - 1).x() - 3.0;
+    // ChPathFollowerDriver driver(*vehicle, path, "my_path", target_speed);
+    // driver.GetSteeringController().SetLookAheadDistance(2.0);
+    // driver.GetSteeringController().SetGains(1.0, 0, 0);
+    // driver.GetSpeedController().SetGains(0.6, 0.05, 0);
+    // driver.Initialize();
 
     // Create terrain
     cout << "Create terrain..." << endl;
@@ -491,18 +491,21 @@ int main(int argc, char* argv[]) {
 #endif
 
         // Stop before end of patch
-        if (vehicle->GetPos().x() > x_max)
-            break;
+        // if (vehicle->GetPos().x() > x_max)
+        //     break;
 
-        // Set current driver inputs
-        driver_inputs = driver.GetInputs();
+        // // Set current driver inputs
+        // driver_inputs = driver.GetInputs();
 
-        if (t < 1) {
-            driver_inputs.m_throttle = 0;
-            driver_inputs.m_braking = 1;
-        } else {
-            ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 1) / 0.5);
-        }
+        // if (t < 1) {
+        //     driver_inputs.m_throttle = 0;
+        //     driver_inputs.m_braking = 1;
+        // } else {
+        //     ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 1) / 0.5);
+        // }
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 1.0;
+        driver_inputs.m_braking = 1.0;
 
         if (verbose)
             cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
@@ -510,12 +513,12 @@ int main(int argc, char* argv[]) {
                  << endl;         
 
         // Synchronize subsystems
-        driver.Synchronize(t);
+        // driver.Synchronize(t);
         vehicle->Synchronize(t, driver_inputs, terrain);
         terrain.Synchronize(t, driver_inputs);
 
         // Advance system state
-        driver.Advance(step_size);
+        // driver.Advance(step_size);
         terrain.Advance(step_size);
         sys.DoStepDynamics(step_size);
         t += step_size;
