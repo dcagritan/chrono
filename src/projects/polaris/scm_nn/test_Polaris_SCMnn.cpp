@@ -55,47 +55,39 @@ using std::endl;
 
 // -----------------------------------------------------------------------------
 
-// Speed controller target speed (in m/s)
-double target_speed = 7;
+// // Speed controller target speed (in m/s)
+// double target_speed = 7;
 
 
-// -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
 
 bool GetProblemSpecs(int argc,
                      char** argv,
                      std::string& terrain_dir,
+                     double& density,
+                     double& cohesion,
+                     double& friction,
+                     double& youngs_modulus,
+                     double& poisson_ratio,
+                     double& ramp_length,
+                     double& target_speed,
                      double& tend,
+                     double& step_size,
+                     double& active_box_dim,
+                     double& output_major_fps,
+                     double& output_minor_fps,
+                     int& output_frames,
+                     int& particle_output,
+                     bool& wheel_output,
+                     double& filter_window_vel,
+                     double& filter_window_acc,
+                     double& vis_output_fps,
                      bool& run_time_vis,
-                     bool& verbose,
-                     bool& verbose_nn) {
-    ChCLI cli(argv[0], "Polaris SPH terrain simulation");
-
-    cli.AddOption<std::string>("", "terrain_dir", "Directory with terrain specification data");
-    cli.AddOption<double>("", "tend", "Simulation end time [s]", std::to_string(tend));
-    cli.AddOption<bool>("", "quiet", "Disable all messages during simulation");
-    cli.AddOption<bool>("", "quiet_nn", "Disable all messages from NN model");
-    cli.AddOption<bool>("", "run_time_vis", "Enable run-time visualization");
-
-    if (!cli.Parse(argc, argv)) {
-        cli.Help();
-        return false;
-    }
-
-    try {
-        terrain_dir = cli.Get("terrain_dir").as<std::string>();
-    } catch (std::domain_error&) {
-        cout << "\nERROR: Missing terrain specification directory!\n\n" << endl;
-        cli.Help();
-        return false;
-    }
-
-    run_time_vis = cli.GetAsType<bool>("run_time_vis");
-    tend = cli.GetAsType<double>("tend");
-    verbose = !cli.GetAsType<bool>("quiet");
-    verbose_nn = !cli.GetAsType<bool>("quiet_nn");
-
-    return true;
-}
+                     bool& run_time_vis_particles,
+                     bool& run_time_vis_bce,
+                     double& run_time_vis_fps,
+                     bool& chase_cam,
+                     bool& verbose);
 
 // -----------------------------------------------------------------------------
 
@@ -112,14 +104,14 @@ class ProxyTire : public RigidTire {
 class NNterrain : public ChTerrain {
   public:
     NNterrain(ChSystem& sys, std::shared_ptr<WheeledVehicle> vehicle);
-    bool Load(const std::string& pt_file);
+    // bool Load(const std::string& pt_file);
     void Create(const std::string& terrain_dir, bool vis = true);
     void Synchronize(double time, const DriverInputs& driver_inputs);
-    virtual void Advance(double step) override;
+    // virtual void Advance(double step) override;
 
-    double GetTimerDataIn() { return m_timer_data_in(); }
-    double GetTimerModelEval() { return m_timer_model_eval(); }
-    double GetTimerDataOut() { return m_timer_data_out(); }
+    // double GetTimerDataIn() { return m_timer_data_in(); }
+    // double GetTimerModelEval() { return m_timer_model_eval(); }
+    // double GetTimerDataOut() { return m_timer_data_out(); }
 
     void SetVerbose(bool val) { m_verbose = val; }
 
@@ -144,6 +136,14 @@ class NNterrain : public ChTerrain {
     bool m_verbose;
 };
 
+// NNterrain::NNterrain(ChSystem& sys)
+//     : m_sys(sys), m_verbose(true) {
+//     // m_box_size.x() = 2.0 * std::sqrt(3.0);
+//     // m_box_size.y() = 1.5;
+//     // m_box_size.z() = 0.2;
+//     // m_box_offset = ChVector<>(0.0, 0.0, 0.0);
+// }
+
 NNterrain::NNterrain(ChSystem& sys, std::shared_ptr<WheeledVehicle> vehicle)
     : m_sys(sys), m_vehicle(vehicle), m_verbose(true) {
     m_wheels[0] = vehicle->GetWheel(0, LEFT);
@@ -161,9 +161,11 @@ NNterrain::NNterrain(ChSystem& sys, std::shared_ptr<WheeledVehicle> vehicle)
 }
 
 
+
 void NNterrain::Create(const std::string& terrain_dir, bool vis) {
     m_particles = chrono_types::make_shared<ChParticleCloud>();
     m_particles->SetFixed(true);
+    m_particles->SetCollide(false);
 
     int num_particles = 0;
     ChVector<> marker;
@@ -180,8 +182,8 @@ void NNterrain::Create(const std::string& terrain_dir, bool vis) {
         }
         m_particles->AddParticle(ChCoordsys<>(marker));
         num_particles++;
-
-        if (num_particles > 1000000)
+        // if (num_particles > 1000000)
+        if (num_particles > 10000)
             break;
     }
     is.close();
@@ -192,11 +194,12 @@ void NNterrain::Create(const std::string& terrain_dir, bool vis) {
         m_particles->AddVisualShape(sph);
     }
 
-    m_sys.Add(m_particles);
+    // m_sys.Add(m_particles);
 
     // Initial size of sampling box particle vectors
     for (int i = 0; i < 4; i++)
         m_wheel_particles[i].resize(num_particles);
+
 }
 
 struct in_box {
@@ -259,11 +262,13 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
                                 in_box(box_pos, box_rot, m_box_size));
         m_num_particles[i] = (size_t)(end - m_wheel_particles[i].begin());
         m_wheel_particles[i].resize(m_num_particles[i]);
+        std::cout<<"i= "<<i<<"m_num_particles= "<<m_num_particles[i]<<std::endl;
 
-        // Do nothing if no particles under a wheel
-        if (m_num_particles[i] == 0) {
-            return;
-        }
+        // // Do nothing if no particles under a wheel
+        // if (m_num_particles[i] == 0) {
+        //     std::cout<<"retrning"<<std::endl;
+        //     return;
+        // }
 
 #if 0
         if (i == 0) {
@@ -324,16 +329,16 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
     // Loop over all vehicle wheels
     for (int i = 0; i < 4; i++) {
 
-        // Extract particle displacements
-        m_particle_displacements[i].resize(m_num_particles[i]);
-        for (size_t j = 0; j < m_num_particles[i]; j++) {
-            m_particle_displacements[i][j] =
-                ChVector<>(0.0, 0.0, -0.01); 
-        }
+        // // Extract particle displacements
+        // m_particle_displacements[i].resize(m_num_particles[i]);
+        // for (size_t j = 0; j < m_num_particles[i]; j++) {
+        //     m_particle_displacements[i][j] =
+        //         ChVector<>(0.0, 0.0, -0.01); 
+        // }
 
         // Extract tire forces
         m_tire_forces[i].force =
-            ChVector<>(0.0,0.0,1000.0);
+            ChVector<>(0.0,0.0,0.0);
             // ChVector<>(tire_frc[0].item<float>(), tire_frc[1].item<float>(), tire_frc[2].item<float>());
         m_tire_forces[i].moment =
             ChVector<>(0.0,0.0,0.0);
@@ -349,22 +354,22 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
     m_timer_data_out.stop();
 }
 
-void NNterrain::Advance(double step) {
-    // Do nothing if there is at least one sampling box with no particles
-    auto product = std::accumulate(m_num_particles.begin(), m_num_particles.end(), 1, std::multiplies<int>());
-    if (product == 0)
-        return;
+// void NNterrain::Advance(double step) {
+//     // Do nothing if there is at least one sampling box with no particles
+//     auto product = std::accumulate(m_num_particles.begin(), m_num_particles.end(), 1, std::multiplies<int>());
+//     if (product == 0)
+//         return;
 
-    // Update state of particles in sampling boxes.
-    // Assume mass=1 for all particles.
-    double step2 = step * step / 2;
-    for (int i = 0; i < 4; i++) {
-        for (size_t j = 0; j < m_num_particles[i]; j++) {
-            auto p = m_wheel_particles[i][j]->GetPos()+m_particle_displacements[i][j];
-            m_wheel_particles[i][j]->SetPos(p);
-        }
-    }
-}
+//     // Update state of particles in sampling boxes.
+//     // Assume mass=1 for all particles.
+//     double step2 = step * step / 2;
+//     for (int i = 0; i < 4; i++) {
+//         for (size_t j = 0; j < m_num_particles[i]; j++) {
+//             auto p = m_wheel_particles[i][j]->GetPos()+m_particle_displacements[i][j];
+//             m_wheel_particles[i][j]->SetPos(p);
+//         }
+//     }
+// }
 
 // -----------------------------------------------------------------------------
 
@@ -397,18 +402,52 @@ std::shared_ptr<WheeledVehicle> CreateVehicle(ChSystem& sys, const ChCoordsys<>&
 
     return vehicle;
 }
-
 int main(int argc, char* argv[]) {
-    // Parse command line arguments
+    GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+
     std::string terrain_dir;
+
+    double density = 1700;
+    double cohesion = 5e3;
+    double friction = 0.8;
+    double youngs_modulus = 1e6;
+    double poisson_ratio = 0.3;
+    
+    double ramp_length = 0.0;
+    double target_speed = 7.0;
     double tend = 30;
-    bool run_time_vis = false;
+    double step_size = 5e-4;
+    double active_box_dim = 0.5;
+
+    double output_major_fps = 20;
+    double output_minor_fps = 1000;
+    int output_frames = 5;
+    int particle_output = 2;       // output all particle info
+    bool wheel_output = true;      // save individual wheel output files
+    double filter_window_vel = 0;  // do not filter velocity data
+    double filter_window_acc = 0;  // do not filter acceleration data
+    double vis_output_fps = 0;     // no post-processing visualization output
+
+    bool run_time_vis = false;            // no run-time visualization
+    double run_time_vis_fps = 0;          // render every simulation frame
+    bool run_time_vis_particles = false;  // render only terrain surface mesh
+    bool run_time_vis_bce = false;        // render vehicle meshes
+    bool chase_cam = false;               // fixed camera
+
     bool verbose = true;
     bool verbose_nn = true;
 
-    if (!GetProblemSpecs(argc, argv, terrain_dir, tend, run_time_vis, verbose, verbose_nn)) {
+    if (!GetProblemSpecs(argc, argv,                                                                        //
+                         terrain_dir, density, cohesion, friction, youngs_modulus, poisson_ratio,           //
+                         ramp_length, target_speed, tend, step_size, active_box_dim,                        //
+                         output_major_fps, output_minor_fps, output_frames, particle_output, wheel_output,  //
+                         filter_window_vel, filter_window_acc,                                              //
+                         vis_output_fps,                                                                    //
+                         run_time_vis, run_time_vis_particles, run_time_vis_bce, run_time_vis_fps,          //
+                         chase_cam, verbose)) {
         return 1;
     }
+
 
     // Check input files exist
     if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
@@ -428,9 +467,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+
+
+
     // Create the Chrono systems
     ChSystemNSC sys;
-
     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
     // Create vehicle
@@ -445,14 +486,6 @@ int main(int argc, char* argv[]) {
     ChCoordsys<> init_pos(ChVector<>(4, 0, 0.02 + 4 * std::sin(slope)), Q_from_AngX(banking) * Q_from_AngY(-slope));
     auto vehicle = CreateVehicle(sys, init_pos);
 
-    // // Create driver
-    // auto path = ChBezierCurve::read(vehicle::GetDataFile(terrain_dir + "/path.txt"));
-    // double x_max = path->getPoint(path->getNumPoints() - 1).x() - 3.0;
-    // ChPathFollowerDriver driver(*vehicle, path, "my_path", target_speed);
-    // driver.GetSteeringController().SetLookAheadDistance(2.0);
-    // driver.GetSteeringController().SetGains(1.0, 0, 0);
-    // driver.GetSpeedController().SetGains(0.6, 0.05, 0);
-    // driver.Initialize();
 
     // Create terrain
     cout << "Create terrain..." << endl;
@@ -460,37 +493,40 @@ int main(int argc, char* argv[]) {
     terrain.SetVerbose(verbose_nn);
     terrain.Create(terrain_dir);
 
-#ifdef CHRONO_OPENGL
+
     opengl::ChVisualSystemOpenGL vis;
-    if (run_time_vis) {
-        vis.AttachSystem(&sys);
-        vis.SetWindowTitle("Test");
-        vis.SetWindowSize(1280, 720);
-        vis.SetRenderMode(opengl::WIREFRAME);
-        vis.Initialize();
-        // vis.SetCameraPosition(ChVector<>(-3, 0, 6), ChVector<>(5, 0, 0.5));
-        vis.SetCameraVertical(CameraVerticalDir::Z);
-    }
-#endif
+    vis.AttachSystem(&sys);
+    vis.SetWindowTitle("test_Polaris_SCMnn");
+    vis.SetWindowSize(1600, 900);
+    vis.SetRenderMode(opengl::WIREFRAME);
+    vis.SetParticleRenderMode(0.05f, opengl::POINTS);
+    vis.Initialize();
+    // vis.AddCamera(ChVector<>(-2.0, 3.0, -4.0), ChVector<>(0, 0, 0));
+    vis.AddCamera(ChVector<>(-3.0, 0.0, 6.0), ChVector<>(5.0, 0.0, 0.5));
+    vis.SetCameraVertical(CameraVerticalDir::Z);
+    // vis.SetCameraProperties(0.5f, 0.1f, 500.0f);
+
 
     // Simulation loop
     DriverInputs driver_inputs = {0, 0, 0};
 
-    double step_size = 1e-3;
     double t = 0;
     int frame = 0;
+
     while (t < tend) {
 #ifdef CHRONO_OPENGL
         if (run_time_vis) {
             if (vis.Run()) {
+                vis.BeginScene();
                 vis.Render();
+                vis.EndScene();
             } else {
                 break;
             }
         }
 #endif
 
-        // Stop before end of patch
+        // // Stop before end of patch
         // if (vehicle->GetPos().x() > x_max)
         //     break;
 
@@ -503,14 +539,12 @@ int main(int argc, char* argv[]) {
         // } else {
         //     ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 1) / 0.5);
         // }
-        driver_inputs.m_throttle = 0.0;
-        driver_inputs.m_braking = 1.0;
-        driver_inputs.m_braking = 1.0;
 
-        if (verbose)
-            cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
-                 << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
-                 << endl;         
+        // if (verbose)
+        //     cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
+        //          << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
+        //          << "   timers = " << terrain.GetTimerDataIn() << " " << terrain.GetTimerModelEval() << " "
+        //          << terrain.GetTimerDataOut() << endl;
 
         // Synchronize subsystems
         // driver.Synchronize(t);
@@ -519,7 +553,7 @@ int main(int argc, char* argv[]) {
 
         // Advance system state
         // driver.Advance(step_size);
-        terrain.Advance(step_size);
+        // terrain.Advance(step_size);
         sys.DoStepDynamics(step_size);
         t += step_size;
 
@@ -528,3 +562,339 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+bool GetProblemSpecs(int argc,
+                     char** argv,
+                     std::string& terrain_dir,
+                     double& density,
+                     double& cohesion,
+                     double& friction,
+                     double& youngs_modulus,
+                     double& poisson_ratio,
+                     double& ramp_length,
+                     double& target_speed,
+                     double& tend,
+                     double& step_size,
+                     double& active_box_dim,
+                     double& output_major_fps,
+                     double& output_minor_fps,
+                     int& output_frames,
+                     int& particle_output,
+                     bool& wheel_output,
+                     double& filter_window_vel,
+                     double& filter_window_acc,
+                     double& vis_output_fps,
+                     bool& run_time_vis,
+                     bool& run_time_vis_particles,
+                     bool& run_time_vis_bce,
+                     double& run_time_vis_fps,
+                     bool& chase_cam,
+                     bool& verbose) {
+    ChCLI cli(argv[0], "Polaris SPH terrain simulation");
+
+    cli.AddOption<std::string>("Problem setup", "terrain_dir", "Directory with terrain specification data");
+    cli.AddOption<double>("Problem setup", "density", "Material density [kg/m3]", std::to_string(density));
+    cli.AddOption<double>("Problem setup", "cohesion", "Cohesion [Pa]", std::to_string(cohesion));
+    cli.AddOption<double>("Problem setup", "friction", "Coefficient of friction", std::to_string(friction));
+    cli.AddOption<double>("Problem setup", "youngs_modulus", "Young's modulus [Pa]", std::to_string(youngs_modulus));
+    cli.AddOption<double>("Problem setup", "poisson_ratio", "Poission ratio", std::to_string(poisson_ratio));
+
+    cli.AddOption<double>("Simulation", "ramp_length", "Acceleration ramp length", std::to_string(ramp_length));
+    cli.AddOption<double>("Simulation", "target_speed", "Target speed [m/s]", std::to_string(target_speed));
+    cli.AddOption<double>("Simulation", "tend", "Simulation end time [s]", std::to_string(tend));
+    cli.AddOption<double>("Simulation", "step_size", "Integration step size [s]", std::to_string(step_size));
+    cli.AddOption<double>("Simulation", "active_box_dim", "Active box half-size [m]",
+                          std::to_string(active_box_dim));
+
+    cli.AddOption<double>("Simulation output", "output_major_fps", "Simulation output major frequency [fps]",
+                          std::to_string(output_major_fps));
+    cli.AddOption<double>("Simulation output", "output_minor_fps", "Simulation output major frequency [fps]",
+                          std::to_string(output_minor_fps));
+    cli.AddOption<int>("Simulation output", "output_frames", "Successive output frames",
+                       std::to_string(output_frames));
+    cli.AddOption<int>("Simulation output", "particle_output", "Particle output (0: none, 1: pos, 2: all)",
+                       std::to_string(particle_output));
+    cli.AddOption<bool>("Simulation output", "no_wheel_output", "Disable individual wheel output files");
+    cli.AddOption<double>("Simulation output", "filter_window_vel", "Running average velocity filter window [s]",
+                          std::to_string(filter_window_vel));
+    cli.AddOption<double>("Simulation output", "filter_window_acc", "Running average acceleration filter window [s]",
+                          std::to_string(filter_window_acc));
+
+    cli.AddOption<bool>("", "quiet", "Disable all messages during simulation");
+
+    cli.AddOption<double>("Visualization", "vis_output_fps", "Visualization output frequency [fps]",
+                          std::to_string(vis_output_fps));
+    cli.AddOption<bool>("Visualization", "run_time_vis", "Enable run-time visualization");
+    cli.AddOption<bool>("Visualization", "run_time_vis_particles", "Enable run-time particle visualization");
+    cli.AddOption<bool>("Visualization", "run_time_vis_bce", "Enable run-time BCE markjer visualization");
+    cli.AddOption<bool>("Visualization", "chase_cam", "Enable vehicle-following camera");
+    cli.AddOption<double>("Visualization", "run_time_vis_fps", "Run-time visualization frequency [fps]",
+                          std::to_string(run_time_vis_fps));
+
+    if (!cli.Parse(argc, argv)) {
+        cli.Help();
+        return false;
+    }
+
+    try {
+        terrain_dir = cli.Get("terrain_dir").as<std::string>();
+    } catch (std::domain_error&) {
+        cout << "\nERROR: Missing terrain specification directory!\n\n" << endl;
+        cli.Help();
+        return false;
+    }
+
+    density = cli.GetAsType<double>("density");
+    cohesion = cli.GetAsType<double>("cohesion");
+    friction = cli.GetAsType<double>("friction");
+    youngs_modulus = cli.GetAsType<double>("youngs_modulus");
+    poisson_ratio = cli.GetAsType<double>("poisson_ratio");
+
+    ramp_length = cli.GetAsType<double>("ramp_length");
+    target_speed = cli.GetAsType<double>("target_speed");
+
+    output_major_fps = cli.GetAsType<double>("output_major_fps");
+    output_minor_fps = cli.GetAsType<double>("output_minor_fps");
+    output_frames = cli.GetAsType<int>("output_frames");
+    particle_output = cli.GetAsType<int>("particle_output");
+    wheel_output = !cli.GetAsType<bool>("no_wheel_output");
+
+    filter_window_vel = cli.GetAsType<double>("filter_window_vel");
+    filter_window_acc = cli.GetAsType<double>("filter_window_acc");
+
+    vis_output_fps = cli.GetAsType<double>("vis_output_fps");
+    run_time_vis = cli.GetAsType<bool>("run_time_vis");
+    run_time_vis_particles = cli.GetAsType<bool>("run_time_vis_particles");
+    run_time_vis_bce = cli.GetAsType<bool>("run_time_vis_bce");
+    run_time_vis_fps = cli.GetAsType<double>("run_time_vis_fps");
+    chase_cam = cli.GetAsType<bool>("chase_cam");
+
+    tend = cli.GetAsType<double>("tend");
+    step_size = cli.GetAsType<double>("step_size");
+    active_box_dim = cli.GetAsType<double>("active_box_dim");
+
+    verbose = !cli.GetAsType<bool>("quiet");
+
+    return true;
+}
+
+// int main(int argc, char* argv[]) {
+//     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+// // Parse command line arguments
+//     std::string terrain_dir;
+//     double tend = 30.0;
+//     double tenddummy = 30.0;
+//     bool run_time_vis = false;
+//     bool verbose = true;
+//     bool verbose_nn = true;
+
+//     if (!GetProblemSpecs(argc, argv, terrain_dir, tend, tenddummy)) {
+//         return 1;
+//     }
+
+//     // Check input files exist
+//     if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
+//         std::cout << "Input file sph_params.json not found in directory " << terrain_dir << std::endl;
+//         return 1;
+//     }
+//     // if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/path.txt")).exists()) {
+//     //     std::cout << "Input file path.txt not found in directory " << terrain_dir << std::endl;
+//     //     return 1;
+//     // }
+//     // if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt")).exists()) {
+//     //     std::cout << "Input file particles_20mm.txt not found in directory " << terrain_dir << std::endl;
+//     //     return 1;
+//     // }
+//     // if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/bce_20mm.txt")).exists()) {
+//     //     std::cout << "Input file bce_20mm.txt not found in directory " << terrain_dir << std::endl;
+//     //     return 1;
+//     // }
+
+//     // Create the Chrono systems
+//     ChSystemNSC sys;
+
+
+//     // std::shared_ptr<ChParticleCloud> m_particles;
+//     // m_particles = chrono_types::make_shared<ChParticleCloud>();
+//     // m_particles->SetFixed(true);
+
+//     // // Create the random particles
+//     // for (int np = 0; np < 100; ++np)
+//     //     m_particles->AddParticle(ChCoordsys<>(ChVector<>(ChRandom() - 2, 0.5, ChRandom() + 2)));
+
+//     // // // Mass and inertia properties.
+//     // // // This will be shared among all particles in the ChParticleCloud.
+//     // // particles->SetMass(0.1);
+//     // // particles->SetInertiaXX(ChVector<>(0.001, 0.001, 0.001));
+
+//     // sys.Add(m_particles);
+
+//     // //  ==Asset== Attach a 'sphere' shape asset.. it will be used as a sample
+//     // // shape to display all particles when rendering in 3D!
+//     // auto sphereparticle = chrono_types::make_shared<ChSphereShape>();
+//     // sphereparticle->GetSphereGeometry().rad = 0.1;
+//     // m_particles->AddVisualShape(sphereparticle);
+
+
+//     opengl::ChVisualSystemOpenGL vis;
+//     vis.AttachSystem(&sys);
+//     vis.SetWindowTitle("OpenGL assets");
+//     vis.SetWindowSize(1600, 900);
+//     vis.SetRenderMode(opengl::SOLID);
+//     vis.SetParticleRenderMode(0.05f, opengl::POINTS);
+//     vis.Initialize();
+//     vis.AddCamera(ChVector<>(-2.0, 3.0, -4.0), ChVector<>(0, 0, 0));
+//     vis.SetCameraVertical(CameraVerticalDir::Y);
+//     vis.SetCameraProperties(0.5f, 0.1f, 500.0f);
+
+//     double step = 0.01;
+//     while (vis.Run()) {
+//         vis.BeginScene();
+//         vis.Render();
+//         vis.EndScene();
+
+//         sys.DoStepDynamics(step);
+//     }
+
+//     return 0;
+// }
+
+// int main(int argc, char* argv[]) {
+//     // Parse command line arguments
+//     std::string terrain_dir;
+//     double tend = 30;
+//     bool run_time_vis = false;
+//     bool verbose = true;
+//     bool verbose_nn = true;
+
+//     if (!GetProblemSpecs(argc, argv, terrain_dir, tend, run_time_vis, verbose, verbose_nn)) {
+//         return 1;
+//     }
+
+//     // Check input files exist
+//     if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
+//         std::cout << "Input file sph_params.json not found in directory " << terrain_dir << std::endl;
+//         return 1;
+//     }
+//     // if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/path.txt")).exists()) {
+//     //     std::cout << "Input file path.txt not found in directory " << terrain_dir << std::endl;
+//     //     return 1;
+//     // }
+//     // if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt")).exists()) {
+//     //     std::cout << "Input file particles_20mm.txt not found in directory " << terrain_dir << std::endl;
+//     //     return 1;
+//     // }
+//     // if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/bce_20mm.txt")).exists()) {
+//     //     std::cout << "Input file bce_20mm.txt not found in directory " << terrain_dir << std::endl;
+//     //     return 1;
+//     // }
+
+//     // Create the Chrono systems
+//     ChSystemNSC sys;
+
+//     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
+
+//     // // Create vehicle
+//     // cout << "Create vehicle..." << endl;
+//     // double slope = 0;
+//     // double banking = 0;
+//     // if (filesystem::path(vehicle::GetDataFile(terrain_dir + "/slope.txt")).exists()) {
+//     //     std::ifstream is(vehicle::GetDataFile(terrain_dir + "/slope.txt"));
+//     //     is >> slope >> banking;
+//     //     is.close();
+//     // }
+//     // ChCoordsys<> init_pos(ChVector<>(4, 0, 0.02 + 4 * std::sin(slope)), Q_from_AngX(banking) * Q_from_AngY(-slope));
+//     // auto vehicle = CreateVehicle(sys, init_pos);
+
+//     // // Create driver
+//     // auto path = ChBezierCurve::read(vehicle::GetDataFile(terrain_dir + "/path.txt"));
+//     // double x_max = path->getPoint(path->getNumPoints() - 1).x() - 3.0;
+//     // ChPathFollowerDriver driver(*vehicle, path, "my_path", target_speed);
+//     // driver.GetSteeringController().SetLookAheadDistance(2.0);
+//     // driver.GetSteeringController().SetGains(1.0, 0, 0);
+//     // driver.GetSpeedController().SetGains(0.6, 0.05, 0);
+//     // driver.Initialize();
+
+//     // Create terrain
+//     cout << "Create terrain..." << endl;
+//     NNterrain terrain(sys);
+//     // NNterrain terrain(sys, vehicle);
+//     terrain.SetVerbose(verbose_nn);
+//     terrain.Create(terrain_dir,run_time_vis);
+
+// #ifdef CHRONO_OPENGL
+//     opengl::ChVisualSystemOpenGL vis;
+//     if (run_time_vis) {
+        
+//     vis.AttachSystem(&sys);
+//     vis.SetWindowTitle("OpenGL assets");
+//     vis.SetWindowSize(1600, 900);
+//     vis.SetRenderMode(opengl::SOLID);
+//     vis.SetParticleRenderMode(0.05f, opengl::POINTS);
+//     vis.Initialize();
+//     vis.AddCamera(ChVector<>(-2.0, 3.0, -4.0), ChVector<>(0, 0, 0));
+//     vis.SetCameraVertical(CameraVerticalDir::Y);
+//     vis.SetCameraProperties(0.5f, 0.1f, 500.0f);
+//     }
+// #endif
+
+//     // // Simulation loop
+//     // DriverInputs driver_inputs = {0, 0, 0};
+
+//     double step_size = 1e-3;
+//     double t = 0;
+//     int frame = 0;
+//     while (t < tend) {
+// #ifdef CHRONO_OPENGL
+//         if (run_time_vis) {
+//             if (vis.Run()) {
+//                 vis.BeginScene();
+//                 vis.Render();
+//                 vis.EndScene();
+//             } else {
+//                 break;
+//             }
+//         }
+// #endif
+
+//         // Stop before end of patch
+//         // if (vehicle->GetPos().x() > x_max)
+//         //     break;
+
+//         // // Set current driver inputs
+//         // driver_inputs = driver.GetInputs();
+
+//         // if (t < 1) {
+//         //     driver_inputs.m_throttle = 0;
+//         //     driver_inputs.m_braking = 1;
+//         // } else {
+//         //     ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 1) / 0.5);
+//         // }
+//         // driver_inputs.m_throttle = 0.0;
+//         // driver_inputs.m_braking = 1.0;
+//         // driver_inputs.m_braking = 1.0;
+
+//         if (verbose)
+//             cout << std::fixed << std::setprecision(3) << "t = " << t << std::endl;  
+
+//         // if (verbose)
+//         //     cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
+//         //          << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
+//         //          << endl;         
+
+//         // Synchronize subsystems
+//         // driver.Synchronize(t);
+//         // vehicle->Synchronize(t, driver_inputs, terrain);
+//         // terrain.Synchronize(t, driver_inputs);
+
+//         // Advance system state
+//         // driver.Advance(step_size);
+//         // terrain.Advance(step_size);
+//         sys.DoStepDynamics(step_size);
+//         t += step_size;
+
+//         frame++;
+//     }
+
+//     return 0;
+// }
