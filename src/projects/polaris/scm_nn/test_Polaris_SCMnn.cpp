@@ -71,7 +71,6 @@ class ProxyTire : public RigidTire {
 class NNterrain : public ChTerrain {
   public:
     NNterrain(ChSystem& sys, std::shared_ptr<WheeledVehicle> vehicle);
-    void Create(const std::string& terrain_dir, bool vis = true);
     void Synchronize(double time, const DriverInputs& driver_inputs);
     virtual void Advance(double step) override;
 
@@ -80,12 +79,11 @@ class NNterrain : public ChTerrain {
     std::shared_ptr<WheeledVehicle> m_vehicle;
     std::array<std::shared_ptr<ChWheel>, 4> m_wheels;
     std::array<TerrainForce, 4> m_tire_forces;
-    bool m_verbose;
 };
 
 
 NNterrain::NNterrain(ChSystem& sys, std::shared_ptr<WheeledVehicle> vehicle)
-    : m_sys(sys), m_vehicle(vehicle), m_verbose(true) {
+    : m_sys(sys), m_vehicle(vehicle){
     m_wheels[0] = vehicle->GetWheel(0, LEFT);
     m_wheels[1] = vehicle->GetWheel(0, RIGHT);
     m_wheels[2] = vehicle->GetWheel(1, LEFT);
@@ -98,12 +96,15 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
     // Loop over all vehicle wheels
     for (int i = 0; i < 4; i++) {
         // Extract tire forces
-        m_tire_forces[i].force =
-            ChVector<>(0.0,0.0,1000.0);
+        if (i==1)
+        m_tire_forces[i].force = ChVector<>(0.0,40.0,10000.0);
+        else
+        m_tire_forces[i].force = ChVector<>(0.0,0.0,0.0);
+
         m_tire_forces[i].moment =
             ChVector<>(0.0,0.0,0.0);
         m_tire_forces[i].point = ChVector<>(0, 0, 0);
-
+        std::cout<< m_wheels[i]->GetTire()<<std::endl;
         std::static_pointer_cast<ProxyTire>(m_wheels[i]->GetTire())->m_force = m_tire_forces[i];
         if (true) {
             std::cout << "  tire " << i << " force: " << m_tire_forces[i].force << std::endl;
@@ -139,6 +140,14 @@ std::shared_ptr<WheeledVehicle> CreateVehicle(ChSystem& sys, const ChCoordsys<>&
     for (auto& axle : vehicle->GetAxles()) {
         for (auto& wheel : axle->GetWheels()) {
             auto tire = ReadTireJSON(vehicle::GetDataFile(tire_json));
+            vehicle->InitializeTire(tire, wheel, VisualizationType::MESH);
+        }
+    }
+
+    // Create and initialize the tires
+    for (auto& axle : vehicle->GetAxles()) {
+        for (auto& wheel : axle->GetWheels()) {
+            auto tire = chrono_types::make_shared<ProxyTire>(vehicle::GetDataFile(tire_json));
             vehicle->InitializeTire(tire, wheel, VisualizationType::MESH);
         }
     }
@@ -204,9 +213,20 @@ int main(int argc, char* argv[]) {
         vehicle->Synchronize(t, driver_inputs, terrain);
         terrain.Synchronize(t, driver_inputs);
 
+        for (auto& axle : vehicle->GetAxles()) {
+            for (auto& wheel : axle->GetWheels()) {
+            std::cout<<"Before terrain.advance" << wheel->GetTire()->ReportTireForce(&terrain).force<<std::endl;
+            }
+            }    
+
         // Advance system state
         terrain.Advance(step_size);
         sys.DoStepDynamics(step_size);
+        for (auto& axle : vehicle->GetAxles()) {
+            for (auto& wheel : axle->GetWheels()) {
+            std::cout<<"After terrain.advance" << wheel->GetTire()->ReportTireForce(&terrain).force<<std::endl;
+            }
+            }  
         t += step_size;
 
         frame++;
