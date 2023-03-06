@@ -344,7 +344,6 @@ int main(int argc, char* argv[]) {
              terrain.WriteMeshVertices(vertices_filename);
             else
              terrain.WriteMeshVerticesinz(vertices_filename);
-            std::cout<<"Simulation time= "<<step_number*step_size<<std::endl;
             }
             if (img_output% render_steps == 0)
             {
