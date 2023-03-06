@@ -53,7 +53,7 @@ using std::endl;
 
 bool GetProblemSpecs(int argc,
                      char** argv,
-                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude, double& render_step_size);
+                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude, double& render_step_size, bool& heightmapterrain);
 
 // =============================================================================
 // USER SETTINGS
@@ -71,6 +71,7 @@ double delta = 0.05;          // SCM grid spacing
 
 double throttlemagnitude=0.7;
 double steeringmagnitude=0.6;
+bool heightmapterrain=true;
 
 // -----------------------------------------------------------------------------
 // Vehicle parameters
@@ -88,7 +89,7 @@ float cr_t = 0.1f;
 float mu_t = 0.8f;
 
 // Initial vehicle position and orientation
-ChVector<> initLoc(-3, 0, 2.0);
+ChVector<> initLoc(-3, 0, 0.1);
 ChQuaternion<> initRot(1, 0, 0, 0);
 ChCoordsys<> init_pos(initLoc, initRot);
 
@@ -113,7 +114,7 @@ const std::string img_dir = out_dir + "/IMG";
 bool img_output = false;
 
 // Vertices output
-bool ver_output = true;
+bool ver_output = false;
 
 // =============================================================================
 
@@ -162,7 +163,7 @@ int main(int argc, char* argv[]) {
     std::string terrain_dir;
     double tend = 10;
     if (!GetProblemSpecs(argc, argv,                                 
-                         terrain_dir, tend, throttlemagnitude, steeringmagnitude, render_step_size)) 
+                         terrain_dir, tend, throttlemagnitude, steeringmagnitude, render_step_size, heightmapterrain)) 
     {
         return 1;
     }
@@ -225,14 +226,20 @@ int main(int argc, char* argv[]) {
     ////terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
     terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
 
-    // terrain.Initialize(terrainLength, terrainWidth, delta);
-    terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
+    if (heightmapterrain)
+    { 
+     terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
                     terrainLength ,                       ///< [in] terrain dimension in the X direction
                     terrainWidth,                       ///< [in] terrain dimension in the Y direction
                     0.0,                        ///< [in] minimum height (black level)
                     1.5,                        ///< [in] maximum height (white level)
                     delta                        ///< [in] grid spacing (may be slightly decreased)
-    );
+     );        
+    }
+    else
+    {
+     terrain.Initialize(terrainLength, terrainWidth, delta);    
+    }
 
 
     // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";
@@ -373,7 +380,7 @@ int main(int argc, char* argv[]) {
 
 bool GetProblemSpecs(int argc,
                      char** argv,
-                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude, double& render_step_size) 
+                     std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude, double& render_step_size, bool& heightmapterrain) 
     {
     ChCLI cli(argv[0], "Polaris SPH terrain simulation");
 
@@ -391,8 +398,9 @@ bool GetProblemSpecs(int argc,
         terrain_dir = cli.Get("terrain_dir").as<std::string>();
     } catch (std::domain_error&) {
         cout << "\nERROR: Missing terrain specification directory!\n\n" << endl;
-        cli.Help();
-        return false;
+        heightmapterrain=false;
+        // cli.Help();
+        // return false;
     }
     tend = cli.GetAsType<double>("tend");
     throttlemagnitude = cli.GetAsType<double>("throttlemagnitude");
