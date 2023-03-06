@@ -405,7 +405,7 @@ bool GetProblemSpecs(int argc,
     tend = cli.GetAsType<double>("tend");
     throttlemagnitude = cli.GetAsType<double>("throttlemagnitude");
     steeringmagnitude = cli.GetAsType<double>("steeringmagnitude");
-    steeringmagnitude = cli.GetAsType<double>("render_step_size");
+    render_step_size = cli.GetAsType<double>("render_step_size");
 
 
     return true;
