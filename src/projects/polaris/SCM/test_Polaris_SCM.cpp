@@ -124,31 +124,28 @@ class MyDriver : public ChDriver {
     ~MyDriver() {}
 
     virtual void Synchronize(double time) override {
-        m_throttle = 0;
-        m_steering = 0;
-        m_braking = 1;
+        m_throttle = 0.0;
+        m_steering = 0.0;
+        m_braking = 1.0;
 
         double eff_time = time - m_delay;
 
         // Do not generate any driver inputs for a duration equal to m_delay.
-        if (eff_time < 0)
+        if (eff_time < 0.0)
             return;
 
         if (eff_time > 0.2)
         { 
             m_throttle = throttlemagnitude;
-            m_braking = 0;
+            m_braking = 0.0;
+            m_steering = steeringmagnitude * std::sin(CH_C_2PI * (eff_time - 2.0) / 6.0);
         }
         else
         { 
             m_throttle = 3.5 * eff_time;
-            m_braking = 0;
-        }
-
-        if (eff_time < 2)
-            m_steering = 0;
-        else
-            m_steering = steeringmagnitude * std::sin(CH_C_2PI * (eff_time - 2) / 6);
+            m_braking = 0.0;
+            m_steering = 0.0;
+        }            
     }
 
   private:
@@ -263,7 +260,7 @@ int main(int argc, char* argv[]) {
     // --------------------
     // Create driver system
     // --------------------
-    MyDriver driver(*castedvehicle, 0.5);
+    MyDriver driver(*castedvehicle, 0.1);
     driver.Initialize();
 
     // -----------------
