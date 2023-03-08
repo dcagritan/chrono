@@ -106,6 +106,7 @@ class NNterrain : public ChTerrain {
     std::array<size_t, 4> m_num_particles;
 
     torch::jit::script::Module module;
+    std::array<std::vector<ChVector<>>, 4> m_particle_displacements;
     std::array<TerrainForce, 4> m_tire_forces;
 
     ChTimer<> m_timer_data_in;
@@ -174,11 +175,12 @@ void NNterrain::Create(const std::string& terrain_dir, bool vis) {
         for (int i = 0; i < 3; i++) {
             getline(ls, cell, ',');
             marker[i] = stod(cell);
+            
         }
         m_particles->AddParticle(ChCoordsys<>(marker));
         num_particles++;
 
-        if (num_particles > 100000)
+        if (num_particles > 1000000)
             break;
     }
     is.close();
@@ -194,34 +196,228 @@ void NNterrain::Create(const std::string& terrain_dir, bool vis) {
 
     
 
-    // // Initial size of sampling box particle vectors
-    // for (int i = 0; i < 4; i++)
-    //     m_wheel_particles[i].resize(num_particles);
+    // Initial size of sampling box particle vectors
+    for (int i = 0; i < 4; i++)
+        m_wheel_particles[i].resize(num_particles);
 }
 
 
+struct in_box {
+    in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
+        : pos(box_pos), rot(box_rot), h(box_size / 2) {}
+
+    bool operator()(const ChAparticle* p) {
+        // Convert location in box frame
+        auto w = rot * (p->GetPos() - pos);
+
+        // Check w between all box limits
+        return (w.x() >= -h.x() && w.x() <= +h.x()) &&  //
+               (w.y() >= -h.y() && w.y() <= +h.y()) &&  //
+               (w.z() >= -h.z() && w.z() <= +h.z());
+    }
+
+    ChVector<> pos;
+    ChMatrix33<> rot;
+    ChVector<> h;
+};
+
+
 void NNterrain::Synchronize(double time) {
+    // Prepare NN model inputs
+    const auto& p_all = m_particles->GetParticles();
+    std::vector<torch::jit::IValue> inputs;
+
+    m_timer_data_in.start();
+
+    // Loop over all vehicle wheels
+    std::array<ChVector<float>, 4> w_pos;
+    std::array<ChQuaternion<float>, 4> w_rot;
+    std::array<ChVector<float>, 4> w_nrm;
+    std::array<ChVector<float>, 4> w_linvel;
+    std::array<ChVector<float>, 4> w_angvel;
+    std::array<bool, 4> w_contact;
+    for (int i = 0; i < 4; i++) {
+        // Wheel state
+        const auto& w_state = m_wheels[i]->GetState();
+        w_pos[i] = w_state.pos;
+        w_rot[i] = w_state.rot;
+        w_nrm[i] = w_state.rot.GetYaxis();
+        w_linvel[i] = w_state.lin_vel;
+        w_angvel[i] = w_state.ang_vel;
+
+        auto tire_radius = m_wheels[i]->GetTire()->GetRadius();
+
+        // Sampling OBB
+        ChVector<> Z_dir(0, 0, 1);
+        ChVector<> X_dir = Vcross(w_nrm[i], ChVector<>(0, 0, 1)).GetNormalized();
+        ChVector<> Y_dir = Vcross(Z_dir, X_dir);
+        ChMatrix33<> box_rot(X_dir, Y_dir, Z_dir);
+        ChVector<> box_pos = w_pos[i] + box_rot * (m_box_offset - ChVector<>(0, 0, tire_radius));
+
+        // Find particles in sampling OBB
+        m_wheel_particles[i].resize(p_all.size());
+        auto end = std::copy_if(p_all.begin(), p_all.end(), m_wheel_particles[i].begin(),
+                                in_box(box_pos, box_rot, m_box_size));
+        m_num_particles[i] = (size_t)(end - m_wheel_particles[i].begin());
+        m_wheel_particles[i].resize(m_num_particles[i]);
+
+        // Do nothing if no particles under a wheel
+        if (m_num_particles[i] == 0) {
+            return;
+        }
+
+        // Load particle positions and velocities
+        w_contact[i] = false;
+        auto part_pos = torch::empty({(int)m_num_particles[i], 3}, torch::kFloat32);
+        float* part_pos_data = part_pos.data<float>();
+        for (const auto& part : m_wheel_particles[i]) {
+            ChVector<float> p(part->GetPos());
+            *part_pos_data++ = p.x();
+            *part_pos_data++ = p.y();
+            *part_pos_data++ = p.z();
+
+            if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
+                w_contact[i] = true;
+        }
+
+        // Load wheel position, orientation, linear velocity, and angular velocity
+        auto w_pos_t = torch::from_blob((void*)w_pos[i].data(), {3}, torch::kFloat32);
+        auto w_rot_t = torch::from_blob((void*)w_rot[i].data(), {4}, torch::kFloat32);
+        auto w_linvel_t = torch::from_blob((void*)w_linvel[i].data(), {3}, torch::kFloat32);
+        auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
+
+#if 0
+        if (i == 0) {
+            std::cout << "------------------" << std::endl;
+            std::cout << part_pos << std::endl;
+            std::cout << "------------------" << std::endl;
+            std::cout << part_vel << std::endl;
+            std::cout << "------------------" << std::endl;
+            std::cout << w_pos_t << std::endl;
+            std::cout << "------------------" << std::endl;
+            std::cout << w_rot_t << std::endl;
+            std::cout << "------------------" << std::endl;
+            std::cout << w_linvel_t << std::endl;
+            std::cout << "------------------" << std::endl;
+            std::cout << w_angvel_t << std::endl;
+            std::cout << "------------------" << std::endl;
+            exit(1);
+        }
+#endif
+
+#if 1
+        if (m_verbose) {
+            std::cout << "wheel " << i << std::endl;
+            std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
+            std::cout << "  position:       " << w_pos[i] << std::endl;
+            std::cout << "  pos. address:   " << w_pos[i].data() << std::endl;
+            std::cout << "  in contact:     " << w_contact[i] << std::endl;
+        }
+#endif
+
+        // Prepare the tuple input for this wheel
+        std::vector<torch::jit::IValue> tuple;
+        tuple.push_back(part_pos);
+        tuple.push_back(w_pos_t);
+        tuple.push_back(w_rot_t);
+        tuple.push_back(w_linvel_t);
+        tuple.push_back(w_angvel_t);
+
+        // Add this wheel's tuple to NN model inputs
+        inputs.push_back(torch::ivalue::Tuple::create(tuple));
+    }
+
+
+    // Verbose flag
+    inputs.push_back(m_verbose);
+
+    m_timer_data_in.stop();
+
+    // Invoke NN model
+
+#if 0
+    for (int i = 0; i < 4; i++) {
+        std::cout << "  inputs[i]:                                            "           //
+                  << &inputs[i] << std::endl;                                             //
+        std::cout << "  inputs[i].toTuple()->elements()[2]:                   "           //
+                  << &inputs[i].toTuple()->elements()[2] << std::endl;                    //
+        std::cout << "  inputs[i].toTuple()->elements()[2].toTensor():        "           //
+                  << &inputs[i].toTuple()->elements()[2].toTensor() << std::endl;         //
+        std::cout << "  inputs[i].toTuple()->elements()[2].toTensor().data(): "           //
+                  << &inputs[i].toTuple()->elements()[2].toTensor().data() << std::endl;  //
+        const auto& wpt = inputs[i].toTuple()->elements()[2].toTensor();                  //
+        std::cout << "  wheel " << i << "  position tensor: "                             //
+                  << wpt[0].item<float>() << " " << wpt[1].item<float>() << " " << wpt[2].item<float>() << std::endl;
+    }
+#endif
+
+    m_timer_model_eval.start();
+    torch::jit::IValue outputs;
+    try {
+        outputs = module.forward(inputs);
+    } catch (const c10::Error& e) {
+        cerr << "Execute error: " << e.msg() << endl;
+        return;
+    } catch (const std::exception& e) {
+        cerr << "Execute error other: " << e.what() << endl;
+        return;
+    }
+    m_timer_model_eval.stop();
+
+    // Extract outputs
+
+    m_timer_data_out.start();
 
 
     // Loop over all vehicle wheels
     for (int i = 0; i < 4; i++) {
+        // Outputs for this wheel
+        const auto& part_disp = outputs.toTuple()->elements()[i].toTensor();
+        const auto& tire_frc = outputs.toTuple()->elements()[i + 4].toTensor();
+
+        // Extract particle displacements
+        m_particle_displacements[i].resize(m_num_particles[i]);
+        for (size_t j = 0; j < m_num_particles[i]; j++) {
+            m_particle_displacements[i][j] =
+                ChVector<>(part_disp[j][0].item<float>(), part_disp[j][1].item<float>(), part_disp[j][2].item<float>());
+            std::cout<<m_particle_displacements[i][j]<<std::endl;
+        }
+
 
         // Extract tire forces
         m_tire_forces[i].force =
-            ChVector<>(0.0,0.0,0.0);
+            ChVector<>(tire_frc[0].item<float>(), tire_frc[1].item<float>(), tire_frc[2].item<float>());
         m_tire_forces[i].moment =
-            ChVector<>(0.0,0.0,0.0);
+            ChVector<>(tire_frc[3].item<float>(), tire_frc[4].item<float>(), tire_frc[5].item<float>());
         m_tire_forces[i].point = ChVector<>(0, 0, 0);
 
         std::static_pointer_cast<ProxyTire>(m_wheels[i]->GetTire())->m_force = m_tire_forces[i];
-        if (true) {
+        if (m_verbose) {
             std::cout << "  tire " << i << " force: " << m_tire_forces[i].force << std::endl;
         }
     }
 
+    m_timer_data_out.stop();
+
 }
 
 void NNterrain::Advance(double step) {
+    // Do nothing if there is at least one sampling box with no particles
+    auto product = std::accumulate(m_num_particles.begin(), m_num_particles.end(), 1, std::multiplies<int>());
+    if (product == 0)
+        return;
+
+    // Update state of particles in sampling boxes.
+    // Assume mass=1 for all particles.
+    double step2 = step * step / 2;
+    for (int i = 0; i < 4; i++) {
+        for (size_t j = 0; j < m_num_particles[i]; j++) {
+            auto p_disp = m_particle_displacements[i][j];
+            auto p_current = m_wheel_particles[i][j]->GetPos();
+            auto p_actual = p_current+p_disp;
+            m_wheel_particles[i][j]->SetPos(p_actual);
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -296,7 +492,12 @@ int main(int argc, char* argv[]) {
     cout << "Create vehicle..." << endl;
     double slope = 0;
     double banking = 0;
-    ChCoordsys<> init_pos(ChVector<>(4, 0, 0.02 + 4 * std::sin(slope)), Q_from_AngX(banking) * Q_from_AngY(-slope));
+    if (filesystem::path(vehicle::GetDataFile(terrain_dir + "/slope.txt")).exists()) {
+        std::ifstream is(vehicle::GetDataFile(terrain_dir + "/slope.txt"));
+        is >> slope >> banking;
+        is.close();
+    }
+    ChCoordsys<> init_pos(ChVector<>(1.2, 0, 0.12 + 4 * std::sin(slope)), Q_from_AngX(banking) * Q_from_AngY(-slope));
     auto vehicle = CreateVehicle(sys, init_pos);
 
 
@@ -305,9 +506,9 @@ int main(int argc, char* argv[]) {
     NNterrain terrain(sys, vehicle);
     terrain.SetVerbose(verbose_nn);
     terrain.Create(terrain_dir);
-    // if (!terrain.Load(vehicle::GetDataFile(NN_module_name))) {
-    //     return 1;
-    // }
+    if (!terrain.Load(vehicle::GetDataFile(NN_module_name))) {
+        return 1;
+    }
 
 #ifdef CHRONO_OPENGL
     opengl::ChVisualSystemOpenGL vis;
@@ -315,15 +516,17 @@ int main(int argc, char* argv[]) {
         vis.AttachSystem(&sys);
         vis.SetWindowTitle("Test");
         vis.SetWindowSize(1280, 720);
-        vis.SetRenderMode(opengl::WIREFRAME);
+        vis.SetRenderMode(opengl::SOLID);
+        vis.SetParticleRenderMode(0.05f, opengl::POINTS);
         vis.Initialize();
         vis.SetCameraPosition(ChVector<>(-3, 0, 6), ChVector<>(5, 0, 0.5));
         vis.SetCameraVertical(CameraVerticalDir::Z);
+        vis.SetCameraProperties(0.5f, 0.1f, 500.0f);
     }
 #endif
 
     // Simulation loop
-    DriverInputs driver_inputs = {0, 0, 0};
+    DriverInputs driver_inputs = {0.0, 0.0, 0.0};
 
     double step_size = 1e-3;
     double t = 0;
