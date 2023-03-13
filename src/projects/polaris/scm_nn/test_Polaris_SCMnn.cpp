@@ -305,7 +305,7 @@ void NNterrain::Synchronize(double time) {
         }
 #endif
 
-#if 1
+#if 0
         if (m_verbose) {
             std::cout << "wheel " << i << std::endl;
             std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
@@ -380,7 +380,7 @@ void NNterrain::Synchronize(double time) {
         for (size_t j = 0; j < m_num_particles[i]; j++) {
             m_particle_displacements[i][j] =
                 ChVector<>(part_disp[j][0].item<float>(), part_disp[j][1].item<float>(), part_disp[j][2].item<float>());
-            std::cout<<m_particle_displacements[i][j]<<std::endl;
+            // std::cout<<m_particle_displacements[i][j]<<std::endl;
         }
 
 
@@ -393,7 +393,11 @@ void NNterrain::Synchronize(double time) {
 
         std::static_pointer_cast<ProxyTire>(m_wheels[i]->GetTire())->m_force = m_tire_forces[i];
         if (m_verbose) {
-            std::cout << "  tire " << i << " force: " << m_tire_forces[i].force << std::endl;
+            // std::cout << "  tire " << i << " force: " << m_tire_forces[i].force << std::endl;
+            // if (time%0.02==0.0)
+            // std::cout << "  time " << time << " force: " << m_tire_forces[i].force << std::endl;
+            if (i==3)
+            std::cout << "" << time << " " << m_tire_forces[i].force << std::endl;
         }
     }
 
@@ -459,7 +463,7 @@ std::shared_ptr<WheeledVehicle> CreateVehicle(ChSystem& sys, const ChCoordsys<>&
 int main(int argc, char* argv[]) {
     // Parse command line arguments
     std::string terrain_dir = "terrain/scm/testterrainnn";
-    double tend = 30;
+    double tend = 2.0;
     bool run_time_vis = true;
     bool verbose = true;
     bool verbose_nn = true;
@@ -497,7 +501,8 @@ int main(int argc, char* argv[]) {
         is >> slope >> banking;
         is.close();
     }
-    ChCoordsys<> init_pos(ChVector<>(1.2, 0, 0.12 + 4 * std::sin(slope)), Q_from_AngX(banking) * Q_from_AngY(-slope));
+    // ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.12 + 4 * std::sin(slope)), Q_from_AngX(banking) * Q_from_AngY(-slope));
+    ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.1));
     auto vehicle = CreateVehicle(sys, init_pos);
 
 
@@ -528,7 +533,7 @@ int main(int argc, char* argv[]) {
     // Simulation loop
     DriverInputs driver_inputs = {0.0, 0.0, 0.0};
 
-    double step_size = 1e-3;
+    double step_size = 2.5e-3;
     double t = 0;
     int frame = 0;
     while (t < tend) {
