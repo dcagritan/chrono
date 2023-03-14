@@ -127,6 +127,46 @@ void SCMDeformableTerrain::WriteMesh(const std::string& filename) const {
     trimesh->WriteWavefront(filename, meshes);
 }
 
+// Save the vertices of the visualization mesh as a csv file.
+void SCMDeformableTerrain::WriteMeshVertices(const std::string& filename) const{
+    if (!m_ground->m_trimesh_shape) {
+        std::cout << "SCMDeformableTerrain::WriteMeshVertices  -- visualization mesh not created.";
+        return;
+    }
+    std::ofstream mf(filename);
+    mf <<"#x,y,z"<< std::endl;
+    auto trimesh = m_ground->m_trimesh_shape->GetMesh();
+    std::vector<geometry::ChTriangleMeshConnected> meshes = {*trimesh};
+    int v_counter = 0;
+    for (auto& m : meshes) {
+        for (auto& v : m.m_vertices) {
+            mf << v.x() << ", " << v.y() << ", " << v.z() << std::endl;
+            v_counter++;
+        }
+    }
+    mf.close();
+}
+
+// Save the vertices of the visualization mesh as a csv file.
+void SCMDeformableTerrain::WriteMeshVerticesinz(const std::string& filename) const{
+    if (!m_ground->m_trimesh_shape) {
+        std::cout << "SCMDeformableTerrain::WriteMeshVertices  -- visualization mesh not created.";
+        return;
+    }
+    std::ofstream mf(filename);
+    mf <<"#z"<< std::endl;
+    auto trimesh = m_ground->m_trimesh_shape->GetMesh();
+    std::vector<geometry::ChTriangleMeshConnected> meshes = {*trimesh};
+    int v_counter = 0;
+    for (auto& m : meshes) {
+        for (auto& v : m.m_vertices) {
+            mf << v.z() << std::endl;
+            v_counter++;
+        }
+    }
+    mf.close();
+}
+
 // Set properties of the SCM soil model.
 void SCMDeformableTerrain::SetSoilParameters(
     double Bekker_Kphi,    // Kphi, frictional modulus in Bekker model
