@@ -215,6 +215,12 @@ class CH_VEHICLE_API SCMDeformableTerrain : public ChTerrain {
     /// Save the visualization mesh as a Wavefront OBJ file.
     void WriteMesh(const std::string& filename) const;
 
+    /// Save the vertices of the visualization mesh as a csv file.
+    void WriteMeshVertices(const std::string& filename) const;
+
+    /// Save the vertices of the visualization mesh as a csv file.
+    void WriteMeshVerticesinz(const std::string& filename) const;
+
     /// Initialize the terrain system (flat).
     /// This version creates a flat array of points.
     void Initialize(double sizeX,  ///< [in] terrain dimension in the X direction
