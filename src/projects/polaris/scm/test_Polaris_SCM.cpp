@@ -98,7 +98,7 @@ ChCoordsys<> init_pos(initLoc, initRot);
 // -----------------------------------------------------------------------------
 
 // Simulation step size
-double step_size = 2.5e-3;
+double step_size = 1e-3;
 
 // Time interval between two render frames (1/FPS)
 double render_step_size = 2.0 / 100;
@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
     // Create the Polaris vehicle
     // --------------------
     cout << "Create vehicle..." << endl;
-    auto vehicle = CreateVehicle(model, sys, init_pos);
+    auto vehicle = CreateVehicle(sys, init_pos);
     double x_max = (terrainLength/2.0 - 3.0);
     double y_max = (terrainWidth/2.0 - 3.0);
 
@@ -335,10 +335,11 @@ int main(int argc, char* argv[]) {
             if (ver_output)
             {   
             std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
-            if (step_number==0)
-             terrain.WriteMeshVertices(vertices_filename);
-            else
-             terrain.WriteMeshVerticesinz(vertices_filename);
+            // if (step_number==0)
+            // //  terrain.WriteMeshVertices(vertices_filename);
+            // else
+            // //  terrain.WriteMeshVerticesinz(vertices_filename);
+            // 
             }
             if (img_output% render_steps == 0)
             {
@@ -356,7 +357,8 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         terrain.Synchronize(time);
         vehicle->Synchronize(time, driver_inputs, terrain);
-        vis->Synchronize("", driver_inputs);
+        // vis->Synchronize("", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 
         // Advance dynamics
         sys.DoStepDynamics(step_size);
