@@ -124,9 +124,9 @@ class NNterrain : public ChTerrain {
     void Synchronize(double time, const DriverInputs& driver_inputs);
     virtual void Advance(double step) override;
 
-    double GetTimerDataIn() { return m_timer_data_in(); }
-    double GetTimerModelEval() { return m_timer_model_eval(); }
-    double GetTimerDataOut() { return m_timer_data_out(); }
+    // double GetTimerDataIn() { return m_timer_data_in(); }
+    // double GetTimerModelEval() { return m_timer_model_eval(); }
+    // double GetTimerDataOut() { return m_timer_data_out(); }
 
     void SetVerbose(bool val) { m_verbose = val; }
 
@@ -145,9 +145,9 @@ class NNterrain : public ChTerrain {
     std::array<std::vector<ChVector<>>, 4> m_particle_forces;
     std::array<TerrainForce, 4> m_tire_forces;
 
-    ChTimer<> m_timer_data_in;
-    ChTimer<> m_timer_model_eval;
-    ChTimer<> m_timer_data_out;
+    // ChTimer<> m_timer_data_in;
+    // ChTimer<> m_timer_model_eval;
+    // ChTimer<> m_timer_data_out;
 
     bool m_verbose;
 };
@@ -247,15 +247,15 @@ struct in_box {
 };
 
 void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
-    m_timer_data_in.reset();
-    m_timer_model_eval.reset();
-    m_timer_data_out.reset();
+    // m_timer_data_in.reset();
+    // m_timer_model_eval.reset();
+    // m_timer_data_out.reset();
 
     // Prepare NN model inputs
     const auto& p_all = m_particles->GetParticles();
     std::vector<torch::jit::IValue> inputs;
 
-    m_timer_data_in.start();
+    // m_timer_data_in.start();
 
     // Loop over all vehicle wheels
     std::array<ChVector<float>, 4> w_pos;
@@ -371,7 +371,7 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
     // Verbose flag
     inputs.push_back(m_verbose);
 
-    m_timer_data_in.stop();
+    // m_timer_data_in.stop();
 
     // Invoke NN model
 
@@ -391,7 +391,7 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
     }
 #endif
 
-    m_timer_model_eval.start();
+    // m_timer_model_eval.start();
     torch::jit::IValue outputs;
     try {
         outputs = module.forward(inputs);
@@ -402,11 +402,11 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
         cerr << "Execute error other: " << e.what() << endl;
         return;
     }
-    m_timer_model_eval.stop();
+    // m_timer_model_eval.stop();
 
     // Extract outputs
 
-    m_timer_data_out.start();
+    // m_timer_data_out.start();
 
     // Loop over all vehicle wheels
     for (int i = 0; i < 4; i++) {
@@ -434,7 +434,7 @@ void NNterrain::Synchronize(double time, const DriverInputs& driver_inputs) {
         }
     }
 
-    m_timer_data_out.stop();
+    // m_timer_data_out.stop();
 }
 
 void NNterrain::Advance(double step) {
@@ -597,11 +597,11 @@ int main(int argc, char* argv[]) {
             ChClampValue(driver_inputs.m_throttle, driver_inputs.m_throttle, (t - 1) / 0.5);
         }
 
-        if (verbose)
-            cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
-                 << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
-                 << "   timers = " << terrain.GetTimerDataIn() << " " << terrain.GetTimerModelEval() << " "
-                 << terrain.GetTimerDataOut() << endl;
+        // if (verbose)
+        //     cout << std::fixed << std::setprecision(3) << "t = " << t << "  STB = " << driver_inputs.m_steering << " "
+        //          << driver_inputs.m_throttle << " " << driver_inputs.m_braking << "  spd = " << vehicle->GetSpeed()
+        //          << "   timers = " << terrain.GetTimerDataIn() << " " << terrain.GetTimerModelEval() << " "
+        //          << terrain.GetTimerDataOut() << endl;
 
         // Synchronize subsystems
         driver.Synchronize(t);
