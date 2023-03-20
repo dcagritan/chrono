@@ -12,7 +12,7 @@ set(DEMOS
 #--------------------------------------------------------------
 # Additional include directories
 
-include_directories(${CH_IRRLICHTINC})
+include_directories(${CH_IRRLICHT_INCLUDES})
 
 #--------------------------------------------------------------
 # Create the executables

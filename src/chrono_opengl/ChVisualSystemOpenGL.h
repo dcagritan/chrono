@@ -87,8 +87,8 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
     /// Set render mode for solid objects (default: SOLID)
     void SetRenderMode(RenderMode mode);
 
-    /// Set render mode for particle systems (default: POINTS)
-    void SetParticleRenderMode(float radius, RenderMode mode);
+    /// Set render mode for particle systems (default: POINTS) and size.
+    void SetParticleRenderMode(RenderMode mode, float radius);
 
     /// Attach a Chrono system to the run-time visualization system.
     /// ChVisualSystemOpenGL allows simultaneous rendering of multiple Chrono systems.
@@ -100,6 +100,9 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
 
     /// Enable/disable stats overlay display (default: true).
     void EnableStats(bool state) { render_stats = state; }
+
+    /// Enable/disable OpenGL information terminal output during initialization (default: true).
+    void SetVerbose(bool verbose) { m_verbose = verbose; }
 
     /// Initialize the visualization system.
     /// This creates the Irrlicht device using the current values for the optional device parameters.
@@ -171,7 +174,7 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
     virtual void OnClear(ChSystem* sys) override;
 
     /// Provide the version of the OpenGL context along with driver information.
-    static void GLFWGetVersion(GLFWwindow* main_window);
+    static void GLFWGetVersion(GLFWwindow* main_window, bool verbose);
 
     /// GLFW error callback, returns error string.
     static void CallbackError(int error, const char* description);
@@ -210,6 +213,7 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
     float m_camera_near;       ///< camera near clip distance
     float m_camera_far;        ///< camera far clip distance
 
+    bool m_verbose;  ///< OpenGL terminal initialization output
     bool render_stats;
     std::vector<ChOpenGLEventCB*> user_receivers;
     std::shared_ptr<ChOpenGLParticleCB> particle_selector;

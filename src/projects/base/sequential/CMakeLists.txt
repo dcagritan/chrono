@@ -16,7 +16,7 @@ set(DEMOS
     test_BASE_lock_lock
 )
 
-include_directories(${CH_IRRLICHTINC})
+include_directories(${CH_IRRLICHT_INCLUDES})
 
 foreach(PROGRAM ${DEMOS})
     message(STATUS "...add ${PROGRAM}")

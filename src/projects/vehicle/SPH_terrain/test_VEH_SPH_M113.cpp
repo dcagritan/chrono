@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
 
     std::string delim = ",";
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
     while (time < total_time) {
         printf("\nstep : %d, time= : %f (s) \n", current_step, time);

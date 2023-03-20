@@ -23,7 +23,7 @@
 #include "chrono/utils/ChUtilsInputOutput.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
 
@@ -31,11 +31,11 @@
     #include "chrono_postprocess/ChGnuPlot.h"
 #endif
 
+#include "chrono/assets/ChVisualSystem.h"
 #ifdef CHRONO_IRRLICHT
     #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 using namespace chrono::irrlicht;
 #endif
-
 #ifdef CHRONO_VSG
     #include "chrono_vsg/ChVisualSystemVSG.h"
 using namespace chrono::vsg3d;
@@ -72,7 +72,7 @@ ViperWheelType wheel_type = ViperWheelType::RealWheel;
 
 // Custom callback for setting location-dependent soil properties.
 // Note that the location is given in the SCM reference frame.
-class MySoilParams : public vehicle::SCMDeformableTerrain::SoilParametersCallback {
+class MySoilParams : public vehicle::SCMTerrain::SoilParametersCallback {
   public:
     virtual void Set(const ChVector<>& loc,
                      double& Bekker_Kphi,
@@ -179,10 +179,10 @@ int main(int argc, char* argv[]) {
     //
 
     // Create the 'deformable terrain' object
-    vehicle::SCMDeformableTerrain terrain(&sys);
+    vehicle::SCMTerrain terrain(&sys);
 
     // Displace/rotate the terrain reference plane.
-    // Note that SCMDeformableTerrain uses a default ISO reference frame (Z up). Since the mechanism is modeled here in
+    // Note that SCMTerrain uses a default ISO reference frame (Z up). Since the mechanism is modeled here in
     // a Y-up global frame, we rotate the terrain plane by -90 degrees about the X axis.
     // Note: Irrlicht uses a Y-up frame
     terrain.SetPlane(ChCoordsys<>(ChVector<>(0, 0, -0.5)));
@@ -230,7 +230,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Set some visualization parameters: either with a texture, or with falsecolor plot, etc.
-    terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE, 0, 20000);
+    terrain.SetPlotType(vehicle::SCMTerrain::PLOT_PRESSURE, 0, 20000);
 
     terrain.SetMeshWireframe(true);
 
@@ -257,6 +257,7 @@ int main(int argc, char* argv[]) {
 #endif
             break;
         }
+        default:
         case ChVisualSystem::Type::VSG: {
 #ifdef CHRONO_VSG
             auto vis_vsg = chrono_types::make_shared<ChVisualSystemVSG>();
@@ -273,11 +274,13 @@ int main(int argc, char* argv[]) {
     }
 
     while (vis->Run()) {
+#if defined(CHRONO_IRRLICHT) || defined(CHRONO_VSG)
         vis->BeginScene();
         vis->SetCameraTarget(Body_1->GetPos());
         vis->Render();
         ////tools::drawColorbar(vis.get(), 0, 20000, "Pressure yield [Pa]", 1180);
         vis->EndScene();
+#endif
 
         if (output) {
             // write drive torques of all four wheels into file

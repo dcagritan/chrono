@@ -33,7 +33,7 @@
 
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_models/vehicle/wvp/WVP_FollowerDataDriver.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 

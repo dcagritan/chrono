@@ -9,7 +9,7 @@ set(PROGRAMS_SEQ
     test_VIS_color_mesh
 )
 
-include_directories(${CH_IRRLICHTINC})
+include_directories(${CH_IRRLICHT_INCLUDES})
 
 foreach(PROGRAM ${PROGRAMS_SEQ})
     message(STATUS "...add ${PROGRAM}")

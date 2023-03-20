@@ -31,6 +31,7 @@ using namespace chrono::irrlicht;
 // Callback class implementing the torque for a ChLinkRotSpringCB link.
 class RotationalDamper : public ChLinkRSDA::TorqueFunctor {
     virtual double evaluate(double time,            // current time
+                            double rest_angle,      // undeformed angle
                             double angle,           // relative angle of rotation
                             double vel,             // relative angular speed
                             const ChLinkRSDA& link  // associated link

@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
     bool done = false;
 
     // Simulation loop
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
     while (vis->Run()) {
         time = vehicle.GetSystem()->GetChTime();

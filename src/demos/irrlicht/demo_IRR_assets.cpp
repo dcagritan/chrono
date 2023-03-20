@@ -180,6 +180,13 @@ int main(int argc, char* argv[]) {
     // and add it to physical system:
     auto particles = chrono_types::make_shared<ChParticleCloud>();
 
+    double particle_radius = 0.05;
+
+    // Add visualization (shared by all particles in the cloud)
+    auto particle_vis = chrono_types::make_shared<ChSphereShape>();
+    particle_vis->GetSphereGeometry().rad = particle_radius;
+    particles->AddVisualShape(particle_vis);
+
     // Note: the collision shape, if needed, must be specified before creating particles.
     // This will be shared among all particles in the ChParticleCloud.
     auto particle_mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
@@ -200,12 +207,6 @@ int main(int argc, char* argv[]) {
 
     // Do not forget to add the particle cluster to the system:
     sys.Add(particles);
-
-    //  ==Asset== Attach a 'sphere' shape asset.. it will be used as a sample
-    // shape to display all particles when rendering in 3D!
-    auto sphereparticle = chrono_types::make_shared<ChSphereShape>();
-    sphereparticle->GetSphereGeometry().rad = 0.05;
-    particles->AddVisualShape(sphereparticle);
 
     //
     // EXAMPLE 4:

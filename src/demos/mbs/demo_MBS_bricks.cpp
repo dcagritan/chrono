@@ -23,11 +23,11 @@
 #include "chrono/solver/ChSolverPSOR.h"
 #include "chrono/assets/ChTexture.h"
 
+#include "chrono/assets/ChVisualSystem.h"
 #ifdef CHRONO_IRRLICHT
     #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 using namespace chrono::irrlicht;
 #endif
-
 #ifdef CHRONO_VSG
     #include "chrono_vsg/ChVisualSystemVSG.h"
 using namespace chrono::vsg3d;
@@ -184,6 +184,7 @@ int main(int argc, char* argv[]) {
 #endif
             break;
         }
+        default:
         case ChVisualSystem::Type::VSG: {
 #ifdef CHRONO_VSG
             auto vis_vsg = chrono_types::make_shared<ChVisualSystemVSG>();

@@ -281,7 +281,7 @@ int main(int argc, char* argv[]) {
     double time = 0;
     double time_end = 6;
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
     while (vis->Run() && time < time_end) {
         time = system->GetChTime();

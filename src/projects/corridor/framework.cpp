@@ -212,7 +212,7 @@ void Framework::Run(double time_end, int fps, bool real_time) {
     double time = 0;
     double next_draw = 0;
     double delta = 1.0 / fps;
-    ChTimer<double> timer;
+    ChTimer timer;
 
     timer.start();
     while (time <= time_end) {

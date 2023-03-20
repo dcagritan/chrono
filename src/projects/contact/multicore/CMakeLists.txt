@@ -25,7 +25,7 @@ ENDIF()
 
 # Add programs that require Irrlicht
 if(ENABLE_MODULE_IRRLICHT)
-	include_directories(${CH_IRRLICHTINC})
+	include_directories(${CH_IRRLICHT_INCLUDES})
 
 	set(PROGRAMS_IRR
 		test_CTC_sliding_gravity_mcore

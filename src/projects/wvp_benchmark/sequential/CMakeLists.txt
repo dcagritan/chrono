@@ -6,7 +6,7 @@ endif()
 # Additional include paths and libraries
 # ------------------------------------------------------------------------------
 
-INCLUDE_DIRECTORIES(${CH_IRRLICHTINC})
+INCLUDE_DIRECTORIES(${CH_IRRLICHT_INCLUDES})
 
 SET(LIBRARIES
     ChronoEngine

@@ -107,7 +107,7 @@ class CH_MODELS_API ChGAxleSimple : public ChSuspension {
     std::shared_ptr<ChLinkTSDA> GetShock(VehicleSide side) const { return m_shock[side]; }
 
     /// Return current suspension forces (spring and shock) on the specified side.
-    virtual ChSuspension::Force ReportSuspensionForce(VehicleSide side) const override;
+    virtual std::vector<ForceTSDA> ReportSuspensionForce(VehicleSide side) const override;
 
     /// Get the force in the spring element.
     double GetSpringForce(VehicleSide side) const { return m_spring[side]->GetForce(); }

@@ -645,7 +645,7 @@ void ChOpenGLViewer::RenderParticles() {
 
                 size_t n = 0;
                 for (int i = 0; i < pcloud->GetNparticles(); i++) {
-                    const auto& pos = pcloud->GetVisualModelFrame(i).GetPos();
+                    const auto& pos = pcloud->GetParticle(i).GetPos();
                     if (!m_vis->particle_selector || m_vis->particle_selector->Render(pos)) {
                         particle_data[num_particles + n++] = glm::vec3(pos.x(), pos.y(), pos.z());
                     }
@@ -657,9 +657,7 @@ void ChOpenGLViewer::RenderParticles() {
     }
 
     particle_data.resize(num_particles);
-
     particles.SetPointSize(particle_radius);
-
     particles.Update(particle_data);
     glm::mat4 model(1);
     particles.Draw(projection, view * model);

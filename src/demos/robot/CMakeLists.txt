@@ -2,12 +2,7 @@
 # ------------------------------------------------------------------------------
 
 if(NOT ENABLE_MODULE_VEHICLE)
-  message(STATUS "  Warning: the CuriosityRover projects require Chrono::Vehicle!")
-  return()
-endif()
-
-if(NOT ENABLE_MODULE_IRRLICHT AND NOT ENABLE_MODULE_VSG)
-  message(STATUS "  Warning: the CuriosityRover projects require a run-time visualization system!")
+  message(STATUS "  Warning: the Rover projects require Chrono::Vehicle!")
   return()
 endif()
 
@@ -15,14 +10,19 @@ endif()
 
 set(DEMOS
     demo_ROBOT_Curiosity_Rigid
-    demo_ROBOT_Curiosity_SCM
-    demo_ROBOT_LittleHexy
+    demo_ROBOT_Curiosity_SCM    
     demo_ROBOT_Turtlebot_Rigid
     demo_ROBOT_Viper_Rigid
     demo_ROBOT_Viper_SCM
 )
 
-if(ENABLE_MODULE_SENSOR)
+if(ENABLE_MODULE_IRRLICHT)
+  set(DEMOS ${DEMOS}
+      demo_ROBOT_LittleHexy
+  )
+endif()
+
+if(ENABLE_MODULE_SENSOR AND ENABLE_MODULE_IRRLICHT)
   set(DEMOS ${DEMOS}
       demo_ROBOT_Curiosity_SCM_Sensor
       demo_ROBOT_Viper_SCM_Sensor
@@ -45,7 +45,7 @@ list(APPEND LIBS "ChronoEngine_vehicle")
 list(APPEND LIBS "ChronoModels_robot")
 
 if(ENABLE_MODULE_IRRLICHT)
-    include_directories(${CH_IRRLICHTINC})
+    include_directories(${CH_IRRLICHT_INCLUDES})
     set(COMPILER_FLAGS "${COMPILER_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
     list(APPEND LIBS "ChronoEngine_irrlicht")
     list(APPEND LIBS "ChronoEngine_vehicle_irrlicht")
@@ -57,6 +57,11 @@ if(ENABLE_MODULE_VSG)
     include_directories(${CH_VSG_INCLUDES})
     list(APPEND LIBS "ChronoEngine_vsg")
     list(APPEND LIBS "ChronoEngine_vehicle_vsg")
+endif()
+
+if(ENABLE_MODULE_OPENGL)
+    include_directories(${CH_OPENGL_INCLUDES})
+    list(APPEND LIBS "ChronoEngine_opengl")
 endif()
 
 if(ENABLE_MODULE_SENSOR)

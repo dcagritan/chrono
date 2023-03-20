@@ -348,7 +348,7 @@ int main(int argc, char* argv[]) {
     utils::ChRunningAverage avg(50);
 
     ChISO2631_Vibration_SeatCushionLogger seat_logger(step_size);
-    ChTimer<> timer;
+    ChTimer timer;
     timer.reset();
     timer.start();
     while (vis->Run()) {

@@ -11,15 +11,19 @@ endif()
 # List all demos
 
 set(DEMOS
-    demo_VEH_SuspensionTestRig
     demo_VEH_TireTestRig
-    demo_VEH_TrackTestRig
 )
 
-if(ENABLE_MODULE_PARDISO_MKL OR ENABLE_MODULE_MUMPS)
-    set(DEMOS ${DEMOS}
-        demo_VEH_TrackTestRig_Band
-    )
+if(ENABLE_MODULE_IRRLICHT)
+   set(DEMOS ${DEMOS}
+       demo_VEH_SuspensionTestRig
+       demo_VEH_TrackTestRig
+   )
+   if(ENABLE_MODULE_PARDISO_MKL OR ENABLE_MODULE_MUMPS)
+      set(DEMOS ${DEMOS}
+          demo_VEH_TrackTestRig_Band
+      )
+   endif()
 endif()
 
 #--------------------------------------------------------------
@@ -32,7 +36,7 @@ list(APPEND LIBS "ChronoEngine_vehicle")
 list(APPEND LIBS "ChronoModels_vehicle")
 
 if(ENABLE_MODULE_IRRLICHT)
-    include_directories(${CH_IRRLICHTINC})
+    include_directories(${CH_IRRLICHT_INCLUDES})
     set(COMPILER_FLAGS "${COMPILER_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
     list(APPEND LIBS "ChronoEngine_irrlicht")
     list(APPEND LIBS "ChronoEngine_vehicle_irrlicht")

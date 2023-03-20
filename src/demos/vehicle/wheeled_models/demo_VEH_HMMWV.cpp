@@ -51,7 +51,7 @@ using namespace chrono::vehicle::hmmwv;
 // =============================================================================
 
 // Run-time visualization system (IRRLICHT or VSG)
-ChVisualSystem::Type vis_type = ChVisualSystem::Type::IRRLICHT;
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 // Initial vehicle location and orientation
 ChVector<> initLoc(0, 0, 1.6);
@@ -89,8 +89,8 @@ BrakeType brake_type = BrakeType::SHAFTS;
 // Model tierods as bodies (true) or as distance constraints (false)
 bool use_tierod_bodies = true;
 
-// Type of tire model (RIGID, RIGID_MESH, TMEASY, FIALA, PAC89, PAC02)
-TireModelType tire_model = TireModelType::TMEASY;
+// Type of tire model (RIGID, RIGID_MESH, TMEASY, FIALA, PAC89, PAC02, TMSIMPLE)
+TireModelType tire_model = TireModelType::TMSIMPLE;
 
 // Rigid terrain
 RigidTerrain::PatchType terrain_model = RigidTerrain::PatchType::BOX;
@@ -233,6 +233,15 @@ int main(int argc, char* argv[]) {
     // Create the vehicle run-time visualization interface and the interactive driver
     // ------------------------------------------------------------------------------
 
+#ifndef CHRONO_IRRLICHT
+    if (vis_type == ChVisualSystem::Type::IRRLICHT)
+        vis_type = ChVisualSystem::Type::VSG;
+#endif
+#ifndef CHRONO_VSG
+    if (vis_type == ChVisualSystem::Type::VSG)
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+#endif
+
     // Set the time response for steering and throttle keyboard inputs.
     double steering_time = 1.0;  // time to go from 0 to +1 (or from 0 to -1)
     double throttle_time = 1.0;  // time to go from 0 to +1
@@ -269,6 +278,7 @@ int main(int argc, char* argv[]) {
 #endif
             break;
         }
+        default:
         case ChVisualSystem::Type::VSG: {
 #ifdef CHRONO_VSG
             // Create the vehicle VSG interface

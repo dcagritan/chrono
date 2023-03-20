@@ -30,7 +30,7 @@
 #include "chrono/utils/ChUtilsInputOutput.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/wvp/WVP.h"
@@ -273,10 +273,10 @@ int main(int argc, char* argv[]) {
     double E_elastic = 2e8;
     double damping = 3e4;
 
-    auto terrain = new SCMDeformableTerrain(wvp.GetSystem());
+    auto terrain = new SCMTerrain(wvp.GetSystem());
     terrain->SetPlane(ChCoordsys<>(VNULL, Q_from_AngX(CH_C_PI_2)));
     terrain->SetSoilParameters(Kphi, Kc, n, c, phi, K, E_elastic, damping);
-    terrain->SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.15);
+    terrain->SetPlotType(vehicle::SCMTerrain::PLOT_SINKAGE, 0, 0.15);
     terrain->AddMovingPatch(wvp.GetChassisBody(), ChVector<>(-2, 0, 0), ChVector<>(5, 3, 1));
     terrain->Initialize(terrainLength, 5.0, 0.1);
 

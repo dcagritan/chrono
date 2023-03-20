@@ -17,7 +17,7 @@ SET(DEMOS
 #--------------------------------------------------------------
 # Additional include directories
 
-INCLUDE_DIRECTORIES(${CH_IRRLICHTINC})
+INCLUDE_DIRECTORIES(${CH_IRRLICHT_INCLUDES})
 
 #--------------------------------------------------------------
 # Create the executables

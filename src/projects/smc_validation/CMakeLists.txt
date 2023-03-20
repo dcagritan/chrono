@@ -30,7 +30,7 @@ set(TESTS
 
 
 include_directories(${CH_MULTICORE_INCLUDES})
-include_directories(${CH_IRRLICHTINC})
+include_directories(${CH_IRRLICHT_INCLUDES})
 
 foreach(PROGRAM ${TESTS})
     message(STATUS "...add ${PROGRAM}")

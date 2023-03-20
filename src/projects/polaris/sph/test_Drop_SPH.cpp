@@ -27,7 +27,7 @@
 #include "chrono/utils/ChUtilsInputOutput.h"
 
 #include "chrono_fsi/ChSystemFsi.h"
-#include "chrono_fsi/ChVisualizationFsi.h"
+#include "chrono_fsi/visualization/ChFsiVisualizationGL.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
 
@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
 #ifdef CHRONO_OPENGL
     // Create run-time visualization
     opengl::ChVisualSystemOpenGL vis;
-    ChVisualizationFsi visFSI(&sysFSI, &vis);
+    ChFsiVisualizationGL visFSI(&sysFSI, &vis);
     if (run_time_vis) {
         visFSI.SetTitle("Object drop test");
         visFSI.SetSize(1280, 720);
@@ -220,7 +220,7 @@ int main(int argc, char* argv[]) {
         visFSI.EnableFluidMarkers(run_time_vis_particles);
         visFSI.EnableRigidBodyMarkers(run_time_vis_bce);
         visFSI.EnableBoundaryMarkers(false);
-        visFSI.SetRenderMode(ChVisualizationFsi::RenderMode::SOLID);
+        visFSI.SetRenderMode(ChFsiVisualizationGL::RenderMode::SOLID);
 
         vis.AttachSystem(&sys);
         vis.Initialize();

@@ -29,7 +29,7 @@
 #include "chrono/assets/ChBoxShape.h"
 #include "chrono/assets/ChCylinderShape.h"
 
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
@@ -291,7 +291,7 @@ int main(int argc, char* argv[]) {
 
     ChTerrain* terrain;
     if (useDefSoil) {
-        auto terrain_D = new SCMDeformableTerrain(m113.GetSystem());
+        auto terrain_D = new SCMTerrain(m113.GetSystem());
         terrain_D->SetPlane(ChCoordsys<>(VNULL, Q_from_AngX(CH_C_PI_2)));
         terrain_D->SetSoilParameters(Kphi,       // Bekker Kphi
                                      Kc,         // Bekker Kc
@@ -303,8 +303,8 @@ int main(int argc, char* argv[]) {
                                      damping     // Damping coefficient (Pa*s/m)
         );
         ////terrain_D->SetTexture(vehicle::GetDataFile("terrain/textures/grass.jpg"), 80, 16);
-        terrain_D->SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
-        ////terrain_D->SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.15);
+        terrain_D->SetPlotType(vehicle::SCMTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
+        ////terrain_D->SetPlotType(vehicle::SCMTerrain::PLOT_SINKAGE, 0, 0.15);
         terrain_D->Initialize(terrainLength, terrainWidth, 1.0 / factor);
         terrain = terrain_D;
     } else {
@@ -807,22 +807,22 @@ int main(int argc, char* argv[]) {
                 motionResistance = 0;
                 for (int ii = 0; ii < vehicle.GetNumTrackShoes(LEFT); ++ii)
                 {
-                   //motionResistance += ((SCMDeformableTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(LEFT, ii)->GetShoeBody()).fN.x();
+                   //motionResistance += ((SCMTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(LEFT, ii)->GetShoeBody()).fN.x();
                 }
                 for (int ii = 0; ii < vehicle.GetNumTrackShoes(RIGHT); ++ii)
                 {
-                   //motionResistance += ((SCMDeformableTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(RIGHT, ii)->GetShoeBody()).fN.x();
+                   //motionResistance += ((SCMTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(RIGHT, ii)->GetShoeBody()).fN.x();
                 }
 
                 // sum up horizontal component of friction contact force acting on each tread (TODO: Currently Chrono hack)
                 tractiveEffort = 0;
                 for (int ii = 0; ii < vehicle.GetNumTrackShoes(LEFT); ++ii)
                 {
-                   //tractiveEffort += ((SCMDeformableTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(LEFT, ii)->GetShoeBody()).fT.x();
+                   //tractiveEffort += ((SCMTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(LEFT, ii)->GetShoeBody()).fT.x();
                 }
                 for (int ii = 0; ii < vehicle.GetNumTrackShoes(RIGHT); ++ii)
                 {
-                   //tractiveEffort += ((SCMDeformableTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(RIGHT, ii)->GetShoeBody()).fT.x();
+                   //tractiveEffort += ((SCMTerrain*)terrain)->GetContactForce(vehicle.GetTrackShoe(RIGHT, ii)->GetShoeBody()).fT.x();
                 }
 
             }

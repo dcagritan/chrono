@@ -315,7 +315,7 @@ int main(int argc, char* argv[]) {
 
     std::ofstream kurs(out_dir + "/path.txt");
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.reset();
     timer.start();
     double sim_time = 0;

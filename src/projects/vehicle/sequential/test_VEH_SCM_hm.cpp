@@ -21,7 +21,7 @@
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
 
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
     my_system.Add(motor);
 
     // Create the 'deformable terrain' object
-    vehicle::SCMDeformableTerrain mterrain(&my_system);
+    vehicle::SCMTerrain mterrain(&my_system);
 
     // Use either a regular grid:
     ////mterrain.Initialize(6, 2, 0.04);
@@ -91,8 +91,8 @@ int main(int argc, char* argv[]) {
                                3e4     // Damping (Pa s/m), proportional to negative vertical speed (optional)
     );
 
-    mterrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE, 0, 30000.2);
-    ////mterrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.15);
+    mterrain.SetPlotType(vehicle::SCMTerrain::PLOT_PRESSURE, 0, 30000.2);
+    ////mterrain.SetPlotType(vehicle::SCMTerrain::PLOT_SINKAGE, 0, 0.15);
     mterrain.GetMesh()->SetWireframe(true);
 
     // Create the Irrlicht visualization

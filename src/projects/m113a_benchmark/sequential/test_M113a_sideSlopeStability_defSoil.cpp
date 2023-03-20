@@ -28,7 +28,7 @@
 #include "chrono/assets/ChBoxShape.h"
 #include "chrono/assets/ChSphereShape.h"
 
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
 
     ChTerrain* terrain;
     if (useDefSoil) {
-        auto terrain_D = new SCMDeformableTerrain(m113.GetSystem());
+        auto terrain_D = new SCMTerrain(m113.GetSystem());
         terrain_D->SetPlane(ChCoordsys<>(VNULL, Q_from_AngX(CH_C_PI_2)));
         terrain_D->SetSoilParameters(Kphi,       // Bekker Kphi
                                      Kc,         // Bekker Kc
@@ -198,8 +198,8 @@ int main(int argc, char* argv[]) {
                                      damping     // Damping coefficient (Pa*s/m)
         );
         ////terrain_D->SetTexture(vehicle::GetDataFile("terrain/textures/grass.jpg"), 80, 16);
-        terrain_D->SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
-        ////terrain_D->SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.15);
+        terrain_D->SetPlotType(vehicle::SCMTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
+        ////terrain_D->SetPlotType(vehicle::SCMTerrain::PLOT_SINKAGE, 0, 0.15);
         terrain_D->Initialize(terrainLength, terrainWidth, 1.0 / factor);
         terrain = terrain_D;
     } else {
@@ -422,11 +422,11 @@ int main(int argc, char* argv[]) {
 
                 if (useDefSoil) {
                     std::vector<ChVector<> >& vertices =
-                        ((SCMDeformableTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsVertices();
+                        ((SCMTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsVertices();
                     std::vector<ChVector<int> >& idx_vertices =
-                        ((SCMDeformableTerrain*)terrain)->GetMesh()->GetMesh()->getIndicesVertexes();
+                        ((SCMTerrain*)terrain)->GetMesh()->GetMesh()->getIndicesVertexes();
                     std::vector<ChColor>& colors =
-                        ((SCMDeformableTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsColors();
+                        ((SCMTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsColors();
 
                     std::string delim = ",";
                     utils::CSV_writer csv(delim);
@@ -528,11 +528,11 @@ int main(int argc, char* argv[]) {
 
                 if (useDefSoil) {
                     std::vector<ChVector<> >& vertices =
-                        ((SCMDeformableTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsVertices();
+                        ((SCMTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsVertices();
                     std::vector<ChVector<int> >& idx_vertices =
-                        ((SCMDeformableTerrain*)terrain)->GetMesh()->GetMesh()->getIndicesVertexes();
+                        ((SCMTerrain*)terrain)->GetMesh()->GetMesh()->getIndicesVertexes();
                     std::vector<ChVector<ChColor> >& colors =
-                        ((SCMDeformableTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsColors();
+                        ((SCMTerrain*)terrain)->GetMesh()->GetMesh()->getCoordsColors();
 
                     std::string delim = ",";
                     utils::CSV_writer csv(delim);

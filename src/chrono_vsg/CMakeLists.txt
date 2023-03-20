@@ -13,7 +13,7 @@ if(NOT ENABLE_MODULE_VSG)
    return()
 endif()
 
-message(STATUS "==== Chrono VSG module ====")
+message(STATUS "\n==== Chrono VSG module ====\n")
 
 mark_as_advanced(CLEAR VSG_LIBRARY)
 mark_as_advanced(CLEAR VSG_ROOT)
@@ -68,8 +68,6 @@ set(CE_VSG_SHAPES_FILES
     shapes/GetDiceShapeData.h
     shapes/GetSphereShapeData.cpp
     shapes/GetSphereShapeData.h
-    shapes/GetParticleShapeData.cpp
-    shapes/GetParticleShapeData.h
     shapes/GetSurfaceShapeData.cpp
     shapes/GetSurfaceShapeData.h
     shapes/ShapeBuilder.cpp

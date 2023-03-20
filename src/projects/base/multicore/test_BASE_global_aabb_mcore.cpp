@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
     real3 minS, maxS;  // result for conditional sequential algorithm
     real3 minP, maxP;  // result for conditional parallel algorithm
 
-    ChTimer<> timer;
+    ChTimer timer;
     // ---------------------------------------------------------
 
     std::cout << "\nTEST 1" << std::endl;

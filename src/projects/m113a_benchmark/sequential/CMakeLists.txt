@@ -16,7 +16,7 @@ set(CXX_FLAGS "${CH_CXX_FLAGS}")
 
 if(ENABLE_MODULE_IRRLICHT)
   set(LIBRARIES ${LIBRARIES} ChronoEngine_irrlicht ChronoEngine_vehicle_irrlicht)
-  include_directories(${CH_IRRLICHTINC})
+  include_directories(${CH_IRRLICHT_INCLUDES})
   set(CXX_FLAGS "${CXX_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
 endif()
 

@@ -23,9 +23,6 @@
 #include "chrono/utils/ChUtilsGenerators.h"
 #include "chrono/utils/ChUtilsGeometry.h"
 
-#include "chrono_fsi/ChSystemFsi.h"
-#include "chrono_fsi/ChVisualizationFsi.h"
-
 #include "chrono/fea/ChElementShellANCF_3423.h"
 #include "chrono/fea/ChMesh.h"
 #include "chrono/fea/ChMeshExporter.h"
@@ -33,6 +30,12 @@
 
 #ifdef CHRONO_PARDISO_MKL
     #include "chrono_pardisomkl/ChSolverPardisoMKL.h"
+#endif
+
+#include "chrono_fsi/ChSystemFsi.h"
+
+#ifdef CHRONO_OPENGL
+    #include "chrono_fsi/visualization/ChFsiVisualizationGL.h"
 #endif
 
 #include "chrono_thirdparty/filesystem/path.h"
@@ -141,8 +144,9 @@ int main(int argc, char* argv[]) {
     sysFSI.Initialize();
     auto my_mesh = sysFSI.GetFsiMesh();
 
+#ifdef CHRONO_OPENGL
     // Create a run-tme visualizer
-    ChVisualizationFsi fsi_vis(&sysFSI);
+    ChFsiVisualizationGL fsi_vis(&sysFSI);
     if (render) {
         fsi_vis.SetTitle("Chrono::FSI Flexible Flat Plate Demo");
         fsi_vis.UpdateCamera(ChVector<>(bxDim / 8, -3, 0.25), ChVector<>(bxDim / 8, 0.0, 0.25));
@@ -150,6 +154,7 @@ int main(int argc, char* argv[]) {
         fsi_vis.EnableBoundaryMarkers(false);
         fsi_vis.Initialize();
     }
+#endif
 
 // Set MBS solver
 #ifdef CHRONO_PARDISO_MKL
@@ -175,7 +180,7 @@ int main(int argc, char* argv[]) {
     double time = 0.0;
     int current_step = 0;
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
     while (time < t_end) {
         std::cout << current_step << " time: " << time << std::endl;
@@ -189,11 +194,13 @@ int main(int argc, char* argv[]) {
             fea::ChMeshExporter::WriteFrame(my_mesh, MESH_CONNECTIVITY, filename);
         }
 
+#ifdef CHRONO_OPENGL
         // Render SPH particles
         if (render && current_step % render_steps == 0) {
             if (!fsi_vis.Render())
                 break;
         }
+#endif
 
         sysFSI.DoStepDynamics_FSI();
 

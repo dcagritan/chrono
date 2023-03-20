@@ -40,7 +40,7 @@ using namespace chrono::vsg3d;
 
 using namespace chrono;
 
-ChVisualSystem::Type vis_type = ChVisualSystem::Type::IRRLICHT;
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 collision::ChCollisionSystemType collision_type = collision::ChCollisionSystemType::BULLET;
 
@@ -192,6 +192,15 @@ int main(int argc, char* argv[]) {
     AddFallingItems(sys);
 
     // Create the run-time visualization system
+#ifndef CHRONO_IRRLICHT
+    if (vis_type == ChVisualSystem::Type::IRRLICHT)
+        vis_type = ChVisualSystem::Type::VSG;
+#endif
+#ifndef CHRONO_VSG
+    if (vis_type == ChVisualSystem::Type::VSG)
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+#endif
+
     std::shared_ptr<ChVisualSystem> vis;
     switch (vis_type) {
         case ChVisualSystem::Type::IRRLICHT: {
@@ -210,6 +219,7 @@ int main(int argc, char* argv[]) {
 #endif
             break;
         }
+        default:
         case ChVisualSystem::Type::VSG: {
 #ifdef CHRONO_VSG
             auto vis_vsg = chrono_types::make_shared<ChVisualSystemVSG>();

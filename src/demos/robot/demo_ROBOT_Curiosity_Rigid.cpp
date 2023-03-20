@@ -31,11 +31,11 @@
     #include "chrono_postprocess/ChGnuPlot.h"
 #endif
 
+#include "chrono/assets/ChVisualSystem.h"
 #ifdef CHRONO_IRRLICHT
     #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 using namespace chrono::irrlicht;
 #endif
-
 #ifdef CHRONO_VSG
     #include "chrono_vsg/ChVisualSystemVSG.h"
 using namespace chrono::vsg3d;
@@ -47,7 +47,7 @@ using namespace chrono::curiosity;
 // -----------------------------------------------------------------------------
 
 // Run-time visualization system (IRRLICHT or VSG)
-ChVisualSystem::Type vis_type = ChVisualSystem::Type::IRRLICHT;
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 // Specify rover chassis type
 // The options are Scarecrow and FullRover
@@ -98,6 +98,15 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     // Create the run-time visualization interface
+#ifndef CHRONO_IRRLICHT
+    if (vis_type == ChVisualSystem::Type::IRRLICHT)
+        vis_type = ChVisualSystem::Type::VSG;
+#endif
+#ifndef CHRONO_VSG
+    if (vis_type == ChVisualSystem::Type::VSG)
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+#endif
+
     std::shared_ptr<ChVisualSystem> vis;
     switch (vis_type) {
         case ChVisualSystem::Type::IRRLICHT: {
@@ -121,6 +130,7 @@ int main(int argc, char* argv[]) {
 #endif
             break;
         }
+        default:
         case ChVisualSystem::Type::VSG: {
 #ifdef CHRONO_VSG
             auto vis_vsg = chrono_types::make_shared<ChVisualSystemVSG>();
@@ -138,9 +148,11 @@ int main(int argc, char* argv[]) {
 
     // Simulation loop
     while (vis->Run()) {
+#if defined(CHRONO_IRRLICHT) || defined(CHRONO_VSG)
         vis->BeginScene();
         vis->Render();
         vis->EndScene();
+#endif
 
         ////auto time = rover.GetSystem()->GetChTime();
         ////if (time < 1)

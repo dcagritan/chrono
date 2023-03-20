@@ -14,12 +14,13 @@ set(PROGRAMS
     test_Polaris_Accel
     test_Polaris_DLC
     test_Polaris_Turn
+    test_Polaris_CustomTerrain
 )
 
 #--------------------------------------------------------------
 # Include directories, compiler flags, libraries
 
-include_directories(${CH_IRRLICHTINC})
+include_directories(${CH_IRRLICHT_INCLUDES})
 set(COMPILER_FLAGS "${CH_CXX_FLAGS}  ${CH_IRRLICHT_CXX_FLAGS}")
 set(LINKER_FLAGS "${CH_LINKERFLAG_EXE}")
 list(APPEND LIBS "")

@@ -26,7 +26,7 @@
 #include "chrono/utils/ChUtilsInputOutput.h"
 
 #include "chrono_fsi/ChSystemFsi.h"
-#include "chrono_fsi/ChVisualizationFsi.h"
+#include "chrono_fsi/visualization/ChFsiVisualizationGL.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
@@ -262,7 +262,7 @@ int main(int argc, char* argv[]) {
 #ifdef CHRONO_OPENGL
     // Create run-time visualization
     opengl::ChVisualSystemOpenGL vis;
-    ChVisualizationFsi visFSI(&sysFSI, &vis);
+    ChFsiVisualizationGL visFSI(&sysFSI, &vis);
     std::shared_ptr<ChBody> sentinel;
     std::shared_ptr<PolarisStats> stats;
     if (run_time_vis) {
@@ -274,8 +274,8 @@ int main(int argc, char* argv[]) {
         visFSI.EnableFluidMarkers(run_time_vis_particles);
         visFSI.EnableRigidBodyMarkers(run_time_vis_bce);
         visFSI.EnableBoundaryMarkers(false);
-        visFSI.SetRenderMode(ChVisualizationFsi::RenderMode::SOLID);
-        ////visFSI.SetParticleRenderMode(sysFSI.GetInitialSpacing() / 2, ChVisualizationFsi::RenderMode::SOLID);
+        visFSI.SetRenderMode(ChFsiVisualizationGL::RenderMode::SOLID);
+        ////visFSI.SetParticleRenderMode(sysFSI.GetInitialSpacing() / 2, ChFsiVisualizationGL::RenderMode::SOLID);
 
         sentinel = CreateSentinel(sys, init_pos);
 

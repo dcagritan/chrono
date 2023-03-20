@@ -37,7 +37,7 @@
 #include "chrono_vehicle/ChDriver.h"
 #include "chrono_vehicle/ChVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_vehicle/utils/ChVehiclePath.h"
 #include "chrono_vehicle/utils/ChSteeringController.h"
 
@@ -341,11 +341,11 @@ int main(int argc, char* argv[]) {
     double E_elastic = 2e8;  // Elastic stiffness (Pa/m), before plastic yeld
     double damping = 3e4;    // Damping coefficient (Pa*s/m)
 
-    SCMDeformableTerrain terrain(system);
+    SCMTerrain terrain(system);
     terrain.SetPlane(ChCoordsys<>(VNULL, Q_from_AngX(CH_C_PI_2)));
     terrain.SetSoilParameters(Bekker_Kphi, Bekker_Kc, Bekker_n, Mohr_coh, Mohr_phi, K, E_elastic, damping);
-    ////terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
-    terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.15);
+    ////terrain.SetPlotType(vehicle::SCMTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
+    terrain.SetPlotType(vehicle::SCMTerrain::PLOT_SINKAGE, 0, 0.15);
     terrain.Initialize(2 * hdimX, 2 * hdimY, 0.02);
 
     // Enable moving patch feature

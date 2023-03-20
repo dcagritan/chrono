@@ -25,11 +25,11 @@
 #include "chrono/utils/ChUtilsCreators.h"
 #include "chrono/physics/ChSystemNSC.h"
 
+#include "chrono/assets/ChVisualSystem.h"
 #ifdef CHRONO_IRRLICHT
     #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 using namespace chrono::irrlicht;
 #endif
-
 #ifdef CHRONO_VSG
     #include "chrono_vsg/ChVisualSystemVSG.h"
 using namespace chrono::vsg3d;
@@ -37,7 +37,7 @@ using namespace chrono::vsg3d;
 
 using namespace chrono;
 
-ChVisualSystem::Type vis_type = ChVisualSystem::Type::IRRLICHT;
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 // -----------------------------------------------------------------------------
 // Callback class for contact reporting
@@ -181,6 +181,15 @@ int main(int argc, char* argv[]) {
     // -------------------------------
 
     std::shared_ptr<ChVisualSystem> vis;
+#ifndef CHRONO_IRRLICHT
+    if (vis_type == ChVisualSystem::Type::IRRLICHT)
+        vis_type = ChVisualSystem::Type::VSG;
+#endif
+#ifndef CHRONO_VSG
+    if (vis_type == ChVisualSystem::Type::VSG)
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+#endif
+
     switch (vis_type) {
         case ChVisualSystem::Type::IRRLICHT: {
 #ifdef CHRONO_IRRLICHT
@@ -198,6 +207,7 @@ int main(int argc, char* argv[]) {
 #endif
             break;
         }
+        default:
         case ChVisualSystem::Type::VSG: {
 #ifdef CHRONO_VSG
             auto vis_vsg = chrono_types::make_shared<ChVisualSystemVSG>();

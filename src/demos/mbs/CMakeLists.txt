@@ -1,7 +1,8 @@
 #--------------------------------------------------------------
 # List of all MBS demos
 
-# Add demos that can work with either Irrlicht or VSG
+# Add demos that can work with either Irrlicht or VSG,
+# or no run-time visualization
 set(DEMOS
   demo_MBS_aux_ref
   demo_MBS_ballSMC
@@ -74,7 +75,7 @@ set(LINKER_FLAGS "${CH_LINKERFLAG_EXE}")
 list(APPEND LIBS "ChronoEngine")
 
 if(ENABLE_MODULE_IRRLICHT)
-  include_directories(${CH_IRRLICHTINC})
+  include_directories(${CH_IRRLICHT_INCLUDES})
   set(COMPILER_FLAGS "${COMPILER_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
   list(APPEND LIBS "ChronoEngine_irrlicht")
 endif()

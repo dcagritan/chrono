@@ -25,7 +25,7 @@ endif()
 set(CXX_FLAGS "${CH_CXX_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
 set(LIBRARIES ChronoEngine ChronoEngine_irrlicht)
 
-include_directories(${CH_IRRLICHTINC})
+include_directories(${CH_IRRLICHT_INCLUDES})
 
 if(ENABLE_MODULE_PARDISO_MKL)
   set(CXX_FLAGS "${CXX_FLAGS} ${CH_MKL_CXX_FLAGS}")

@@ -15,7 +15,7 @@ set(FEA_DEMOS_IRR_MKL
 )
 
 include_directories(CMAKE_CURRENT_SOURCE_DIR)
-include_directories(${CH_IRRLICHTINC})
+include_directories(${CH_IRRLICHT_INCLUDES})
 include_directories(${CH_MKL_INCLUDES})
 list(APPEND LIBS "ChronoEngine")
 list(APPEND LIBS "ChronoEngine_irrlicht")
