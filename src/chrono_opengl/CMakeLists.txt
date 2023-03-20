@@ -40,7 +40,7 @@ cmake_policy(SET CMP0072 NEW)
 find_package(OpenGL)
 find_package(GLM REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(GLFW3 REQUIRED)
+find_package(glfw3 REQUIRED)
 
 # On windows, ask for the GLEW and GLFW DLLs so that we can copy. This is
 # optional.  If not specified, it is the user's responsibility to make them
