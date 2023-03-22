@@ -145,9 +145,9 @@ class NNterrain : public ChTerrain {
     std::array<std::vector<ChVector<>>, 4> m_particle_forces;
     std::array<TerrainForce, 4> m_tire_forces;
 
-    // ChTimer<> m_timer_data_in;
-    // ChTimer<> m_timer_model_eval;
-    // ChTimer<> m_timer_data_out;
+    ChTimer m_timer_data_in;
+    ChTimer m_timer_model_eval;
+    ChTimer m_timer_data_out;
 
     bool m_verbose;
 };
