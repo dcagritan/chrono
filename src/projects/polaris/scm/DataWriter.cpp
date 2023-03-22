@@ -41,19 +41,12 @@ DataWriter::DataWriter(ChSystem* sysFSI, int num_sample_boxes)
       m_mbs_output(true),
       m_verbose(true) 
       {
-    //////m_indices.resize(m_num_sample_boxes);
 }
 
 DataWriter::~DataWriter() {
     m_mbs_stream.close();
 }
 
-
-// void DataWriter::SetSamplingVolume(const ChVector<>& offset, const ChVector2<>& size) {
-//     m_box_size.x() = size.x();
-//     m_box_size.y() = size.y();
-//     m_box_offset = offset;
-// }
 
 void DataWriter::Initialize(const std::string& dir,
                             double major_FPS,
@@ -112,69 +105,6 @@ void DataWriter::Write() {
     }
 }
 
-// struct print_particle_pos {
-//     print_particle_pos(std::ofstream* stream) : m_stream(stream) {}
-//     __host__ void operator()(const Real4 p) { (*m_stream) << p.x << ", " << p.y << ", " << p.z << "\n"; }
-//     std::ofstream* m_stream;
-// };
-
-// struct print_particle_pos_vel_acc_frc {
-//     print_particle_pos_vel_acc_frc(std::ofstream* stream) : m_stream(stream) {}
-//     template <typename T>
-//     __host__ void operator()(const T pvf) {
-//         auto p = thrust::get<0>(pvf);
-//         auto v = thrust::get<1>(pvf);
-//         auto a = thrust::get<2>(pvf);
-//         auto f = thrust::get<3>(pvf);
-//         (*m_stream) << p.x << ", " << p.y << ", " << p.z << ", "  //
-//                     << v.x << ", " << v.y << ", " << v.z << ", "  //
-//                     << a.x << ", " << a.y << ", " << a.z << ", "  //
-//                     << f.x << ", " << f.y << ", " << f.z << "\n";
-//     }
-//     std::ofstream* m_stream;
-// };
-
-// void DataWriter::WriteDataParticles(const thrust::device_vector<int>& indices_D, const std::string& filename) {
-//     if (m_particle_output == ParticleOutput::POSITIONS) {
-//         // Get particle positions on device
-//         auto pos_D = m_sysFSI.GetParticlePositions(indices_D);
-
-//         // Copy vector to host
-//         thrust::host_vector<Real4> pos_H = pos_D;
-
-//         // Write output file
-//         std::ofstream stream;
-//         stream.open(filename, std::ios_base::trunc);
-//         thrust::for_each(thrust::host, pos_H.begin(), pos_H.end(), print_particle_pos(&stream));
-//         stream.close();
-//     } else {
-//         // Get particle positions, velocities, accelerations, and forces on device
-//         auto pos_D = m_sysFSI.GetParticlePositions(indices_D);
-//         auto vel_D = m_sysFSI.GetParticleVelocities(indices_D);
-//         auto acc_D = m_sysFSI.GetParticleAccelerations(indices_D);
-//         auto frc_D = m_sysFSI.GetParticleForces(indices_D);
-
-//         // Copy vectors to host
-//         thrust::host_vector<Real4> pos_H = pos_D;
-//         thrust::host_vector<Real3> vel_H = vel_D;
-//         thrust::host_vector<Real4> acc_H = acc_D;
-//         thrust::host_vector<Real4> frc_H = frc_D;
-
-//         // Write output file
-//         std::ofstream stream;
-//         stream.open(filename, std::ios_base::trunc);
-//         thrust::for_each(thrust::host,                                                                         //
-//                          thrust::make_zip_iterator(                                                            //
-//                              thrust::make_tuple(pos_H.begin(), vel_H.begin(), acc_H.begin(), frc_H.begin())),  //
-//                          thrust::make_zip_iterator(                                                            //
-//                              thrust::make_tuple(pos_H.end(), vel_H.end(), acc_H.end(), frc_H.end())),          //
-//                          print_particle_pos_vel_acc_frc(&stream)                                               //
-//         );
-//         stream.close();
-//     }
-// }
-
-// --------------------------------------------------------------------------------------------------------------------
 
 DataWriterVehicle::DataWriterVehicle(ChSystem* sysFSI, std::shared_ptr<WheeledVehicle> vehicle, SCMTerrain& terrain)
     : DataWriter(sysFSI, 4), m_vehicle(vehicle), m_terrain(terrain) {
@@ -303,90 +233,3 @@ void DataWriterVehicle::WriteDataMBS(const std::string& filename) {
 }
 
 
-// // --------------------------------------------------------------------------------------------------------------------
-
-// DataWriterObject::DataWriterObject(ChSystemFsi& sysFSI, std::shared_ptr<ChBody> body, const ChVector<>& body_size)
-//     : DataWriter(sysFSI, 1), m_body(body), m_body_size(body_size) {
-//     m_box_size = 2.0 * body_size;
-//     m_box_offset = VNULL;
-
-//     m_vel_channels = {7, 8, 9, 10, 11, 12};
-//     m_acc_channels = {13, 14, 15, 16, 17, 18};
-// }
-
-// void DataWriterObject::CollectDataMBS() {
-//     size_t start = 0;
-
-//     auto v_pos = m_body->GetPos();
-//     m_mbs_outputs[start + 0] = v_pos.x();
-//     m_mbs_outputs[start + 1] = v_pos.y();
-//     m_mbs_outputs[start + 2] = v_pos.z();
-//     start += 3;
-
-//     auto v_rot = m_body->GetRot();
-//     m_mbs_outputs[start + 0] = v_rot.e0();
-//     m_mbs_outputs[start + 1] = v_rot.e1();
-//     m_mbs_outputs[start + 2] = v_rot.e2();
-//     m_mbs_outputs[start + 3] = v_rot.e3();
-//     start += 4;
-
-//     auto v_vel = m_body->GetPos_dt();
-//     m_mbs_outputs[start + 0] = v_vel.x();
-//     m_mbs_outputs[start + 1] = v_vel.y();
-//     m_mbs_outputs[start + 2] = v_vel.z();
-//     start += 3;
-
-//     auto v_omg = m_body->GetWvel_par();
-//     m_mbs_outputs[start + 0] = v_omg.x();
-//     m_mbs_outputs[start + 1] = v_omg.y();
-//     m_mbs_outputs[start + 2] = v_omg.z();
-//     start += 3;
-
-//     const auto& t_force = m_body->Get_accumulated_force();
-//     m_mbs_outputs[start + 0] = t_force.x();
-//     m_mbs_outputs[start + 1] = t_force.y();
-//     m_mbs_outputs[start + 2] = t_force.z();
-//     start += 3;
-
-//     const auto& t_torque = m_body->Get_accumulated_torque();
-//     m_mbs_outputs[start + 0] = t_torque.x();
-//     m_mbs_outputs[start + 1] = t_torque.y();
-//     m_mbs_outputs[start + 2] = t_torque.z();
-//     start += 3;
-// }
-
-// void DataWriterObject::WriteDataMBS(const std::string& filename) {
-//     const auto& o = m_mbs_outputs;
-//     std::ofstream stream;
-//     stream.open(filename, std::ios_base::trunc);
-
-//     size_t start = 0;
-
-//     // Body position, orientation, linear and angular velocities
-//     for (int j = 0; j < 13; j++)
-//         stream << o[start + j] << ", ";
-//     stream << "\n";
-//     start += 13;
-
-//     // Body force and moment
-//     for (int j = 0; j < 6; j++)
-//         stream << o[start + j] << ", ";
-//     stream << "\n";
-//     start += 6;
-
-//     stream.close();
-// }
-
-// ChFrame<> DataWriterObject::GetSampleBoxFrame(int box_id) const {
-//     auto pos = m_body->GetPos();
-//     auto normal = m_body->GetRot().GetYaxis();
-//     auto hheight = m_body_size.z() / 2;
-
-//     ChVector<> Z_dir(0, 0, 1);
-//     ChVector<> X_dir = Vcross(normal, ChVector<>(0, 0, 1)).GetNormalized();
-//     ChVector<> Y_dir = Vcross(Z_dir, X_dir);
-//     ChMatrix33<> box_rot(X_dir, Y_dir, Z_dir);
-//     ChVector<> box_pos = pos + box_rot * (m_box_offset - ChVector<>(0, 0, hheight));
-
-//     return ChFrame<>(box_pos, box_rot);
-// }

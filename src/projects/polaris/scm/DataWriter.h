@@ -171,36 +171,3 @@ class DataWriterVehicle : public DataWriter {
     std::vector<int> m_acc_channels;
 };
 
-// // --------------------------------------------------------------------------------------------------------------------
-
-// /// Data writer for a single rigid object interacting with SPH terrain.
-// ///
-// /// At a "major" frame M and "minor" frame m, the mbs_M_m.csv output file contains 2 lines:
-// /// - line 1: object position, orientation, linear velocity, angular velocity (3+4+3+3 values)
-// /// - line 2: terrain force and moment (3+3 values)
-// ///
-// /// Positions and orientations are relative to the global frame.
-// /// Rotations are provided as a quaternion (w,x,y,z).
-// /// Linear and angular velocities are relative to and expressed in the global frame.
-// /// Terrain forces and moments are assumed applied at the object center and are given in the global frame.
-// class DataWriterObject : public DataWriter {
-//   public:
-//     DataWriterObject(chrono::fsi::ChSystemFsi& sysFSI,
-//                      std::shared_ptr<chrono::ChBody> body,
-//                      const chrono::ChVector<>& body_size);
-//     ~DataWriterObject() {}
-
-//   private:
-//     virtual int GetNumChannelsMBS() const override { return (7 + 6 + 3 + 3); }
-//     virtual const std::vector<int> GetVelChannelsMBS() const { return m_vel_channels; }
-//     virtual const std::vector<int> GetAccChannelsMBS() const { return m_acc_channels; }
-//     virtual void CollectDataMBS() override;
-//     virtual void WriteDataMBS(const std::string& filename) override;
-//     virtual chrono::ChFrame<> GetSampleBoxFrame(int box_id) const override;
-
-//     std::shared_ptr<chrono::ChBody> m_body;
-//     chrono::ChVector<> m_body_size;
-
-//     std::vector<int> m_vel_channels;
-//     std::vector<int> m_acc_channels;
-// };

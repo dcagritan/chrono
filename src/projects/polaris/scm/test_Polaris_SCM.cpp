@@ -73,21 +73,6 @@ double throttlemagnitude=0.7;
 double steeringmagnitude=0.6;
 bool heightmapterrain=true;
 
-// -----------------------------------------------------------------------------
-// Vehicle parameters
-// -----------------------------------------------------------------------------
-
-PolarisModel model = PolarisModel::MODIFIED;
-
-// Type of tire (controls both contact and visualization)
-enum class TireType { CYLINDRICAL, LUGGED };
-TireType tire_type = TireType::LUGGED;
-
-// Tire contact material properties
-float Y_t = 1.0e6f;
-float cr_t = 0.1f;
-float mu_t = 0.8f;
-
 // Initial vehicle position and orientation
 // Create vehicle
 ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.1), QUNIT);
@@ -247,16 +232,13 @@ int main(int argc, char* argv[]) {
     vis->AddLightDirectional();
     vis->AddSkyBox();
     vis->AddLogo();
-    ChVehicle* castedvehicle = vehicle.get();
-    // auto castedvehicle = std::static_pointer_cast<ChVehicle>(vehicle);
-    // ChVehicle* castedvehicle = (ChVehicle*)vehicle
     vis->AttachVehicle(vehicle.get());
 
     // --------------------
     // Create driver system
     // --------------------
-    MyDriver driver(*castedvehicle, 0.2);
-    driver.Initialize();
+    // MyDriver driver(*vehicle, 0.2);
+    // driver.Initialize();
 
     // -----------------
     // Initialize output
@@ -284,8 +266,6 @@ int main(int argc, char* argv[]) {
     // ---------------
     std::cout << "Total vehicle mass: " << vehicle->GetMass() << std::endl;
 
-    // Solver settings.
-    sys.SetSolverMaxIterations(50);
 
     // Number of simulation steps between two 3D view render frames
     int render_steps = (int)std::ceil(render_step_size / step_size);
@@ -293,9 +273,6 @@ int main(int argc, char* argv[]) {
     // Initialize simulation frame counter
     int step_number = 0;
     int render_frame = 0;
-
-    ChTimer timer;
-
     double t = 0;
     while (t < tend) {
 
