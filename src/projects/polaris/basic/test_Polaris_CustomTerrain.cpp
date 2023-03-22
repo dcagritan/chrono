@@ -29,7 +29,21 @@
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
-#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/ChVehicleVisualSystem.h"
+#ifdef CHRONO_IRRLICHT
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
+using namespace chrono::irrlicht;
+#endif
+
+#ifdef CHRONO_VSG
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemVSG.h"
+using namespace chrono::vsg3d;
+#endif
+
+#ifdef CHRONO_OPENGL
+    #include "chrono_vehicle/ChVehicleVisualSystemOpenGL.h"
+using namespace chrono::opengl;
+#endif
 
 using namespace chrono;
 using namespace chrono::vehicle;
@@ -38,6 +52,11 @@ using std::cout;
 using std::cerr;
 using std::cin;
 using std::endl;
+
+// -----------------------------------------------------------------------------
+
+// Run-time visualization system (IRRLICHT or VSG or OpenGL)
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 // -----------------------------------------------------------------------------
 
@@ -54,10 +73,10 @@ class CustomTerrain : public ChTerrain {
 };
 
 CustomTerrain::CustomTerrain(WheeledVehicle& vehicle) : m_vehicle(vehicle) {
-    m_wheels[0] = vehicle.GetWheel(0, LEFT);
-    m_wheels[1] = vehicle.GetWheel(0, RIGHT);
-    m_wheels[2] = vehicle.GetWheel(1, LEFT);
-    m_wheels[3] = vehicle.GetWheel(1, RIGHT);
+    m_wheels[0] = vehicle.GetWheel(0, VehicleSide::LEFT);
+    m_wheels[1] = vehicle.GetWheel(0, VehicleSide::RIGHT);
+    m_wheels[2] = vehicle.GetWheel(1, VehicleSide::LEFT);
+    m_wheels[3] = vehicle.GetWheel(1, VehicleSide::RIGHT);
 
     // Create a ground body (only to carry some visualization assets)
     auto ground = chrono_types::make_shared<ChBody>();
@@ -211,26 +230,97 @@ int main(int argc, char* argv[]) {
     // Create terrain
     CustomTerrain terrain(vehicle);
 
-    // Create Irrilicht visualization
-    ChWheeledVehicleVisualSystemIrrlicht vis;
-    vis.SetWindowTitle("Polaris - Custom terrain example");
-    vis.SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 5.0, 0.5);
-    vis.Initialize();
-    vis.AddTypicalLights();
-    vis.AddSkyBox();
-    vis.AddLogo();
-    vis.AttachVehicle(&vehicle);
+    // Create the vehicle run-time visualization interface
+#ifndef CHRONO_IRRLICHT
+    if (vis_type == ChVisualSystem::Type::IRRLICHT)
+    #ifdef CHRONO_VSG
+        vis_type = ChVisualSystem::Type::VSG;
+    #else
+        vis_type = ChVisualSystem::OpenGL;
+    #endif
+#endif
+#ifndef CHRONO_VSG
+    if (vis_type == ChVisualSystem::Type::VSG)
+    #ifdef CHRONO_IRRLICHT
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+    #else
+        vis_type = ChVisualSystem::OpenGL;
+    #endif
+#endif
+
+#ifndef CHRONO_OPENGL
+    if (vis_type == ChVisualSystem::Type::OpenGL)
+    #ifdef CHRONO_VSG
+        vis_type = ChVisualSystem::Type::VSG;
+    #else
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+    #endif
+#endif
+
+    std::shared_ptr<ChVehicleVisualSystem> vis;
+    switch (vis_type) {
+        default:
+        case ChVisualSystem::Type::VSG: {
+#ifdef CHRONO_VSG
+            // Create the vehicle VSG interface
+            auto vis_vsg = chrono_types::make_shared<ChWheeledVehicleVisualSystemVSG>();
+            vis_vsg->SetWindowTitle("Polaris - Custom terrain example");
+            vis_vsg->AttachVehicle(&vehicle);
+            vis_vsg->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 5.0, 0.5);
+            vis_vsg->SetWindowSize(ChVector2<int>(800, 600));
+            vis_vsg->SetWindowPosition(ChVector2<int>(100, 300));
+            vis_vsg->SetUseSkyBox(true);
+            vis_vsg->SetCameraAngleDeg(40);
+            vis_vsg->SetLightIntensity(1.0f);
+            vis_vsg->SetLightDirection(1.5 * CH_C_PI_2, CH_C_PI_4);
+            vis_vsg->Initialize();
+
+            vis = vis_vsg;
+#endif
+            break;
+        }
+        case ChVisualSystem::Type::IRRLICHT: {
+#ifdef CHRONO_IRRLICHT
+            // Create the vehicle Irrlicht interface
+            auto vis_irr = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+            vis_irr->SetWindowTitle("Polaris - Custom terrain example");
+            vis_irr->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 5.0, 0.5);
+            vis_irr->Initialize();
+            vis_irr->AddTypicalLights();
+            vis_irr->AddSkyBox();
+            vis_irr->AddLogo();
+            vis_irr->AttachVehicle(&vehicle);
+
+            vis = vis_irr;
+#endif
+            break;
+        }
+        case ChVisualSystem::Type::OpenGL: {
+#ifdef CHRONO_OPENGL
+            auto vis_gl = chrono_types::make_shared<ChVehicleVisualSystemOpenGL>();
+            vis_gl->AttachVehicle(&vehicle);
+            vis_gl->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 5.0, 0.5);
+            vis_gl->SetWindowTitle("Polaris - Custom terrain example");
+            vis_gl->SetWindowSize(1280, 720);
+            vis_gl->SetRenderMode(opengl::SOLID);
+            vis_gl->Initialize();
+
+            vis = vis_gl;
+#endif
+            break;
+        }
+    }
 
     // Simulation loop
     DriverInputs driver_inputs = {0, 0, 0};
 
     double step_size = 1e-3;
-    while (vis.Run()) {
+    while (vis->Run()) {
         double time = sys.GetChTime();
 
-        vis.BeginScene();
-        vis.Render();
-        vis.EndScene();
+        vis->BeginScene();
+        vis->Render();
+        vis->EndScene();
 
         // Synchronize subsystems
         vehicle.Synchronize(time, driver_inputs, terrain);
@@ -239,7 +329,7 @@ int main(int argc, char* argv[]) {
         // Advance system state
         vehicle.Advance(step_size);
         terrain.Advance(step_size);
-        vis.Advance(step_size);
+        vis->Advance(step_size);
         sys.DoStepDynamics(step_size);
     }
 
