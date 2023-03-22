@@ -70,7 +70,7 @@ CustomTerrain::CustomTerrain(WheeledVehicle& vehicle) : m_vehicle(vehicle) {
     box->SetTexture(GetChronoDataFile("textures/concrete.jpg"), 10, 10);
     ground->AddVisualShape(box, ChFrame<>(ChVector<>(0, 0, -0.5), QUNIT));
 
-    vehicle.GetSystem()->AddBody(ground);
+    // vehicle.GetSystem()->AddBody(ground);
 }
 
 void CustomTerrain::Synchronize() {
@@ -152,7 +152,7 @@ void CustomTerrain::Synchronize() {
 
         // Add some damping force in the lateral direction to prevent drift
         double Fy = -tire_damping * wheel_vel.y();
-   
+
         // Tire force and moment in tire frame
         ChVector<> tire_F(0, Fy, Fn);
         ChVector<> tire_M(0, 0, 0);
@@ -178,7 +178,7 @@ void CustomTerrain::Advance(double step) {}
 int main(int argc, char* argv[]) {
     // Create the Chrono system
     ChSystemNSC sys;
-    sys.Set_G_acc(ChVector<>(0, 0, 0.0));
+    sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
     // Create vehicle
     ChCoordsys<> init_pos(ChVector<>(0, 0, 0.5), QUNIT);
@@ -222,8 +222,7 @@ int main(int argc, char* argv[]) {
     vis.AttachVehicle(&vehicle);
 
     // Simulation loop
-    DriverInputs driver_inputs = {0.0, 0.0, 1.0};
-    // DriverInputs driver_inputs;
+    DriverInputs driver_inputs = {0, 0, 0};
 
     double step_size = 1e-3;
     while (vis.Run()) {
@@ -232,10 +231,6 @@ int main(int argc, char* argv[]) {
         vis.BeginScene();
         vis.Render();
         vis.EndScene();
-
-        // driver_inputs.m_steering = 0.0;
-        // driver_inputs.m_throttle = 0.0;
-        // driver_inputs.m_braking = 1.0;
 
         // Synchronize subsystems
         vehicle.Synchronize(time, driver_inputs, terrain);

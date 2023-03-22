@@ -89,9 +89,8 @@ float cr_t = 0.1f;
 float mu_t = 0.8f;
 
 // Initial vehicle position and orientation
-ChVector<> initLoc(1.3, 0, 0.1);
-ChQuaternion<> initRot(1, 0, 0, 0);
-ChCoordsys<> init_pos(initLoc, initRot);
+// Create vehicle
+ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.1), QUNIT);
 
 // -----------------------------------------------------------------------------
 // Simulation parameters
@@ -101,7 +100,8 @@ ChCoordsys<> init_pos(initLoc, initRot);
 double step_size = 1e-3;
 
 // Time interval between two render frames (1/FPS)
-double render_step_size = 2.0 / 100;
+// double render_step_size = 2.0 / 100;
+double render_step_size=step_size;
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
@@ -153,7 +153,7 @@ class MyDriver : public ChDriver {
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
     std::string terrain_dir;
-    double tend = 2.0;
+    double tend = 1.0;
     if (!GetProblemSpecs(argc, argv,                                 
                          terrain_dir, tend, throttlemagnitude, steeringmagnitude, render_step_size, heightmapterrain)) 
     {
@@ -350,10 +350,11 @@ int main(int argc, char* argv[]) {
         }
 
         // // Driver inputs
-        DriverInputs driver_inputs = driver.GetInputs();
+        // DriverInputs driver_inputs = driver.GetInputs();
+        DriverInputs driver_inputs = {0.0, 0.0, 1.0};
 
         // // Update modules
-        driver.Synchronize(time);
+        // driver.Synchronize(time);
         terrain.Synchronize(time);
         vehicle->Synchronize(time, driver_inputs, terrain);
         // vis->Synchronize("", driver_inputs);

@@ -94,7 +94,7 @@ class CustomTerrain : public ChTerrain {
     ChVector<> m_box_offset;
     std::array<std::vector<ChAparticle*>, 4> m_wheel_particles;
     std::array<size_t, 4> m_num_particles;
-    double m_mbs_inputs[10001][90];
+    double m_mbs_inputs[1000][90];
 
     torch::jit::script::Module module;
     std::array<std::vector<ChVector<>>, 4> m_particle_displacements;
@@ -156,7 +156,7 @@ void CustomTerrain::Create(const std::string& terrain_dir, bool vis) {
     std::string line;
     std::string cell;
 
-    std::ifstream is(vehicle::GetDataFile(terrain_dir + "/vertices_0.txt"));
+    std::ifstream is(vehicle::GetDataFile(terrain_dir + "/vertices_0_.txt"));
     getline(is, line);  // Comment line
     while (getline(is, line)) {
         std::stringstream ls(line);
@@ -257,10 +257,13 @@ void CustomTerrain::Synchronize(double time,int frame) {
         double My = m_mbs_inputs[frame][66+6*i+4];
         double Mz = m_mbs_inputs[frame][66+6*i+5];
 
+        std::cout<<"time= "<<time<<"frame= "<<frame<<"i= "<<i<<"Fx= "<<Fx<<"Fy= "<<Fy<<"Fz= "<<Fz<<"Mx= "<<Mx<<"My= "<<My<<"Mz= "<<Mz<<std::endl;
+
    
         // Tire force and moment in tire frame
         ChVector<> tire_F(Fx, Fy, Fz);
-        ChVector<> tire_M(Mx, My, Mz);
+        // ChVector<> tire_M(Mx, My, Mz);
+        ChVector<> tire_M(0, 0, 0);
 
         // Load the tire force structure (all expressed in absolute frame)
         m_tire_forces[i].force = tire_F;
@@ -332,7 +335,7 @@ std::shared_ptr<WheeledVehicle> CreateVehicle(ChSystem& sys, const ChCoordsys<>&
 int main(int argc, char* argv[]) {
     // Parse command line arguments
     std::string terrain_dir = "terrain/scm/testterrainnn";
-    double tend = 20000.0;
+    double tend = 1.0;
     bool run_time_vis = true;
     bool verbose = true;
     bool verbose_nn = true;
@@ -394,12 +397,14 @@ int main(int argc, char* argv[]) {
 
 
     // Simulation loop
-    DriverInputs driver_inputs = {0.0, 0.0, 1.0};
+    DriverInputs driver_inputs = {0.0, 0.0, 0.0};
 
     double step_size = 1e-3;
     double t = 0;
     int frame = 0;
     while (t < tend) {
+        if (t > tend)
+            break;
         if (run_time_vis) {
          vis.Run();
          vis.BeginScene();
@@ -407,10 +412,11 @@ int main(int argc, char* argv[]) {
          vis.EndScene();
         }
 
-        // driver_inputs.m_steering = 0.0;
-        // driver_inputs.m_throttle = 0.0;
-        // driver_inputs.m_braking = 1.0;
+        driver_inputs.m_steering = 0.0;
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 1.0;
 
+        // DriverInputs driver_inputs = {0.0, 0.0, 1.0};
 
         // Synchronize subsystems
         vehicle.Synchronize(t, driver_inputs, terrain);
