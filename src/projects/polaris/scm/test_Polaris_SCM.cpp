@@ -250,7 +250,7 @@ int main(int argc, char* argv[]) {
     ChVehicle* castedvehicle = vehicle.get();
     // auto castedvehicle = std::static_pointer_cast<ChVehicle>(vehicle);
     // ChVehicle* castedvehicle = (ChVehicle*)vehicle
-    vis->AttachVehicle(castedvehicle);
+    vis->AttachVehicle(vehicle.get());
 
     // --------------------
     // Create driver system
@@ -296,41 +296,25 @@ int main(int argc, char* argv[]) {
 
     ChTimer timer;
 
-    while (vis->Run()) {
-        double time = sys.GetChTime();
-        if (time > tend)
-            break;
+    double t = 0;
+    while (t < tend) {
 
-        const auto& veh_loc = vehicle->GetPos();
+        // const auto& veh_loc = vehicle->GetPos();
         // std::cout<<"veh_loc ="<<veh_loc<<std::endl;
         // Stop before end of patch
         // if (veh_loc.x() > x_max || veh_loc.y() > y_max )
         //     break;
 
-        if (step_number == 800) {
-            std::cout << "\nstart timer at t = " << time << std::endl;
-            timer.start();
-        }
-        if (step_number == 1400) {
-            timer.stop();
-            std::cout << "stop timer at t = " << time << std::endl;
-            std::cout << "elapsed: " << timer() << std::endl;
-            std::cout << "\nSCM stats for last step:" << std::endl;
-            terrain.PrintStepStatistics(std::cout);
-        }
-
         // Render scene
+        vis->Run();
         vis->BeginScene();
         vis->Render();
         tools::drawColorbar(vis.get(), 0, 0.1, "Sinkage", 30);
         vis->EndScene();
 
         if (ver_output)
-        { 
-            data_writer.Process(step_number, time); 
-        }
-
-
+            data_writer.Process(step_number, t); 
+        
         if (step_number % render_steps == 0) {
             if (ver_output)
             {   
@@ -355,14 +339,14 @@ int main(int argc, char* argv[]) {
 
         // // Update modules
         // driver.Synchronize(time);
-        terrain.Synchronize(time);
-        vehicle->Synchronize(time, driver_inputs, terrain);
-        // vis->Synchronize("", driver_inputs);
-        vis->Synchronize(time, driver_inputs);
+        terrain.Synchronize(t);
+        vehicle->Synchronize(t, driver_inputs, terrain);
+        vis->Synchronize(t, driver_inputs);
 
         // Advance dynamics
         sys.DoStepDynamics(step_size);
         vis->Advance(step_size);
+        t += step_size;
 
         // Increment frame number
         step_number++;

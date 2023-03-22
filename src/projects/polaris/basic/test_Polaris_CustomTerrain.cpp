@@ -89,7 +89,7 @@ CustomTerrain::CustomTerrain(WheeledVehicle& vehicle) : m_vehicle(vehicle) {
     box->SetTexture(GetChronoDataFile("textures/concrete.jpg"), 10, 10);
     ground->AddVisualShape(box, ChFrame<>(ChVector<>(0, 0, -0.5), QUNIT));
 
-    // vehicle.GetSystem()->AddBody(ground);
+    vehicle.GetSystem()->AddBody(ground);
 }
 
 void CustomTerrain::Synchronize() {
@@ -197,7 +197,8 @@ void CustomTerrain::Advance(double step) {}
 int main(int argc, char* argv[]) {
     // Create the Chrono system
     ChSystemNSC sys;
-    sys.Set_G_acc(ChVector<>(0, 0, -9.81));
+    // sys.Set_G_acc(ChVector<>(0, 0, -9.81));
+    sys.Set_G_acc(ChVector<>(0, 0, 0));
 
     // Create vehicle
     ChCoordsys<> init_pos(ChVector<>(0, 0, 0.5), QUNIT);
@@ -299,11 +300,13 @@ int main(int argc, char* argv[]) {
 #ifdef CHRONO_OPENGL
             auto vis_gl = chrono_types::make_shared<ChVehicleVisualSystemOpenGL>();
             vis_gl->AttachVehicle(&vehicle);
-            vis_gl->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 5.0, 0.5);
+            // vis_gl->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 5.0, 0.5);
             vis_gl->SetWindowTitle("Polaris - Custom terrain example");
             vis_gl->SetWindowSize(1280, 720);
             vis_gl->SetRenderMode(opengl::SOLID);
             vis_gl->Initialize();
+            vis_gl->UpdateCamera(ChVector<>(-3, 0, 6), ChVector<>(5, 0, 0.5));
+            vis_gl->SetCameraVertical(CameraVerticalDir::Z);
 
             vis = vis_gl;
 #endif
@@ -311,8 +314,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
+
     // Simulation loop
-    DriverInputs driver_inputs = {0, 0, 0};
+    DriverInputs driver_inputs = {1, 0, 0};
 
     double step_size = 1e-3;
     while (vis->Run()) {

@@ -156,7 +156,7 @@ void CustomTerrain::Create(const std::string& terrain_dir, bool vis) {
     std::string line;
     std::string cell;
 
-    std::ifstream is(vehicle::GetDataFile(terrain_dir + "/vertices_0_.txt"));
+    std::ifstream is(vehicle::GetDataFile(terrain_dir + "/vertices_0.txt"));
     getline(is, line);  // Comment line
     while (getline(is, line)) {
         std::stringstream ls(line);
@@ -262,8 +262,7 @@ void CustomTerrain::Synchronize(double time,int frame) {
    
         // Tire force and moment in tire frame
         ChVector<> tire_F(Fx, Fy, Fz);
-        // ChVector<> tire_M(Mx, My, Mz);
-        ChVector<> tire_M(0, 0, 0);
+        ChVector<> tire_M(Mx, My, Mz);
 
         // Load the tire force structure (all expressed in absolute frame)
         m_tire_forces[i].force = tire_F;
