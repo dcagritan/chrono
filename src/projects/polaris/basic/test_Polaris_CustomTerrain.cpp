@@ -178,7 +178,7 @@ void CustomTerrain::Advance(double step) {}
 int main(int argc, char* argv[]) {
     // Create the Chrono system
     ChSystemNSC sys;
-    sys.Set_G_acc(ChVector<>(0, 0, -9.81));
+    sys.Set_G_acc(ChVector<>(0, 0, 0.0));
 
     // Create vehicle
     ChCoordsys<> init_pos(ChVector<>(0, 0, 0.5), QUNIT);
@@ -222,7 +222,8 @@ int main(int argc, char* argv[]) {
     vis.AttachVehicle(&vehicle);
 
     // Simulation loop
-    DriverInputs driver_inputs = {0, 0, 0};
+    DriverInputs driver_inputs = {0.0, 0.0, 1.0};
+    // DriverInputs driver_inputs;
 
     double step_size = 1e-3;
     while (vis.Run()) {
@@ -231,6 +232,10 @@ int main(int argc, char* argv[]) {
         vis.BeginScene();
         vis.Render();
         vis.EndScene();
+
+        // driver_inputs.m_steering = 0.0;
+        // driver_inputs.m_throttle = 0.0;
+        // driver_inputs.m_braking = 1.0;
 
         // Synchronize subsystems
         vehicle.Synchronize(time, driver_inputs, terrain);
