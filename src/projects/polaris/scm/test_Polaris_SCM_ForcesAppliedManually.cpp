@@ -154,7 +154,6 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
         double My = m_mbs_inputs[frame][66+6*i+4];
         double Mz = m_mbs_inputs[frame][66+6*i+5];
 
-        std::cout<<"debug_output= "<<debug_output<<std::endl;
         if (debug_output)
          std::cout<<"time= "<<time<<"frame= "<<frame<<"i= "<<i<<"Fx= "<<Fx<<"Fy= "<<Fy<<"Fz= "<<Fz<<"Mx= "<<Mx<<"My= "<<My<<"Mz= "<<Mz<<std::endl;
    
