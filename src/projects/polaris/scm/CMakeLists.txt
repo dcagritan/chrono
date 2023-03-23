@@ -28,6 +28,7 @@ endif()
 
 set(PROGRAMS 
     test_Polaris_SCM
+    test_Polaris_SCM_ForcesAppliedManually
     )
     
 set(UTILITIES
