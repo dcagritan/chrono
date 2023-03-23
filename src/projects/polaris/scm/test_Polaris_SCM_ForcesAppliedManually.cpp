@@ -146,6 +146,9 @@ void CustomTerrain::Create(const std::string& terrain_dir, bool vis) {
 void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
 
     for (int i = 0; i < 4; i++) {
+
+        ChVector<> disc_center = m_wheels[i]->GetPos();
+
         // Call the forces and torques
         double Fx = m_mbs_inputs[frame][66+6*i];
         double Fy = m_mbs_inputs[frame][66+6*i+1];
@@ -164,7 +167,7 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
         // Load the tire force structure (all expressed in absolute frame)
         m_tire_forces[i].force = tire_F;
         m_tire_forces[i].moment = tire_M;
-        m_tire_forces[i].point = (0, 0, 0);
+        m_tire_forces[i].point = disc_center;
     }
 
     for (int i = 0; i < 4; i++) {
@@ -231,7 +234,6 @@ int main(int argc, char* argv[]) {
 
 
     // Simulation loop
-    DriverInputs driver_inputs = {0.0, 0.0, 1.0};
 
     double step_size = 1e-3;
     double t = 0;
@@ -244,6 +246,8 @@ int main(int argc, char* argv[]) {
          vis.Render();
          vis.EndScene();
         }
+
+        DriverInputs driver_inputs = {0.0, 0.0, 0.0};
 
         // Synchronize subsystems
         vehicle.Synchronize(t, driver_inputs, terrain);

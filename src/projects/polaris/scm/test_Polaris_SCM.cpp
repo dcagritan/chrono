@@ -312,7 +312,7 @@ int main(int argc, char* argv[]) {
 
         // // Driver inputs
         // DriverInputs driver_inputs = driver.GetInputs();
-        DriverInputs driver_inputs = {0.0, 0.0, 1.0};
+        DriverInputs driver_inputs = {0.0, 0.0, 0.0};
 
         // // Update modules
         // driver.Synchronize(time);
