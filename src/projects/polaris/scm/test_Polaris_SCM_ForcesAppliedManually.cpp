@@ -217,6 +217,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
+
+
     // Create terrain
     cout << "Create terrain..." << endl;
     CustomTerrain terrain(sys, vehicle);
@@ -231,6 +233,7 @@ int main(int argc, char* argv[]) {
     vis.AddSkyBox();
     vis.AddLogo();
     vis.AttachVehicle(&vehicle);
+
 
 
     // Simulation loop
