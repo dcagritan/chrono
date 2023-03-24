@@ -63,7 +63,8 @@ using std::endl;
 // -----------------------------------------------------------------------------
 
 // NN model
-std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2.pt";
 
 // -----------------------------------------------------------------------------
 
