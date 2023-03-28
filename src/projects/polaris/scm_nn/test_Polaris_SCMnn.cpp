@@ -38,9 +38,9 @@
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 #include "chrono_vehicle/wheeled_vehicle/tire/RigidTire.h"
 
-#ifdef CHRONO_OPENGL
-    #include "chrono_opengl/ChVisualSystemOpenGL.h"
-#endif
+// #ifdef CHRONO_OPENGL
+//     #include "chrono_opengl/ChVisualSystemOpenGL.h"
+// #endif
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
@@ -76,6 +76,7 @@ class CustomTerrain : public ChTerrain {
     void Synchronize(double time, int frame, bool debug_output);
     virtual void Advance(double step) override;
     void SetVerbose(bool val) { m_verbose = val; }
+    void WriteVertices(double time);
 
   private:
     ChSystem& m_sys;
@@ -295,7 +296,7 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
         }
 #endif
 
-#if 1
+#if 0
         if (m_verbose) {
             std::cout << "wheel " << i << std::endl;
             std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
@@ -371,26 +372,83 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
         m_wheels[i]->GetSpindle()->Accumulate_force(m_tire_forces[i].force, m_tire_forces[i].point, false);
         m_wheels[i]->GetSpindle()->Accumulate_torque(m_tire_forces[i].moment, false);
         if (m_verbose) {
-            std::cout << "  tire " << i << " force: " << m_tire_forces[i].force << std::endl;
+            std::cout << "time= "<<time<<"  tire " << i << " force: " << m_tire_forces[i].force << std::endl;
         }
     }    
 }
 
 void CustomTerrain::Advance(double step) {
     // Do nothing if there is at least one sampling box with no particles
-    auto product = std::accumulate(m_num_particles.begin(), m_num_particles.end(), 1, std::multiplies<int>());
-    if (product == 0)
-        return;
+    // auto product = std::accumulate(m_num_particles.begin(), m_num_particles.end(), 1, std::multiplies<int>());
+    // if (product == 0)
+    //     return;
     // Update state of particles in sampling boxes.
-    double step2 = step * step / 2;
+    // double maxdisplacement=0.0;
     for (int i = 0; i < 4; i++) {
         for (size_t j = 0; j < m_num_particles[i]; j++) {
             auto p_disp = m_particle_displacements[i][j];
+            // std::cout<<"p_disp= "<<p_disp<<std::endl;
+            // if (p_disp.z()<maxdisplacement)
+            //    maxdisplacement= p_disp.z();
+            // std::cout<<"zdisp.z()"<<p_disp.z()<<std::endl;
             auto p_current = m_wheel_particles[i][j]->GetPos();
+            // if (p_current.z()<=-0.12)
+            //     p_disp.z()=0.0;
             auto p_actual = p_current+p_disp;
             m_wheel_particles[i][j]->SetPos(p_actual);
         }
+        // std::cout<<"Max displacement of the box "<<i<<"is= "<<maxdisplacement<<std::endl;
     }
+            // std::cout<<" Max displacement of all the boxes is "<<maxdisplacement<<std::endl;
+}
+
+void CustomTerrain::WriteVertices(double time) {
+    const auto& p_all = m_particles->GetParticles();
+    std::string filename = "disp/displacement_" + std::to_string(time) + "_" +  ".csv";
+    std::ofstream stream;
+    stream.open(filename, std::ios_base::trunc);
+
+    // for (int i = 0; i < 4; i++) {
+    //     for (size_t j = 0; j < m_num_particles[i]; j++) {
+    //         auto p_current = m_wheel_particles[i][j]->GetPos();
+    //         stream << p_current << "\n";
+    //     }
+    //     // std::cout<<"Max displacement of the box "<<i<<"is= "<<maxdisplacement<<std::endl;
+    // }
+  
+
+
+    for (const auto& part : p_all) {
+            ChVector<float> p(part->GetPos());
+            // std::cout<<p<<std::endl;
+            stream << p << "\n";
+        }
+
+    // size_t start = 0;
+
+    // // Vehicle position, orientation, linear and angular velocities
+    // for (int j = 0; j < 13; j++)
+    //     stream << o[start + j] << ", ";
+    // stream << "\n";
+    // start += 13;
+
+    // // Wheel position, orientation, linear and angular velocities
+    // for (int i = 0; i < 4; i++) {
+    //     for (int j = 0; j < 13; j++)
+    //         stream << o[start + j] << ", ";
+    //     stream << "\n";
+    //     start += 13;
+    // }
+
+    // // Tire force and moment
+    // for (int i = 0; i < 4; i++) {
+    //     for (int j = 0; j < 6; j++)
+    //         stream << o[start + j] << ", ";
+    //     stream << "\n";
+    //     start += 6;
+    // }
+
+    stream.close();
 }
 
 // -----------------------------------------------------------------------------
@@ -454,7 +512,7 @@ int main(int argc, char* argv[]) {
 
     // Simulation loop
 
-    double step_size = 1e-3;
+    double step_size = 2e-3;
     double t = 0;
     int frame = 0;
     while (t < tend) {
@@ -473,7 +531,9 @@ int main(int argc, char* argv[]) {
         terrain.Synchronize(t,frame,debug_output);
 
         // Advance system state
+        // std::cout<<"time "<<t;
         terrain.Advance(step_size);
+        // terrain.WriteVertices(t);
         vis.Advance(step_size);
         sys.DoStepDynamics(step_size);
         t += step_size;
