@@ -64,9 +64,9 @@ using std::endl;
 
 // NN model
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat.pt";
-// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2_clamp.pt";
-// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2.pt";
-std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2_clamp.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2_clamp_sinkage.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_clamp_hmap.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_rol_30.pt";
 
 // -----------------------------------------------------------------------------
 
@@ -247,13 +247,14 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
 
         // Load particle positions and velocities
         w_contact[i] = false;
-        auto part_pos = torch::empty({(int)m_num_particles[i], 3}, torch::kFloat32);
+        auto part_pos = torch::empty({(int)m_num_particles[i], 4}, torch::kFloat32);
         float* part_pos_data = part_pos.data<float>();
         for (const auto& part : m_wheel_particles[i]) {
             ChVector<float> p(part->GetPos());
             *part_pos_data++ = p.x();
             *part_pos_data++ = p.y();
             *part_pos_data++ = p.z();
+            *part_pos_data++ = -p.z();
 
             if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
                 w_contact[i] = true;
@@ -304,6 +305,16 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
         inputs.push_back(torch::ivalue::Tuple::create(tuple));
 
     }
+
+    auto part_pos = torch::empty({(int)p_all.size(), 3}, torch::kFloat32);
+    float* part_pos_data = part_pos.data<float>();
+    for (const auto& part : p_all) {
+            ChVector<float> p(part->GetPos());
+            *part_pos_data++ = p.x();
+            *part_pos_data++ = p.y();
+            *part_pos_data++ = p.z();
+        }
+    inputs.push_back(part_pos);
 
         // Invoke NN model
 

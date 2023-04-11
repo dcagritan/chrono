@@ -49,25 +49,35 @@ message(STATUS "TorchCluster_INCLUDE_DIR ${TorchCluster_INCLUDE_DIR}")
 #--------------------------------------------------------------
 
 
-set(PROGRAM test_Polaris_SCMnn)
+set(PROGRAMS test_Polaris_SCMnn
+             test_Polaris_SCMnn_withs
+             test_Polaris_SCMnn_Allvertices
+   )
 
-message(STATUS "...add ${PROGRAM}")
+set(UTILITIES
+   DataWriter.h
+   DataWriter.cpp
+   )   
 
-add_executable(${PROGRAM}  "${PROGRAM}.cpp")
-source_group(""  FILES "${PROGRAM}.cpp")
+foreach(PROGRAM ${PROGRAMS})
+ message(STATUS "...add ${PROGRAM}")
 
-set_target_properties(${PROGRAM} PROPERTIES
+ add_executable(${PROGRAM}  ${PROGRAM}.cpp ${UTILITIES})
+ source_group(""  FILES ${PROGRAM}.cpp ${UTILITIES})
+
+ set_target_properties(${PROGRAM} PROPERTIES
         FOLDER demos
         COMPILE_FLAGS "${COMPILE_FLAGS}"
         LINK_FLAGS "${LINKER_FLAGS}"
-)
-set_property(TARGET ${PROGRAM} PROPERTY CXX_STANDARD 14)
-set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
+ )
+ set_property(TARGET ${PROGRAM} PROPERTY CXX_STANDARD 14)
+ set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
 
-target_include_directories(${PROGRAM} PRIVATE ${TorchScatter_INCLUDE_DIR})
-target_include_directories(${PROGRAM} PRIVATE ${TorchCluster_INCLUDE_DIR})
+ target_include_directories(${PROGRAM} PRIVATE ${TorchScatter_INCLUDE_DIR})
+ target_include_directories(${PROGRAM} PRIVATE ${TorchCluster_INCLUDE_DIR})
 
-target_link_libraries(${PROGRAM} ${LIBRARIES})
-target_link_libraries(${PROGRAM} ${TORCH_LIBRARIES})
-target_link_libraries(${PROGRAM} TorchScatter::TorchScatter)
-target_link_libraries(${PROGRAM} TorchCluster::TorchCluster)
+ target_link_libraries(${PROGRAM} ${LIBRARIES})
+ target_link_libraries(${PROGRAM} ${TORCH_LIBRARIES})
+ target_link_libraries(${PROGRAM} TorchScatter::TorchScatter)
+ target_link_libraries(${PROGRAM} TorchCluster::TorchCluster)
+endforeach()

@@ -293,14 +293,14 @@ int main(int argc, char* argv[]) {
             data_writer.Process(step_number, t); 
         
         if (step_number % render_steps == 0) {
-            // if (ver_output)
-            // {   
-            // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
-            // if (step_number==0)
-            //  terrain.WriteMeshVertices(vertices_filename);
-            // else
-            //  terrain.WriteMeshVerticesinz(vertices_filename);
-            // }
+            if (ver_output)
+            {   
+            std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(render_frame) + ".csv";
+            if (step_number==0)
+             terrain.WriteMeshVertices(vertices_filename);
+            else
+             terrain.WriteMeshVerticesinz(vertices_filename);
+            }
             if (img_output% render_steps == 0)
             {
             char filename[100];

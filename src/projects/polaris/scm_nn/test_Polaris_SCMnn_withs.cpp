@@ -64,9 +64,8 @@ using std::endl;
 
 // NN model
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat.pt";
-// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2_clamp.pt";
-// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2.pt";
-std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2_clamp.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2_clamp_sinkage.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_rol_20.pt";
 
 // -----------------------------------------------------------------------------
 
@@ -247,13 +246,14 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
 
         // Load particle positions and velocities
         w_contact[i] = false;
-        auto part_pos = torch::empty({(int)m_num_particles[i], 3}, torch::kFloat32);
+        auto part_pos = torch::empty({(int)m_num_particles[i], 4}, torch::kFloat32);
         float* part_pos_data = part_pos.data<float>();
         for (const auto& part : m_wheel_particles[i]) {
             ChVector<float> p(part->GetPos());
             *part_pos_data++ = p.x();
             *part_pos_data++ = p.y();
             *part_pos_data++ = p.z();
+            *part_pos_data++ = -p.z();
 
             if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
                 w_contact[i] = true;
@@ -359,7 +359,6 @@ void CustomTerrain::Synchronize(double time,int frame, bool debug_output) {
         m_wheels[i]->GetSpindle()->Accumulate_torque(m_tire_forces[i].moment, false);
         if (m_verbose) {
             std::cout << "time= "<<time<<"  tire " << i << " force: " << m_tire_forces[i].force << std::endl;
-            std::cout << "time= "<<time<<"  tire " << i << " torque: " << m_tire_forces[i].moment << std::endl;
         }
     }    
 }
@@ -520,7 +519,7 @@ int main(int argc, char* argv[]) {
         // Advance system state
         // std::cout<<"time "<<t;
         terrain.Advance(step_size);
-        terrain.WriteVertices(t);
+        // terrain.WriteVertices(t);
         vis.Advance(step_size);
         sys.DoStepDynamics(step_size);
         t += step_size;
