@@ -46,6 +46,8 @@
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
 
+#include "DataWriter.h"
+
 #include <torch/torch.h>
 #include <torch/script.h>
 #include <torchscatter/scatter.h>
@@ -61,12 +63,19 @@ using std::cin;
 using std::endl;
 
 // -----------------------------------------------------------------------------
+//step size
+double step_size = 2e-3;
+
+// Output directories
+const std::string out_dir = GetChronoOutputPath() + "POLARIS_SCMnn";
 
 // NN model
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_settling_flat_stepsize2_clamp_sinkage.pt";
-std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_clamp_hmap.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_clamp_hmap.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_rol_30.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevstep.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_quatnoise_clamp.pt";
 
 // -----------------------------------------------------------------------------
 
@@ -78,7 +87,9 @@ class CustomTerrain : public ChTerrain {
     void Synchronize(double time, int frame, bool debug_output);
     virtual void Advance(double step) override;
     void SetVerbose(bool val) { m_verbose = val; }
-    void WriteVertices(double time);
+    void WriteVertices(int frame, const std::string& out_dir);
+    void WriteVerticesz(int frame, const std::string& out_dir);
+    std::array<TerrainForce, 4> GetTireForces(){ return m_tire_forces;}
 
   private:
     ChSystem& m_sys;
@@ -400,51 +411,28 @@ void CustomTerrain::Advance(double step) {
             // std::cout<<" Max displacement of all the boxes is "<<maxdisplacement<<std::endl;
 }
 
-void CustomTerrain::WriteVertices(double time) {
+void CustomTerrain::WriteVertices(int frame, const std::string& out_dir) {
     const auto& p_all = m_particles->GetParticles();
-    std::string filename = "disp/displacement_" + std::to_string(time) + "_" +  ".csv";
+    std::string filename = out_dir + "/vertices_" + std::to_string(frame) +  ".csv";
     std::ofstream stream;
     stream.open(filename, std::ios_base::trunc);
-
-    // for (int i = 0; i < 4; i++) {
-    //     for (size_t j = 0; j < m_num_particles[i]; j++) {
-    //         auto p_current = m_wheel_particles[i][j]->GetPos();
-    //         stream << p_current << "\n";
-    //     }
-    //     // std::cout<<"Max displacement of the box "<<i<<"is= "<<maxdisplacement<<std::endl;
-    // }
-  
-
-
     for (const auto& part : p_all) {
             ChVector<float> p(part->GetPos());
-            // std::cout<<p<<std::endl;
-            stream << p << "\n";
+            stream << p.x() << ", " << p.y() << ", " << p.z() << std::endl;
         }
 
-    // size_t start = 0;
+    stream.close();
+}
 
-    // // Vehicle position, orientation, linear and angular velocities
-    // for (int j = 0; j < 13; j++)
-    //     stream << o[start + j] << ", ";
-    // stream << "\n";
-    // start += 13;
-
-    // // Wheel position, orientation, linear and angular velocities
-    // for (int i = 0; i < 4; i++) {
-    //     for (int j = 0; j < 13; j++)
-    //         stream << o[start + j] << ", ";
-    //     stream << "\n";
-    //     start += 13;
-    // }
-
-    // // Tire force and moment
-    // for (int i = 0; i < 4; i++) {
-    //     for (int j = 0; j < 6; j++)
-    //         stream << o[start + j] << ", ";
-    //     stream << "\n";
-    //     start += 6;
-    // }
+void CustomTerrain::WriteVerticesz(int frame, const std::string& out_dir) {
+    const auto& p_all = m_particles->GetParticles();
+    std::string filename = out_dir + "/vertices_" + std::to_string(frame) +  ".csv";
+    std::ofstream stream;
+    stream.open(filename, std::ios_base::trunc);
+    for (const auto& part : p_all) {
+            ChVector<float> p(part->GetPos());
+            stream << p.z() << "\n";
+        }
 
     stream.close();
 }
@@ -507,10 +495,25 @@ int main(int argc, char* argv[]) {
     vis.AddLogo();
     vis.AttachVehicle(&vehicle);
 
+    // -----------------
+    // Initialize output
+    // -----------------
+    if (!filesystem::create_directory(filesystem::path(out_dir))) {
+        std::cout << "Error creating directory " << out_dir << std::endl;
+        return 1;
+    }
+
+    DataWriterVehicle data_writer(&sys, &vehicle, terrain);
+    // data_writer.SetVerbose(verbose);
+    // data_writer.SetMBSOutput(wheel_output);
+    data_writer.Initialize(out_dir, step_size);
+    cout << "Simulation output data saved in: " << out_dir << endl;
+    cout << "===============================================================================" << endl;
+
 
     // Simulation loop
 
-    double step_size = 2e-3;
+    
     double t = 0;
     int frame = 0;
     while (t < tend) {
@@ -522,6 +525,12 @@ int main(int argc, char* argv[]) {
          vis.EndScene();
         }
 
+        data_writer.Process(frame, t, terrain.GetTireForces()); 
+        if (frame==0)
+        terrain.WriteVertices(frame, out_dir);
+        else
+        terrain.WriteVerticesz(frame, out_dir);
+
         DriverInputs driver_inputs = {0.0, 0.0, 0.0};
 
         // Synchronize subsystems
@@ -531,7 +540,6 @@ int main(int argc, char* argv[]) {
         // Advance system state
         // std::cout<<"time "<<t;
         terrain.Advance(step_size);
-        terrain.WriteVertices(t);
         vis.Advance(step_size);
         sys.DoStepDynamics(step_size);
         t += step_size;
