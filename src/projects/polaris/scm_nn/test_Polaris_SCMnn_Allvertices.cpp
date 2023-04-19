@@ -75,7 +75,12 @@ const std::string out_dir = GetChronoOutputPath() + "POLARIS_SCMnn";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_clamp_hmap.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_rol_30.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevstep.pt";
-std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_quatnoise_clamp.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_quatnoise_clamp.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_20prevsteps.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_2ma.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_5ma.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_10ma.pt";
 
 // -----------------------------------------------------------------------------
 
@@ -441,7 +446,7 @@ void CustomTerrain::WriteVerticesz(int frame, const std::string& out_dir) {
 int main(int argc, char* argv[]) {
     // Parse arguments
     std::string terrain_dir = "terrain/scm/testterrain";
-    double tend = 1.0;
+    double tend = 2.0;
     bool run_time_vis = true;
     bool debug_output = false;
     bool verbose_nn = true;
