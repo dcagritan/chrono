@@ -80,7 +80,9 @@ const std::string out_dir = GetChronoOutputPath() + "POLARIS_SCMnn";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_2ma.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_5ma.pt";
-std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_10ma.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_10ma.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_1.00e-02_mawindow_10_clamped.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_1.00e-02_mawindow_5_clamped.pt";
 
 // -----------------------------------------------------------------------------
 
