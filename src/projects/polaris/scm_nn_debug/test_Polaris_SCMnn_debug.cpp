@@ -46,6 +46,8 @@
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
 
+#include "DataWriter.h"
+
 
 using std::cout;
 using std::cerr;
@@ -53,7 +55,11 @@ using std::cin;
 using std::endl;
 
 // -----------------------------------------------------------------------------
+//step size
+double step_size = 2e-3;
 
+// Output directories
+const std::string out_dir = chrono::GetChronoOutputPath() + "POLARIS_SCMnn";
 
 // -----------------------------------------------------------------------------
 
@@ -63,6 +69,7 @@ class CustomTerrain : public chrono::vehicle::ChTerrain {
     void Create(const std::string& terrain_dir, bool vis = true);
     void Synchronize(double time, int frame, bool debug_output);
     virtual void Advance(double step) override;
+    std::array<chrono::vehicle::TerrainForce, 4> GetTireForces(){ return m_tire_forces;}
 
   private:
     chrono::ChSystem& m_sys;
@@ -231,11 +238,24 @@ int main(int argc, char* argv[]) {
     vis.AddLogo();
     vis.AttachVehicle(&vehicle);
 
+    // -----------------
+    // Initialize output
+    // -----------------
+    if (!filesystem::create_directory(filesystem::path(out_dir))) {
+        std::cout << "Error creating directory " << out_dir << std::endl;
+        return 1;
+    }
+
+    DataWriterVehicle data_writer(&sys, &vehicle, terrain);
+    // data_writer.SetVerbose(verbose);
+    // data_writer.SetMBSOutput(wheel_output);
+    data_writer.Initialize(out_dir, step_size);
+    cout << "Simulation output data saved in: " << out_dir << endl;
+    cout << "===============================================================================" << endl;
 
 
     // Simulation loop
 
-    double step_size = 1e-3;
     double t = 0;
     int frame = 0;
     while (t < tend) {
@@ -246,6 +266,12 @@ int main(int argc, char* argv[]) {
          vis.Render();
          vis.EndScene();
         }
+
+        data_writer.Process(frame, t, terrain.GetTireForces()); 
+        // if (frame==0)
+        // terrain.WriteVertices(frame, out_dir);
+        // else
+        // terrain.WriteVerticesz(frame, out_dir);
 
         chrono::vehicle::DriverInputs driver_inputs = {0.0, 0.0, 0.0};
 

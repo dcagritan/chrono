@@ -82,7 +82,13 @@ const std::string out_dir = GetChronoOutputPath() + "POLARIS_SCMnn";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_5ma.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_10ma.pt";
 // std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_1.00e-02_mawindow_10_clamped.pt";
-std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_1.00e-02_mawindow_5_clamped.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_1.00e-02_mawindow_5_clamped.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_10ma.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_10prevsteps_10ma_firstversion.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_5.00e-02_mawindow_10_futuresteps_2_std_5.0e-03.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_5.00e-02_mawindow_10_futuresteps_2_std_1.0e-03.pt";
+// std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_5.00e-02_mawindow_10_futuresteps_1_std_5.0e-03.pt";
+std::string NN_module_name = "terrain/scm/wrapped_gnn_cpu_prevsteps_10_quatnoise_5.00e-02_mawindow_10_futuresteps_1_std_1.0e-03.pt";
 
 // -----------------------------------------------------------------------------
 
