@@ -198,7 +198,7 @@ void NNterrain::Create(const std::string& terrain_dir, bool vis) {
     std::string line;
     std::string cell;
 
-    std::ifstream is(vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt"));
+    std::ifstream is(chrono::vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt"));
     getline(is, line);  // Comment line
     while (getline(is, line)) {
         std::stringstream ls(line);
@@ -465,7 +465,7 @@ std::shared_ptr<WheeledVehicle> CreateVehicle(ChSystem& sys, const ChCoordsys<>&
     std::string tire_json = "Polaris/Polaris_RigidTire.json";
 
     // Create and initialize the vehicle
-    auto vehicle = chrono_types::make_shared<WheeledVehicle>(&sys, vehicle::GetDataFile(vehicle_json));
+    auto vehicle = chrono_types::make_shared<WheeledVehicle>(&sys, chrono::vehicle::GetDataFile(vehicle_json));
     vehicle->Initialize(init_pos);
     vehicle->GetChassis()->SetFixed(false);
     vehicle->SetChassisVisualizationType(VisualizationType::MESH);
@@ -474,13 +474,13 @@ std::shared_ptr<WheeledVehicle> CreateVehicle(ChSystem& sys, const ChCoordsys<>&
     vehicle->SetWheelVisualizationType(VisualizationType::MESH);
 
     // Create and initialize the powertrain system
-    auto powertrain = ReadPowertrainJSON(vehicle::GetDataFile(powertrain_json));
+    auto powertrain = ReadPowertrainJSON(chrono::vehicle::GetDataFile(powertrain_json));
     vehicle->InitializePowertrain(powertrain);
 
     // Create and initialize the tires
     for (auto& axle : vehicle->GetAxles()) {
         for (auto& wheel : axle->GetWheels()) {
-            auto tire = ReadTireJSON(vehicle::GetDataFile(tire_json));
+            auto tire = ReadTireJSON(chrono::vehicle::GetDataFile(tire_json));
             vehicle->InitializeTire(tire, wheel, VisualizationType::MESH);
         }
     }
@@ -501,19 +501,19 @@ int main(int argc, char* argv[]) {
     }
 
     // Check input files exist
-    if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
+    if (!filesystem::path(chrono::vehicle::GetDataFile(terrain_dir + "/sph_params.json")).exists()) {
         std::cout << "Input file sph_params.json not found in directory " << terrain_dir << std::endl;
         return 1;
     }
-    if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/path.txt")).exists()) {
+    if (!filesystem::path(chrono::vehicle::GetDataFile(terrain_dir + "/path.txt")).exists()) {
         std::cout << "Input file path.txt not found in directory " << terrain_dir << std::endl;
         return 1;
     }
-    if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt")).exists()) {
+    if (!filesystem::path(chrono::vehicle::GetDataFile(terrain_dir + "/particles_20mm.txt")).exists()) {
         std::cout << "Input file particles_20mm.txt not found in directory " << terrain_dir << std::endl;
         return 1;
     }
-    if (!filesystem::path(vehicle::GetDataFile(terrain_dir + "/bce_20mm.txt")).exists()) {
+    if (!filesystem::path(chrono::vehicle::GetDataFile(terrain_dir + "/bce_20mm.txt")).exists()) {
         std::cout << "Input file bce_20mm.txt not found in directory " << terrain_dir << std::endl;
         return 1;
     }
@@ -527,8 +527,8 @@ int main(int argc, char* argv[]) {
     cout << "Create vehicle..." << endl;
     double slope = 0;
     double banking = 0;
-    if (filesystem::path(vehicle::GetDataFile(terrain_dir + "/slope.txt")).exists()) {
-        std::ifstream is(vehicle::GetDataFile(terrain_dir + "/slope.txt"));
+    if (filesystem::path(chrono::vehicle::GetDataFile(terrain_dir + "/slope.txt")).exists()) {
+        std::ifstream is(chrono::vehicle::GetDataFile(terrain_dir + "/slope.txt"));
         is >> slope >> banking;
         is.close();
     }
@@ -536,7 +536,7 @@ int main(int argc, char* argv[]) {
     auto vehicle = CreateVehicle(sys, init_pos);
 
     // Create driver
-    auto path = ChBezierCurve::read(vehicle::GetDataFile(terrain_dir + "/path.txt"));
+    auto path = ChBezierCurve::read(chrono::vehicle::GetDataFile(terrain_dir + "/path.txt"));
     double x_max = path->getPoint(path->getNumPoints() - 1).x() - 3.0;
     ChPathFollowerDriver driver(*vehicle, path, "my_path", target_speed);
     driver.GetSteeringController().SetLookAheadDistance(2.0);
@@ -549,7 +549,7 @@ int main(int argc, char* argv[]) {
     NNterrain terrain(sys, vehicle);
     terrain.SetVerbose(verbose_nn);
     terrain.Create(terrain_dir);
-    if (!terrain.Load(vehicle::GetDataFile(NN_module_name))) {
+    if (!terrain.Load(chrono::vehicle::GetDataFile(NN_module_name))) {
         return 1;
     }
 

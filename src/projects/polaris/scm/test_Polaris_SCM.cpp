@@ -82,7 +82,7 @@ ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.1), QUNIT);
 // -----------------------------------------------------------------------------
 
 // Simulation step size
-double step_size = 1e-3;
+double step_size = 2e-3;
 
 // Time interval between two render frames (1/FPS)
 // double render_step_size = 2.0 / 100;
@@ -138,7 +138,7 @@ class MyDriver : public ChDriver {
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
     std::string terrain_dir;
-    double tend = 1.0;
+    double tend = 5.0;
     if (!GetProblemSpecs(argc, argv,                                 
                          terrain_dir, tend, throttlemagnitude, steeringmagnitude, render_step_size, heightmapterrain)) 
     {

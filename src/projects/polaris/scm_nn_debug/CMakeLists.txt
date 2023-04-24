@@ -25,57 +25,26 @@ endif()
 
 #--------------------------------------------------------------
 
-find_package(Torch QUIET)
-if(NOT Torch_FOUND)
-  message(STATUS "Torch package not found - disabling Polaris NN test")
-  return()
-endif()
-
-find_package(TorchCluster QUIET)
-if(NOT TorchCluster_FOUND)
-  message(STATUS "TorchCluster package not found - disabling Polaris NN test")
-  return()
-endif()
-
-find_package(TorchScatter QUIET)
-if(NOT TorchScatter_FOUND)
-  message(STATUS "TorchScatter package not found - disabling Polaris NN test")
-  return()
-endif()
-
-message(STATUS "TorchScatter_INCLUDE_DIR ${TorchScatter_INCLUDE_DIR}")
-message(STATUS "TorchCluster_INCLUDE_DIR ${TorchCluster_INCLUDE_DIR}")
-
-#--------------------------------------------------------------
-
-
-set(PROGRAMS test_Polaris_SCMnn_woutnn_Allvertices
-   )
-
+set(PROGRAMS 
+    test_Polaris_SCMnn_debug
+    )
+    
 set(UTILITIES
-   DataWriter.h
-   DataWriter.cpp
-   )   
+    DataWriter.h
+    DataWriter.cpp
+)
 
 foreach(PROGRAM ${PROGRAMS})
- message(STATUS "...add ${PROGRAM}")
+  message(STATUS "...add ${PROGRAM}")
 
- add_executable(${PROGRAM}  ${PROGRAM}.cpp ${UTILITIES})
- source_group(""  FILES ${PROGRAM}.cpp ${UTILITIES})
+  add_executable(${PROGRAM}  ${PROGRAM}.cpp ${UTILITIES})
+  source_group(""  FILES ${PROGRAM}.cpp ${UTILITIES})
 
- set_target_properties(${PROGRAM} PROPERTIES
+  set_target_properties(${PROGRAM} PROPERTIES
         FOLDER demos
-        COMPILE_FLAGS "${COMPILE_FLAGS}"
+        COMPILER_FLAGS "${COMPILER_FLAGS}"
         LINK_FLAGS "${LINKER_FLAGS}"
- )
- set_property(TARGET ${PROGRAM} PROPERTY CXX_STANDARD 14)
- set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
-
- target_include_directories(${PROGRAM} PRIVATE ${TorchScatter_INCLUDE_DIR})
- target_include_directories(${PROGRAM} PRIVATE ${TorchCluster_INCLUDE_DIR})
-
- target_link_libraries(${PROGRAM} ${LIBRARIES})
- target_link_libraries(${PROGRAM} ${TORCH_LIBRARIES})
- target_link_libraries(${PROGRAM} TorchScatter::TorchScatter)
- target_link_libraries(${PROGRAM} TorchCluster::TorchCluster)
+  )
+  set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
+  target_link_libraries(${PROGRAM} ${LIBRARIES})
 endforeach()
