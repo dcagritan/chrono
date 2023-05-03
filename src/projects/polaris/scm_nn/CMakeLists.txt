@@ -27,6 +27,7 @@ endif()
 #--------------------------------------------------------------
 
 set(PROGRAMS 
+    test_Polaris_SCM
     test_Polaris_SCM_CustomTerrain
     )
     
@@ -35,6 +36,8 @@ set(UTILITIES
     DataWriter.cpp
     CreateObjects.h
     CreateObjects.cpp
+    SCMTerrain_Custom.h
+    SCMTerrain_Custom.cpp
 )
 
 foreach(PROGRAM ${PROGRAMS})
