@@ -45,7 +45,7 @@ namespace vehicle {
 // Implementation of the SCMTerrain wrapper class
 // -----------------------------------------------------------------------------
 
-SCMTerrain_Custom::SCMTerrain_Custom(ChSystem* system, bool visualization_mesh) {
+SCMTerrain_Custom::SCMTerrain_Custom(ChSystem* system, bool visualization_mesh) :SCMTerrain(system,visualization_mesh) {
 }
 
 

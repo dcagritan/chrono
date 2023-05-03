@@ -16,7 +16,8 @@
 // (Krenn & Hirzinger)
 //
 // =============================================================================
-#pragma once
+#ifndef SCM_TERRAIN_CUSTOM_H
+#define SCM_TERRAIN_CUSTOM_H
 
 #include <string>
 #include <ostream>
@@ -46,7 +47,7 @@ namespace vehicle {
 /// This class implements a deformable terrain based on the Soil Contact Model.
 /// Unlike RigidTerrain, the vertical coordinates of this terrain mesh can be deformed
 /// due to interaction with ground vehicles or other collision shapes.
-class CH_VEHICLE_API SCMTerrain_Custom : public ChTerrain {
+class CH_VEHICLE_API SCMTerrain_Custom : public SCMTerrain {
   public:
 
     /// Construct a default SCM deformable terrain.
@@ -64,4 +65,4 @@ class CH_VEHICLE_API SCMTerrain_Custom : public ChTerrain {
 
 }  // end namespace vehicle
 }  // end namespace chrono
-
+#endif
