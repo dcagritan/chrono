@@ -1040,6 +1040,18 @@ void SCMLoader_Custom::ComputeInternalForces() {
     this->GetLoadList().clear();
     m_contact_forces.clear();
 
+    // Pablo
+    std::array<std::shared_ptr<ChWheel>, 4> m_wheels;
+    m_wheels[0] = m_vehicle->GetWheel(0, LEFT);
+    m_wheels[1] = m_vehicle->GetWheel(0, RIGHT);
+    m_wheels[2] = m_vehicle->GetWheel(1, LEFT);
+    m_wheels[3] = m_vehicle->GetWheel(1, RIGHT);
+
+    for (auto& wheel : m_wheels) {
+        ChContactable* contactable = wheel->GetSpindle()->GetCollisionModel()->GetContactable();
+        std::cout << contactable << ", " << wheel->GetPos() << std::endl;
+    }
+
     // ---------------------
     // Update moving patches
     // ---------------------

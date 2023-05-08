@@ -147,7 +147,7 @@ class MyDriver : public ChDriver {
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
     std::string terrain_dir;
-    double tend = 5.0;
+    double tend = 0.5;
     if (!GetProblemSpecs(argc, argv,                                 
                          terrain_dir, tend, throttlemagnitude, steeringmagnitude, render_step_size, heightmapterrain)) 
     {
