@@ -584,8 +584,11 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
 
     friend class SCMTerrain_Custom;
 
-    private:
-     std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
+    
+    std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
+    std::array<std::shared_ptr<ChWheel>, 4> m_wheels;
+    
+    
 };
 
 

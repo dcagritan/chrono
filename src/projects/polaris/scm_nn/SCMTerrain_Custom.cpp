@@ -368,6 +368,13 @@ SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehi
     m_test_offset_down = 0.5;
 
     m_moving_patch = false;
+
+    // Pablo
+    m_wheels[0] = m_vehicle->GetWheel(0, LEFT);
+    m_wheels[1] = m_vehicle->GetWheel(0, RIGHT);
+    m_wheels[2] = m_vehicle->GetWheel(1, LEFT);
+    m_wheels[3] = m_vehicle->GetWheel(1, RIGHT);
+
 }
 
 // Initialize the terrain as a flat grid
@@ -1041,16 +1048,102 @@ void SCMLoader_Custom::ComputeInternalForces() {
     m_contact_forces.clear();
 
     // Pablo
-    std::array<std::shared_ptr<ChWheel>, 4> m_wheels;
-    m_wheels[0] = m_vehicle->GetWheel(0, LEFT);
-    m_wheels[1] = m_vehicle->GetWheel(0, RIGHT);
-    m_wheels[2] = m_vehicle->GetWheel(1, LEFT);
-    m_wheels[3] = m_vehicle->GetWheel(1, RIGHT);
+    // Adapted from test_Polaris_SCMnn_Allvertices.cpp
+    // Get wheel inputs for NN
 
-    for (auto& wheel : m_wheels) {
-        ChContactable* contactable = wheel->GetSpindle()->GetCollisionModel()->GetContactable();
-        std::cout << contactable << ", " << wheel->GetPos() << std::endl;
+    // Prepare NN model inputs
+    //const auto& p_all = m_particles->GetParticles();
+    //std::vector<torch::jit::IValue> inputs;
+    
+    std::array<ChVector<float>, 4> w_pos;
+    std::array<ChQuaternion<float>, 4> w_rot;
+    std::array<ChVector<float>, 4> w_nrm;
+    std::array<ChVector<float>, 4> w_linvel;
+    std::array<ChVector<float>, 4> w_angvel;
+    std::array<bool, 4> w_contact;
+    std::array<ChContactable*, 4> w_contactable;
+
+    // HARDCODED
+    ChVector<> m_box_size;
+    ChVector<> m_box_offset;
+    // Set default size and offset of sampling box
+    double tire_radius = m_wheels[0]->GetTire()->GetRadius();
+    double tire_width = m_wheels[0]->GetTire()->GetWidth();
+    m_box_size.x() = 2.0 * std::sqrt(3.0) * tire_radius;
+    m_box_size.y() = 1.5 * tire_width;
+    m_box_size.z() = 2.2;
+    m_box_offset = ChVector<>(0.0, 0.0, 0.0);
+
+    // Loop over all vehicle wheels
+    for (int i = 0; i < 4; i++) {
+
+        // Wheel state
+        const auto& w_state = m_wheels[i]->GetState();
+        w_pos[i] = w_state.pos;
+        w_rot[i] = w_state.rot;
+        w_nrm[i] = w_state.rot.GetYaxis();
+        w_linvel[i] = w_state.lin_vel;
+        w_angvel[i] = w_state.ang_vel;
+
+        w_contactable[i] = m_wheels[i]->GetSpindle()->GetCollisionModel()->GetContactable();
+
+        std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
+
+        auto tire_radius = m_wheels[i]->GetTire()->GetRadius();
+
+        // Sampling OBB
+        ChVector<> Z_dir(0, 0, 1);
+        ChVector<> X_dir = Vcross(w_nrm[i], ChVector<>(0, 0, 1)).GetNormalized();
+        ChVector<> Y_dir = Vcross(Z_dir, X_dir);
+        ChMatrix33<> box_rot(X_dir, Y_dir, Z_dir);
+        ChVector<> box_pos = w_pos[i] + box_rot * (m_box_offset - ChVector<>(0, 0, tire_radius));
+
+        // Find particles in sampling OBB
+        // m_wheel_particles[i].resize(p_all.size());
+        // auto end = std::copy_if(p_all.begin(), p_all.end(), m_wheel_particles[i].begin(),
+        //                         in_box(box_pos, box_rot, m_box_size));
+        // m_num_particles[i] = (size_t)(end - m_wheel_particles[i].begin());
+        // m_wheel_particles[i].resize(m_num_particles[i]);
+
+        // // Do nothing if no particles under a wheel
+        // if (m_num_particles[i] == 0) {
+        //     return;
+        // }
+
+        // Load particle positions and velocities
+        // w_contact[i] = false;
+        // auto part_pos = torch::empty({(int)m_num_particles[i], 4}, torch::kFloat32);
+        // float* part_pos_data = part_pos.data<float>();
+        // for (const auto& part : m_wheel_particles[i]) {
+        //     ChVector<float> p(part->GetPos());
+        //     *part_pos_data++ = p.x();
+        //     *part_pos_data++ = p.y();
+        //     *part_pos_data++ = p.z();
+        //     *part_pos_data++ = -p.z();
+
+        //     if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
+        //         w_contact[i] = true;
+        // }
+
+        // Load wheel position, orientation, linear velocity, and angular velocity
+        // auto w_pos_t = torch::from_blob((void*)w_pos[i].data(), {3}, torch::kFloat32);
+        // auto w_rot_t = torch::from_blob((void*)w_rot[i].data(), {4}, torch::kFloat32);
+        // auto w_linvel_t = torch::from_blob((void*)w_linvel[i].data(), {3}, torch::kFloat32);
+        // auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
+
+        // Prepare the tuple input for this wheel
+        // std::vector<torch::jit::IValue> tuple;
+        // tuple.push_back(part_pos);
+        // tuple.push_back(w_pos_t);
+        // tuple.push_back(w_rot_t);
+        // tuple.push_back(w_linvel_t);
+        // tuple.push_back(w_angvel_t);
+
+        // // Add this wheel's tuple to NN model inputs
+        // inputs.push_back(torch::ivalue::Tuple::create(tuple));
+
     }
+    // Pablo end modified part
 
     // ---------------------
     // Update moving patches
