@@ -317,7 +317,7 @@ class CH_VEHICLE_API SCMContactableData_Custom {
     double Mohr_mu;        ///< coefficient of friction for shear failure [degree]
     double Janosi_shear;   ///< shear parameter in Janosi-Hanamoto formula [m]
 
-    friend class SCMLoader;
+    friend class SCMLoader_Custom;
 };
     
 

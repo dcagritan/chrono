@@ -42,7 +42,7 @@ namespace chrono {
 namespace vehicle {
 
 // -----------------------------------------------------------------------------
-// Implementation of the SCMTerrain wrapper class
+// Implementation of the SCMTerrain_Custom wrapper class
 // -----------------------------------------------------------------------------
 
 SCMTerrain_Custom::SCMTerrain_Custom(ChSystem* system, bool visualization_mesh) :SCMTerrain(system,visualization_mesh) {
@@ -324,7 +324,7 @@ SCMContactableData_Custom::SCMContactableData_Custom(double area_ratio,
       Janosi_shear(Janosi_shear) {}
 
 // -----------------------------------------------------------------------------
-// Implementation of SCMLoader
+// Implementation of SCMLoader_Custom
 // -----------------------------------------------------------------------------
 
 // Constructor.
@@ -999,7 +999,608 @@ static const std::vector<ChVector2<int>> neighbors4{
 
 // Reset the list of forces, and fills it with forces from a soil contact model.
 void SCMLoader_Custom::ComputeInternalForces() {
-    
+    // Initialize list of modified visualization mesh vertices (use any externally modified vertices)
+    std::vector<int> modified_vertices = m_external_modified_vertices;
+    m_external_modified_vertices.clear();
+
+    // Reset quantities at grid nodes modified over previous step
+    // (required for bulldozing effects and for proper visualization coloring)
+    for (const auto& ij : m_modified_nodes) {
+        auto& nr = m_grid_map.at(ij);
+        nr.sigma = 0;
+        nr.sinkage_elastic = 0;
+        nr.step_plastic_flow = 0;
+        nr.erosion = false;
+        nr.hit_level = 1e9;
+
+        // Update visualization (only color changes relevant here)
+        if (m_trimesh_shape && CheckMeshBounds(ij)) {
+            int iv = GetMeshVertexIndex(ij);          // mesh vertex index
+            UpdateMeshVertexCoordinates(ij, iv, nr);  // update vertex coordinates and color
+            modified_vertices.push_back(iv);
+        }
+    }
+
+    m_modified_nodes.clear();
+
+    // Reset timers
+    m_timer_moving_patches.reset();
+    m_timer_ray_testing.reset();
+    m_timer_ray_casting.reset();
+    m_timer_contact_patches.reset();
+    m_timer_contact_forces.reset();
+    m_timer_bulldozing.reset();
+    m_timer_bulldozing_boundary.reset();
+    m_timer_bulldozing_domain.reset();
+    m_timer_bulldozing_erosion.reset();
+    m_timer_visualization.reset();
+
+    // Reset the load list and map of contact forces
+    this->GetLoadList().clear();
+    m_contact_forces.clear();
+
+    // ---------------------
+    // Update moving patches
+    // ---------------------
+
+    m_timer_moving_patches.start();
+
+    // Update patch information (find range of grid indices)
+    if (m_moving_patch) {
+        for (auto& p : m_patches)
+            UpdateMovingPatch(p, m_Z);
+    } else {
+        assert(m_patches.size() == 1);
+        UpdateFixedPatch(m_patches[0]);
+    }
+
+    m_timer_moving_patches.stop();
+
+    // -------------------------
+    // Perform ray casting tests
+    // -------------------------
+
+    // Information of vertices with ray-cast hits
+    struct HitRecord {
+        ChContactable* contactable;  // pointer to hit object
+        ChVector<> abs_point;        // hit point, expressed in global frame
+        int patch_id;                // index of associated patch id
+    };
+
+    // Hash-map for vertices with ray-cast hits
+    std::unordered_map<ChVector2<int>, HitRecord, CoordHash> hits;
+
+    m_num_ray_casts = 0;
+    m_num_ray_hits = 0;
+
+    m_timer_ray_casting.start();
+
+#ifdef RAY_CASTING_WITH_CRITICAL_SECTION
+
+    int nthreads = GetSystem()->GetNumThreadsChrono();
+
+    // Loop through all moving patches (user-defined or default one)
+    for (auto& p : m_patches) {
+        // Loop through all vertices in the patch range
+        int num_ray_casts = 0;
+    #pragma omp parallel for num_threads(nthreads) reduction(+ : num_ray_casts)
+        for (int k = 0; k < p.m_range.size(); k++) {
+            ChVector2<int> ij = p.m_range[k];
+
+            // Move from (i, j) to (x, y, z) representation in the world frame
+            double x = ij.x() * m_delta;
+            double y = ij.y() * m_delta;
+            double z;
+    #pragma omp critical(SCM_ray_casting)
+            z = GetHeight(ij);
+
+            ChVector<> vertex_abs = m_plane.TransformPointLocalToParent(ChVector<>(x, y, z));
+
+            // Create ray at current grid location
+            collision::ChCollisionSystem::ChRayhitResult mrayhit_result;
+            ChVector<> to = vertex_abs + m_Z * m_test_offset_up;
+            ChVector<> from = to - m_Z * m_test_offset_down;
+
+            // Ray-OBB test (quick rejection)
+            if (m_moving_patch && !RayOBBtest(p, from, m_Z))
+                continue;
+
+            // Cast ray into collision system
+            GetSystem()->GetCollisionSystem()->RayHit(from, to, mrayhit_result);
+            num_ray_casts++;
+
+            if (mrayhit_result.hit) {
+    #pragma omp critical(SCM_ray_casting)
+                {
+                    // If this is the first hit from this node, initialize the node record
+                    if (m_grid_map.find(ij) == m_grid_map.end()) {
+                        m_grid_map.insert(std::make_pair(ij, NodeRecord(z, z, GetInitNormal(ij))));
+                    }
+
+                    // Add to our map of hits to process
+                    HitRecord record = {mrayhit_result.hitModel->GetContactable(), mrayhit_result.abs_hitPoint, -1};
+                    hits.insert(std::make_pair(ij, record));
+                    m_num_ray_hits++;
+                }
+            }
+        }
+        m_num_ray_casts += num_ray_casts;
+    }
+
+#else
+
+    // Map-reduce approach (to eliminate critical section)
+
+    const int nthreads = GetSystem()->GetNumThreadsChrono();
+    std::vector<std::unordered_map<ChVector2<int>, HitRecord, CoordHash>> t_hits(nthreads);
+
+    // Loop through all moving patches (user-defined or default one)
+    for (auto& p : m_patches) {
+        m_timer_ray_testing.start();
+
+        // Loop through all vertices in the patch range
+        int num_ray_casts = 0;
+    #pragma omp parallel for num_threads(nthreads) reduction(+ : num_ray_casts)
+        for (int k = 0; k < p.m_range.size(); k++) {
+            int t_num = ChOMP::GetThreadNum();
+            ChVector2<int> ij = p.m_range[k];
+
+            // Move from (i, j) to (x, y, z) representation in the world frame
+            double x = ij.x() * m_delta;
+            double y = ij.y() * m_delta;
+            double z = GetHeight(ij);
+
+            ChVector<> vertex_abs = m_plane.TransformPointLocalToParent(ChVector<>(x, y, z));
+
+            // Create ray at current grid location
+            collision::ChCollisionSystem::ChRayhitResult mrayhit_result;
+            ChVector<> to = vertex_abs + m_Z * m_test_offset_up;
+            ChVector<> from = to - m_Z * m_test_offset_down;
+
+            // Ray-OBB test (quick rejection)
+            if (m_moving_patch && !RayOBBtest(p, from, m_Z))
+                continue;
+
+            // Cast ray into collision system
+            GetSystem()->GetCollisionSystem()->RayHit(from, to, mrayhit_result);
+            num_ray_casts++;
+
+            if (mrayhit_result.hit) {
+                // Add to our map of hits to process
+                HitRecord record = {mrayhit_result.hitModel->GetContactable(), mrayhit_result.abs_hitPoint, -1};
+                t_hits[t_num].insert(std::make_pair(ij, record));
+            }
+        }
+
+        m_timer_ray_testing.stop();
+
+        m_num_ray_casts += num_ray_casts;
+
+        // Sequential insertion in global hits
+        for (int t_num = 0; t_num < nthreads; t_num++) {
+            for (auto& h : t_hits[t_num]) {
+                // If this is the first hit from this node, initialize the node record
+                if (m_grid_map.find(h.first) == m_grid_map.end()) {
+                    double z = GetInitHeight(h.first);
+                    m_grid_map.insert(std::make_pair(h.first, NodeRecord(z, z, GetInitNormal(h.first))));
+                }
+                ////hits.insert(h);
+            }
+
+            hits.insert(t_hits[t_num].begin(), t_hits[t_num].end());
+            t_hits[t_num].clear();
+        }
+        m_num_ray_hits = (int)hits.size();
+    }
+
+#endif
+
+    m_timer_ray_casting.stop();
+
+    // --------------------
+    // Find contact patches
+    // --------------------
+
+    m_timer_contact_patches.start();
+
+    // Collect hit vertices assigned to each contact patch.
+    struct ContactPatchRecord {
+        std::vector<ChVector2<>> points;    // points in contact patch (in reference plane)
+        std::vector<ChVector2<int>> nodes;  // grid nodes in the contact patch
+        double area;                        // contact patch area
+        double perimeter;                   // contact patch perimeter
+        double oob;                         // approximate value of 1/b
+    };
+    std::vector<ContactPatchRecord> contact_patches;
+
+    // Loop through all hit nodes and determine to which contact patch they belong.
+    // Use a queue-based flood-filling algorithm based on the neighbors of each hit node.
+    m_num_contact_patches = 0;
+    for (auto& h : hits) {
+        if (h.second.patch_id != -1)
+            continue;
+
+        ChVector2<int> ij = h.first;
+
+        // Make a new contact patch and add this hit node to it
+        h.second.patch_id = m_num_contact_patches++;
+        ContactPatchRecord patch;
+        patch.nodes.push_back(ij);
+        patch.points.push_back(ChVector2<>(m_delta * ij.x(), m_delta * ij.y()));
+
+        // Add current node to the work queue
+        std::queue<ChVector2<int>> todo;
+        todo.push(ij);
+
+        while (!todo.empty()) {
+            auto crt = hits.find(todo.front());  // Current hit node is first element in queue
+            todo.pop();                          // Remove first element from queue
+
+            ChVector2<int> crt_ij = crt->first;
+            int crt_patch = crt->second.patch_id;
+
+            // Loop through the neighbors of the current hit node
+            for (int k = 0; k < 4; k++) {
+                ChVector2<int> nbr_ij = crt_ij + neighbors4[k];
+                // If neighbor is not a hit node, move on
+                auto nbr = hits.find(nbr_ij);
+                if (nbr == hits.end())
+                    continue;
+                // If neighbor already assigned to a contact patch, move on
+                if (nbr->second.patch_id != -1)
+                    continue;
+                // Assign neighbor to the same contact patch
+                nbr->second.patch_id = crt_patch;
+                // Add neighbor point to patch lists
+                patch.nodes.push_back(nbr_ij);
+                patch.points.push_back(ChVector2<>(m_delta * nbr_ij.x(), m_delta * nbr_ij.y()));
+                // Add neighbor to end of work queue
+                todo.push(nbr_ij);
+            }
+        }
+        contact_patches.push_back(patch);
+    }
+
+    // Calculate area and perimeter of each contact patch.
+    // Calculate approximation to Beker term 1/b.
+    for (auto& p : contact_patches) {
+        utils::ChConvexHull2D ch(p.points);
+        p.area = ch.GetArea();
+        p.perimeter = ch.GetPerimeter();
+        if (p.area < 1e-6) {
+            p.oob = 0;
+        } else {
+            p.oob = p.perimeter / (2 * p.area);
+        }
+    }
+
+    m_timer_contact_patches.stop();
+
+    // ----------------------
+    // Compute contact forces
+    // ----------------------
+
+    m_timer_contact_forces.start();
+
+    // Initialize local values for the soil parameters
+    double Bekker_Kphi = m_Bekker_Kphi;
+    double Bekker_Kc = m_Bekker_Kc;
+    double Bekker_n = m_Bekker_n;
+    double Mohr_cohesion = m_Mohr_cohesion;
+    double Mohr_mu = m_Mohr_mu;
+    double Janosi_shear = m_Janosi_shear;
+    double elastic_K = m_elastic_K;
+    double damping_R = m_damping_R;
+
+    // Process only hit nodes
+    for (auto& h : hits) {
+        ChVector2<> ij = h.first;
+
+        auto& nr = m_grid_map.at(ij);      // node record
+        const double& ca = nr.normal.z();  // cosine of angle between local normal and SCM plane vertical
+
+        ChContactable* contactable = h.second.contactable;
+        const ChVector<>& hit_point_abs = h.second.abs_point;
+        int patch_id = h.second.patch_id;
+
+        auto hit_point_loc = m_plane.TransformPointParentToLocal(hit_point_abs);
+
+        if (m_soil_fun) {
+            double Mohr_friction;
+            m_soil_fun->Set(hit_point_loc, Bekker_Kphi, Bekker_Kc, Bekker_n, Mohr_cohesion, Mohr_friction, Janosi_shear,
+                            elastic_K, damping_R);
+            Mohr_mu = std::tan(Mohr_friction * CH_C_DEG_TO_RAD);
+        }
+
+        nr.hit_level = hit_point_loc.z();                              // along SCM z axis
+        double p_hit_offset = ca * (nr.level_initial - nr.hit_level);  // along local normal direction
+
+        // Elastic try (along local normal direction)
+        nr.sigma = elastic_K * (p_hit_offset - nr.sinkage_plastic);
+
+        // Handle unilaterality
+        if (nr.sigma < 0) {
+            nr.sigma = 0;
+            continue;
+        }
+
+        // Mark current node as modified
+        m_modified_nodes.push_back(ij);
+
+        // Calculate velocity at touched grid node
+        ChVector<> point_local(ij.x() * m_delta, ij.y() * m_delta, nr.level);
+        ChVector<> point_abs = m_plane.TransformPointLocalToParent(point_local);
+        ChVector<> speed_abs = contactable->GetContactPointSpeed(point_abs);
+
+        // Calculate normal and tangent directions (expressed in absolute frame)
+        ChVector<> N = m_plane.TransformDirectionLocalToParent(nr.normal);
+        double Vn = Vdot(speed_abs, N);
+        ChVector<> T = -(speed_abs - Vn * N);
+        T.Normalize();
+
+        // Update total sinkage and current level for this hit node
+        nr.sinkage = p_hit_offset;
+        nr.level = nr.hit_level;
+
+        // Accumulate shear for Janosi-Hanamoto (along local tangent direction)
+        nr.kshear += Vdot(speed_abs, -T) * GetSystem()->GetStep();
+
+        // Plastic correction (along local normal direction)
+        if (nr.sigma > nr.sigma_yield) {
+            // Bekker formula
+            nr.sigma = (contact_patches[patch_id].oob * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
+            nr.sigma_yield = nr.sigma;
+            double old_sinkage_plastic = nr.sinkage_plastic;
+            nr.sinkage_plastic = nr.sinkage - nr.sigma / elastic_K;
+            nr.step_plastic_flow = (nr.sinkage_plastic - old_sinkage_plastic) / GetSystem()->GetStep();
+        }
+
+        // Elastic sinkage (along local normal direction)
+        nr.sinkage_elastic = nr.sinkage - nr.sinkage_plastic;
+
+        // Add compressive speed-proportional damping (not clamped by pressure yield)
+        ////if (Vn < 0) {
+        nr.sigma += -Vn * damping_R;
+        ////}
+
+        // Mohr-Coulomb
+        double tau_max = Mohr_cohesion + nr.sigma * Mohr_mu;
+
+        // Janosi-Hanamoto (along local tangent direction)
+        nr.tau = tau_max * (1.0 - exp(-(nr.kshear / Janosi_shear)));
+
+        // Calculate normal and tangential forces (in local node directions).
+        // If specified, combine properties for soil-contactable interaction and soil-soil interaction.
+        ChVector<> Fn = N * m_area * nr.sigma;
+        ChVector<> Ft;
+
+        //// TODO:  take into account "tread height" (add to SCMContactableData_Custom)?
+
+        if (auto cprops = contactable->GetUserData<vehicle::SCMContactableData_Custom>()) {
+            // Use weighted sum of soil-contactable and soil-soil parameters
+            double c_tau_max = cprops->Mohr_cohesion + nr.sigma * cprops->Mohr_mu;
+            double c_tau = c_tau_max * (1.0 - exp(-(nr.kshear / cprops->Janosi_shear)));
+            double ratio = cprops->area_ratio;
+            Ft = T * m_area * ((1 - ratio) * nr.tau + ratio * c_tau);
+        } else {
+            // Use only soil-soil parameters
+            Ft = T * m_area * nr.tau;
+        }
+
+        if (ChBody* rigidbody = dynamic_cast<ChBody*>(contactable)) {
+            // [](){} Trick: no deletion for this shared ptr, since 'rigidbody' was not a new ChBody()
+            // object, but an already used pointer because mrayhit_result.hitModel->GetPhysicsItem()
+            // cannot return it as shared_ptr, as needed by the ChLoadBodyForce:
+            std::shared_ptr<ChBody> srigidbody(rigidbody, [](ChBody*) {});
+            std::shared_ptr<ChLoadBodyForce> mload(new ChLoadBodyForce(srigidbody, Fn + Ft, false, point_abs, false));
+            this->Add(mload);
+
+            // Accumulate contact force for this rigid body.
+            // The resultant force is assumed to be applied at the body COM.
+            // All components of the generalized terrain force are expressed in the global frame.
+            auto itr = m_contact_forces.find(contactable);
+            if (itr == m_contact_forces.end()) {
+                // Create new entry and initialize generalized force.
+                ChVector<> force = Fn + Ft;
+                TerrainForce frc;
+                frc.point = srigidbody->GetPos();
+                frc.force = force;
+                frc.moment = Vcross(Vsub(point_abs, srigidbody->GetPos()), force);
+                m_contact_forces.insert(std::make_pair(contactable, frc));
+            } else {
+                // Update generalized force.
+                ChVector<> force = Fn + Ft;
+                itr->second.force += force;
+                itr->second.moment += Vcross(Vsub(point_abs, srigidbody->GetPos()), force);
+            }
+        } else if (ChLoadableUV* surf = dynamic_cast<ChLoadableUV*>(contactable)) {
+            // [](){} Trick: no deletion for this shared ptr
+            std::shared_ptr<ChLoadableUV> ssurf(surf, [](ChLoadableUV*) {});
+            std::shared_ptr<ChLoad<ChLoaderForceOnSurface>> mload(new ChLoad<ChLoaderForceOnSurface>(ssurf));
+            mload->loader.SetForce(Fn + Ft);
+            mload->loader.SetApplication(0.5, 0.5);  //***TODO*** set UV, now just in middle
+            this->Add(mload);
+
+            // Accumulate contact forces for this surface.
+            //// TODO
+        }
+
+        // Update grid node height (in local SCM frame, along SCM z axis)
+        nr.level = nr.level_initial - nr.sinkage / ca;
+
+    }  // end loop on ray hits
+
+    m_timer_contact_forces.stop();
+
+    // --------------------------------------------------
+    // Flow material to the side of rut, using heuristics
+    // --------------------------------------------------
+
+    m_timer_bulldozing.start();
+
+    m_num_erosion_nodes = 0;
+
+    if (m_bulldozing) {
+        typedef std::unordered_set<ChVector2<int>, CoordHash> NodeSet;
+
+        // Maximum level change between neighboring nodes (smoothing phase)
+        double dy_lim = m_delta * m_erosion_slope;
+
+        // (1) Raise boundaries of each contact patch
+        m_timer_bulldozing_boundary.start();
+
+        NodeSet boundary;  // union of contact patch boundaries
+        for (auto p : contact_patches) {
+            NodeSet p_boundary;  // boundary of effective contact patch
+
+            // Calculate the displaced material from all touched nodes and identify boundary
+            double tot_step_flow = 0;
+            for (const auto& ij : p.nodes) {                     // for each node in contact patch
+                const auto& nr = m_grid_map.at(ij);              //   get node record
+                if (nr.sigma <= 0)                               //   if node not touched
+                    continue;                                    //     skip (not in effective patch)
+                tot_step_flow += nr.step_plastic_flow;           //   accumulate displaced material
+                for (int k = 0; k < 4; k++) {                    //   check each node neighbor
+                    ChVector2<int> nbr_ij = ij + neighbors4[k];  //     neighbor node coordinates
+                    ////if (!CheckMeshBounds(nbr_ij))                     //     if neighbor out of bounds
+                    ////    continue;                                     //       skip neighbor
+                    if (m_grid_map.find(nbr_ij) == m_grid_map.end())  //     if neighbor not yet recorded
+                        p_boundary.insert(nbr_ij);                    //       set neighbor as boundary
+                    else if (m_grid_map.at(nbr_ij).sigma <= 0)        //     if neighbor not touched
+                        p_boundary.insert(nbr_ij);                    //       set neighbor as boundary
+                }
+            }
+            tot_step_flow *= GetSystem()->GetStep();
+
+            // Target raise amount for each boundary node (unless clamped)
+            double diff = m_flow_factor * tot_step_flow / p_boundary.size();
+
+            // Raise boundary (create a sharp spike which will be later smoothed out with erosion)
+            for (const auto& ij : p_boundary) {                                  // for each node in bndry
+                m_modified_nodes.push_back(ij);                                  //   mark as modified
+                if (m_grid_map.find(ij) == m_grid_map.end()) {                   //   if not yet recorded
+                    double z = GetInitHeight(ij);                                //     undeformed height
+                    const ChVector<>& n = GetInitNormal(ij);                     //     terrain normal
+                    m_grid_map.insert(std::make_pair(ij, NodeRecord(z, z, n)));  //     add new node record
+                    m_modified_nodes.push_back(ij);                              //     mark as modified
+                }                                                                //
+                auto& nr = m_grid_map.at(ij);                                    //   node record
+                nr.erosion = true;                                               //   add to erosion domain
+                AddMaterialToNode(diff, nr);                                     //   add raise amount
+            }
+
+            // Accumulate boundary
+            boundary.insert(p_boundary.begin(), p_boundary.end());
+
+        }  // end for contact_patches
+
+        m_timer_bulldozing_boundary.stop();
+
+        // (2) Calculate erosion domain (dilate boundary)
+        m_timer_bulldozing_domain.start();
+
+        NodeSet erosion_domain = boundary;
+        NodeSet erosion_front = boundary;  // initialize erosion front to boundary nodes
+        for (int i = 0; i < m_erosion_propagations; i++) {
+            NodeSet front;                                       // new erosion front
+            for (const auto& ij : erosion_front) {               // for each node in current erosion front
+                for (int k = 0; k < 4; k++) {                    // check each of its neighbors
+                    ChVector2<int> nbr_ij = ij + neighbors4[k];  //   neighbor node coordinates
+                    ////if (!CheckMeshBounds(nbr_ij))                       //   if out of bounds
+                    ////    continue;                                       //     ignore neighbor
+                    if (m_grid_map.find(nbr_ij) == m_grid_map.end()) {  //   if neighbor not yet recorded
+                        double z = GetInitHeight(nbr_ij);               //     undeformed height at neighbor location
+                        const ChVector<>& n = GetInitNormal(nbr_ij);    //     terrain normal at neighbor location
+                        NodeRecord nr(z, z, n);                         //     create new record
+                        nr.erosion = true;                              //     include in erosion domain
+                        m_grid_map.insert(std::make_pair(nbr_ij, nr));  //     add new node record
+                        front.insert(nbr_ij);                           //     add neighbor to new front
+                        m_modified_nodes.push_back(nbr_ij);             //     mark as modified
+                    } else {                                            //   if neighbor previously recorded
+                        NodeRecord& nr = m_grid_map.at(nbr_ij);         //     get existing record
+                        if (!nr.erosion && nr.sigma <= 0) {             //     if neighbor not touched
+                            nr.erosion = true;                          //       include in erosion domain
+                            front.insert(nbr_ij);                       //       add neighbor to new front
+                            m_modified_nodes.push_back(nbr_ij);         //       mark as modified
+                        }
+                    }
+                }
+            }
+            erosion_domain.insert(front.begin(), front.end());  // add current front to erosion domain
+            erosion_front = front;                              // advance erosion front
+        }
+
+        m_num_erosion_nodes = static_cast<int>(erosion_domain.size());
+        m_timer_bulldozing_domain.stop();
+
+        // (3) Erosion algorithm on domain
+        m_timer_bulldozing_erosion.start();
+
+        for (int iter = 0; iter < m_erosion_iterations; iter++) {
+            for (const auto& ij : erosion_domain) {
+                auto& nr = m_grid_map.at(ij);
+                for (int k = 0; k < 4; k++) {
+                    ChVector2<int> nbr_ij = ij + neighbors4[k];
+                    auto rec = m_grid_map.find(nbr_ij);
+                    if (rec == m_grid_map.end())
+                        continue;
+                    auto& nbr_nr = rec->second;
+
+                    // (3.1) Flow remaining material to neighbor
+                    double diff = 0.5 * (nr.massremainder - nbr_nr.massremainder) / 4;  //// TODO: rethink this!
+                    if (diff > 0) {
+                        RemoveMaterialFromNode(diff, nr);
+                        AddMaterialToNode(diff, nbr_nr);
+                    }
+
+                    // (3.2) Smoothing
+                    if (nbr_nr.sigma == 0) {
+                        double dy = (nr.level + nr.massremainder) - (nbr_nr.level + nbr_nr.massremainder);
+                        diff = 0.5 * (std::abs(dy) - dy_lim) / 4;  //// TODO: rethink this!
+                        if (diff > 0) {
+                            if (dy > 0) {
+                                RemoveMaterialFromNode(diff, nr);
+                                AddMaterialToNode(diff, nbr_nr);
+                            } else {
+                                RemoveMaterialFromNode(diff, nbr_nr);
+                                AddMaterialToNode(diff, nr);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        m_timer_bulldozing_erosion.stop();
+
+    }  // end do_bulldozing
+
+    m_timer_bulldozing.stop();
+
+    // --------------------
+    // Update visualization
+    // --------------------
+
+    m_timer_visualization.start();
+
+    if (m_trimesh_shape) {
+        // Loop over list of modified nodes and adjust corresponding mesh vertices.
+        // If not rendering a wireframe mesh, also update normals.
+        for (const auto& ij : m_modified_nodes) {
+            if (!CheckMeshBounds(ij))                 // if node outside mesh
+                continue;                             //   do nothing
+            const auto& nr = m_grid_map.at(ij);       // grid node record
+            int iv = GetMeshVertexIndex(ij);          // mesh vertex index
+            UpdateMeshVertexCoordinates(ij, iv, nr);  // update vertex coordinates and color
+            modified_vertices.push_back(iv);          // cache in list of modified mesh vertices
+            if (!m_trimesh_shape->IsWireframe())      // if not wireframe
+                UpdateMeshVertexNormal(ij, iv);       // update vertex normal
+        }
+
+        m_trimesh_shape->SetModifiedVertices(modified_vertices);
+    }
+
+    m_timer_visualization.stop();
 }
 
 void SCMLoader_Custom::AddMaterialToNode(double amount, NodeRecord& nr) {
