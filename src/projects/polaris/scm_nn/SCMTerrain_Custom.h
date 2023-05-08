@@ -35,6 +35,7 @@
 #include "chrono_vehicle/ChTerrain.h"
 #include "chrono_vehicle/ChWorldFrame.h"
 #include "chrono_vehicle/terrain/SCMTerrain.h"
+#include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 namespace chrono {
 namespace vehicle {
@@ -84,7 +85,8 @@ class CH_VEHICLE_API SCMTerrain_Custom : public SCMTerrain {
     /// Construct a default SCM deformable terrain.
     /// The user is responsible for calling various Set methods before Initialize.
     SCMTerrain_Custom(ChSystem* system,               ///< [in] containing multibody system
-               bool visualization_mesh = true  ///< [in] enable/disable visualization asset
+               std::shared_ptr<chrono::vehicle::WheeledVehicle> vehicle,
+               bool visualization_mesh = true  ///< [in] enable/disable visualization asset    
     );
 
     ~SCMTerrain_Custom() {}
@@ -298,6 +300,7 @@ class CH_VEHICLE_API SCMTerrain_Custom : public SCMTerrain {
 
   private:
     std::shared_ptr<SCMLoader_Custom> m_loader;  ///< underlying load container for contact force generation
+    std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
 
 };
 

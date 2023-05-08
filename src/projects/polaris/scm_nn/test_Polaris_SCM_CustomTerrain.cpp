@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
     // Create the terrain
     // ------------------
     // SCMDeformableTerrain terrain(system);
-    SCMTerrain_Custom terrain(&sys);
+    SCMTerrain_Custom terrain(&sys, vehicle);
     terrain.SetSoilParameters(2e6,   // Bekker Kphi
                                 0,     // Bekker Kc
                                 1.1,   // Bekker n exponent

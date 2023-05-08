@@ -45,9 +45,10 @@ namespace vehicle {
 // Implementation of the SCMTerrain_Custom wrapper class
 // -----------------------------------------------------------------------------
 
-SCMTerrain_Custom::SCMTerrain_Custom(ChSystem* system, bool visualization_mesh) :SCMTerrain(system,visualization_mesh) {
+SCMTerrain_Custom::SCMTerrain_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) :SCMTerrain(system,visualization_mesh) {
     m_loader = chrono_types::make_shared<SCMLoader_Custom>(system, visualization_mesh);
     system->Add(m_loader);    
+    m_vehicle=vehicle;
 }
 
 
