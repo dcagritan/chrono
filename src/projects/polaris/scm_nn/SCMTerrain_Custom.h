@@ -354,6 +354,9 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
 
   private:
 
+    // Pablo
+    bool m_use_nn;
+
     // SCM patch type
     enum class PatchType {
         FLAT,        // flat patch
@@ -458,7 +461,12 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
 
     // Update the forces and the geometry, at the beginning of each timestep.
     virtual void Setup() override {
+      if (m_use_nn){
+        ComputeInternalForcesNN();
+      }
+      else{
         ComputeInternalForces();
+      }
         ChLoadContainer::Update(ChTime, true);
     }
 
@@ -483,6 +491,8 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     // Reset the list of forces and fill it with forces from the soil contact model.
     // This is called automatically during timestepping (only at the beginning of each step).
     void ComputeInternalForces();
+
+    void ComputeInternalForcesNN();
 
     // Override the ChLoadContainer method for computing the generalized force F term:
     virtual void IntLoadResidual_F(const unsigned int off,  // offset in R residual
@@ -587,7 +597,8 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     
     std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
     std::array<std::shared_ptr<ChWheel>, 4> m_wheels;
-    
+    ChVector<> m_box_size;
+    ChVector<> m_box_offset;
     
 };
 
