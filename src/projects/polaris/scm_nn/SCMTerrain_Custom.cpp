@@ -46,9 +46,8 @@ namespace vehicle {
 // -----------------------------------------------------------------------------
 
 SCMTerrain_Custom::SCMTerrain_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) :SCMTerrain(system,visualization_mesh) {
-    m_loader = chrono_types::make_shared<SCMLoader_Custom>(system, visualization_mesh);
+    m_loader = chrono_types::make_shared<SCMLoader_Custom>(system, vehicle, visualization_mesh);
     system->Add(m_loader);    
-    m_vehicle=vehicle;
 }
 
 
@@ -329,8 +328,9 @@ SCMContactableData_Custom::SCMContactableData_Custom(double area_ratio,
 // -----------------------------------------------------------------------------
 
 // Constructor.
-SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, bool visualization_mesh) : m_soil_fun(nullptr) {
+SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) : m_soil_fun(nullptr) {
     this->SetSystem(system);
+    m_vehicle=vehicle;
 
     if (visualization_mesh) {
         // Create the visualization mesh and asset
