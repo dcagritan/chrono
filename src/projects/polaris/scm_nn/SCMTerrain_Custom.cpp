@@ -46,6 +46,1107 @@ namespace vehicle {
 // -----------------------------------------------------------------------------
 
 SCMTerrain_Custom::SCMTerrain_Custom(ChSystem* system, bool visualization_mesh) :SCMTerrain(system,visualization_mesh) {
+    m_loader = chrono_types::make_shared<SCMLoader_Custom>(system, visualization_mesh);
+    system->Add(m_loader);    
+}
+
+
+// Get the initial terrain height below the specified location.
+double SCMTerrain_Custom::GetInitHeight(const ChVector<>& loc) const {
+    return m_loader->GetInitHeight(loc);
+}
+
+// Get the initial terrain normal at the point below the specified location.
+ChVector<> SCMTerrain_Custom::GetInitNormal(const ChVector<>& loc) const {
+    return m_loader->GetInitNormal(loc);
+}
+
+// Get the terrain height below the specified location.
+double SCMTerrain_Custom::GetHeight(const ChVector<>& loc) const {
+    return m_loader->GetHeight(loc);
+}
+
+// Set the SCM reference plane.
+void SCMTerrain_Custom::SetPlane(const ChCoordsys<>& plane) {
+    m_loader->m_plane = plane;
+    m_loader->m_Z = plane.rot.GetZaxis();
+}
+
+// Get the SCM reference plane.
+const ChCoordsys<>& SCMTerrain_Custom::GetPlane() const {
+    return m_loader->m_plane;
+}
+
+// Get the terrain normal at the point below the specified location.
+ChVector<> SCMTerrain_Custom::GetNormal(const ChVector<>& loc) const {
+    return m_loader->GetNormal(loc);
+}
+
+// Return the terrain coefficient of friction at the specified location.
+float SCMTerrain_Custom::GetCoefficientFriction(const ChVector<>& loc) const {
+    return m_friction_fun ? (*m_friction_fun)(loc) : 0.8f;
+}
+
+// Get SCM information at the node closest to the specified location.
+SCMTerrain_Custom::NodeInfo SCMTerrain_Custom::GetNodeInfo(const ChVector<>& loc) const {
+    return m_loader->GetNodeInfo(loc);
+}
+
+// Get the trimesh that defines the ground shape.
+std::shared_ptr<ChTriangleMeshShape> SCMTerrain_Custom::GetMesh() const {
+    return m_loader->m_trimesh_shape;
+}
+
+// Set the visualization mesh as wireframe or as solid.
+void SCMTerrain_Custom::SetMeshWireframe(bool val) {
+    if (m_loader->m_trimesh_shape)
+        m_loader->m_trimesh_shape->SetWireframe(val);
+}
+
+// Save the visualization mesh as a Wavefront OBJ file.
+void SCMTerrain_Custom::WriteMesh(const std::string& filename) const {
+    if (!m_loader->m_trimesh_shape) {
+        std::cout << "SCMTerrain_Custom::WriteMesh  -- visualization mesh not created.";
+        return;
+    }
+    auto trimesh = m_loader->m_trimesh_shape->GetMesh();
+    std::vector<geometry::ChTriangleMeshConnected> meshes = {*trimesh};
+    trimesh->WriteWavefront(filename, meshes);
+}
+
+// Initialize the terrain as a flat grid.
+void SCMTerrain_Custom::Initialize(double sizeX, double sizeY, double delta) {
+    m_loader->Initialize(sizeX, sizeY, delta);
+}
+
+// Initialize the terrain from a specified height map.
+void SCMTerrain_Custom::Initialize(const std::string& heightmap_file,
+                                      double sizeX,
+                                      double sizeY,
+                                      double hMin,
+                                      double hMax,
+                                      double delta) {
+    m_loader->Initialize(heightmap_file, sizeX, sizeY, hMin, hMax, delta);
+}
+
+// Initialize the terrain from a specified OBJ mesh file.
+void SCMTerrain_Custom::Initialize(const std::string& mesh_file, double delta) {
+    m_loader->Initialize(mesh_file, delta);
+}
+
+// Get the heights of modified grid nodes.
+std::vector<SCMTerrain_Custom::NodeLevel> SCMTerrain_Custom::GetModifiedNodes(bool all_nodes) const {
+    return m_loader->GetModifiedNodes(all_nodes);
+}
+
+// Modify the level of grid nodes from the given list.
+void SCMTerrain_Custom::SetModifiedNodes(const std::vector<NodeLevel>& nodes) {
+    m_loader->SetModifiedNodes(nodes);
+}
+
+// Return the current cumulative contact force on the specified body (due to interaction with the SCM terrain).
+TerrainForce SCMTerrain_Custom::GetContactForce(std::shared_ptr<ChBody> body) const {
+    auto itr = m_loader->m_contact_forces.find(body.get());
+    if (itr != m_loader->m_contact_forces.end())
+        return itr->second;
+
+    TerrainForce frc;
+    frc.point = body->GetPos();
+    frc.force = ChVector<>(0, 0, 0);
+    frc.moment = ChVector<>(0, 0, 0);
+    return frc;
+}
+
+// Return the number of rays cast at last step.
+int SCMTerrain_Custom::GetNumRayCasts() const {
+    return m_loader->m_num_ray_casts;
+}
+
+// Return the number of ray hits at last step.
+int SCMTerrain_Custom::GetNumRayHits() const {
+    return m_loader->m_num_ray_hits;
+}
+
+// Return the number of contact patches at last step.
+int SCMTerrain_Custom::GetNumContactPatches() const {
+    return m_loader->m_num_contact_patches;
+}
+
+// Return the number of nodes in the erosion domain at last step (bulldosing effects).
+int SCMTerrain_Custom::GetNumErosionNodes() const {
+    return m_loader->m_num_erosion_nodes;
+}
+
+// Timer information
+double SCMTerrain_Custom::GetTimerMovingPatches() const {
+    return 1e3 * m_loader->m_timer_moving_patches();
+}
+double SCMTerrain_Custom::GetTimerRayTesting() const {
+    return 1e3 * m_loader->m_timer_ray_testing();
+}
+double SCMTerrain_Custom::GetTimerRayCasting() const {
+    return 1e3 * m_loader->m_timer_ray_casting();
+}
+double SCMTerrain_Custom::GetTimerContactPatches() const {
+    return 1e3 * m_loader->m_timer_contact_patches();
+}
+double SCMTerrain_Custom::GetTimerContactForces() const {
+    return 1e3 * m_loader->m_timer_contact_forces();
+}
+double SCMTerrain_Custom::GetTimerBulldozing() const {
+    return 1e3 * m_loader->m_timer_bulldozing();
+}
+double SCMTerrain_Custom::GetTimerVisUpdate() const {
+    return 1e3 * m_loader->m_timer_visualization();
+}
+
+// Print timing and counter information for last step.
+void SCMTerrain_Custom::PrintStepStatistics(std::ostream& os) const {
+    os << " Timers (ms):" << std::endl;
+    os << "   Moving patches:          " << 1e3 * m_loader->m_timer_moving_patches() << std::endl;
+    os << "   Ray testing:             " << 1e3 * m_loader->m_timer_ray_testing() << std::endl;
+    os << "   Ray casting:             " << 1e3 * m_loader->m_timer_ray_casting() << std::endl;
+    os << "   Contact patches:         " << 1e3 * m_loader->m_timer_contact_patches() << std::endl;
+    os << "   Contact forces:          " << 1e3 * m_loader->m_timer_contact_forces() << std::endl;
+    os << "   Bulldozing:              " << 1e3 * m_loader->m_timer_bulldozing() << std::endl;
+    os << "      Raise boundary:       " << 1e3 * m_loader->m_timer_bulldozing_boundary() << std::endl;
+    os << "      Compute domain:       " << 1e3 * m_loader->m_timer_bulldozing_domain() << std::endl;
+    os << "      Apply erosion:        " << 1e3 * m_loader->m_timer_bulldozing_erosion() << std::endl;
+    os << "   Visualization:           " << 1e3 * m_loader->m_timer_visualization() << std::endl;
+
+    os << " Counters:" << std::endl;
+    os << "   Number ray casts:        " << m_loader->m_num_ray_casts << std::endl;
+    os << "   Number ray hits:         " << m_loader->m_num_ray_hits << std::endl;
+    os << "   Number contact patches:  " << m_loader->m_num_contact_patches << std::endl;
+    os << "   Number erosion nodes:    " << m_loader->m_num_erosion_nodes << std::endl;
+}
+
+// Set properties of the SCM soil model.
+void SCMTerrain_Custom::SetSoilParameters(
+    double Bekker_Kphi,    // Kphi, frictional modulus in Bekker model
+    double Bekker_Kc,      // Kc, cohesive modulus in Bekker model
+    double Bekker_n,       // n, exponent of sinkage in Bekker model (usually 0.6...1.8)
+    double Mohr_cohesion,  // Cohesion for shear failure [Pa]
+    double Mohr_friction,  // Friction angle for shear failure [degree]
+    double Janosi_shear,   // Shear parameter in Janosi-Hanamoto formula [m]
+    double elastic_K,      // elastic stiffness K per unit area, [Pa/m] (must be larger than Kphi)
+    double damping_R       // vertical damping R per unit area [Pa.s/m] (proportional to vertical speed)
+) {
+    m_loader->m_Bekker_Kphi = Bekker_Kphi;
+    m_loader->m_Bekker_Kc = Bekker_Kc;
+    m_loader->m_Bekker_n = Bekker_n;
+    m_loader->m_Mohr_cohesion = Mohr_cohesion;
+    m_loader->m_Mohr_mu = std::tan(Mohr_friction * CH_C_DEG_TO_RAD);
+    m_loader->m_Janosi_shear = Janosi_shear;
+    m_loader->m_elastic_K = ChMax(elastic_K, Bekker_Kphi);
+    m_loader->m_damping_R = damping_R;
+}
+
+// Enable/disable bulldozing effect.
+void SCMTerrain_Custom::EnableBulldozing(bool val) {
+    m_loader->m_bulldozing = val;
+}
+
+// Set parameters controlling the creation of side ruts (bulldozing effects).
+void SCMTerrain_Custom::SetBulldozingParameters(
+    double erosion_angle,     // angle of erosion of the displaced material [degrees]
+    double flow_factor,       // growth of lateral volume relative to pressed volume
+    int erosion_iterations,   // number of erosion refinements per timestep
+    int erosion_propagations  // number of concentric vertex selections subject to erosion
+) {
+    m_loader->m_flow_factor = flow_factor;
+    m_loader->m_erosion_slope = std::tan(erosion_angle * CH_C_DEG_TO_RAD);
+    m_loader->m_erosion_iterations = erosion_iterations;
+    m_loader->m_erosion_propagations = erosion_propagations;
+}
+
+void SCMTerrain_Custom::SetTestHeight(double offset) {
+    m_loader->m_test_offset_up = offset;
+}
+
+double SCMTerrain_Custom::GetTestHeight() const {
+    return m_loader->m_test_offset_up;
+}
+
+// Set the color plot type.
+void SCMTerrain_Custom::SetPlotType(DataPlotType plot_type, double min_val, double max_val) {
+    m_loader->m_plot_type = plot_type;
+    m_loader->m_plot_v_min = min_val;
+    m_loader->m_plot_v_max = max_val;
+}
+
+// Set the color of the visualization assets.
+void SCMTerrain_Custom::SetColor(const ChColor& color) {
+    if (m_loader->GetVisualModel()) {
+        m_loader->GetVisualShape(0)->SetColor(color);
+    }
+}
+
+// Set the texture and texture scaling.
+void SCMTerrain_Custom::SetTexture(const std::string tex_file, float scale_x, float scale_y) {
+    if (m_loader->GetVisualModel()) {
+        m_loader->GetVisualShape(0)->SetTexture(tex_file, scale_x, scale_y);
+    }
+}
+
+// Enable moving patch.
+void SCMTerrain_Custom::AddMovingPatch(std::shared_ptr<ChBody> body,
+                                          const ChVector<>& OOBB_center,
+                                          const ChVector<>& OOBB_dims) {
+    SCMLoader_Custom::MovingPatchInfo pinfo;
+    pinfo.m_body = body;
+    pinfo.m_center = OOBB_center;
+    pinfo.m_hdims = OOBB_dims / 2;
+
+    m_loader->m_patches.push_back(pinfo);
+
+    // Moving patch monitoring is now enabled
+    m_loader->m_moving_patch = true;
+}
+
+// Set user-supplied callback for evaluating location-dependent soil parameters.
+void SCMTerrain_Custom::RegisterSoilParametersCallback(std::shared_ptr<SoilParametersCallback_Custom> cb) {
+    m_loader->m_soil_fun = cb;
+}
+
+
+// -----------------------------------------------------------------------------
+// Contactable user-data (contactable-soil parameters)
+// -----------------------------------------------------------------------------
+
+SCMContactableData_Custom::SCMContactableData_Custom(double area_ratio,
+                                       double Mohr_cohesion,
+                                       double Mohr_friction,
+                                       double Janosi_shear)
+    : area_ratio(area_ratio),
+      Mohr_cohesion(Mohr_cohesion),
+      Mohr_mu(std::tan(Mohr_friction * CH_C_DEG_TO_RAD)),
+      Janosi_shear(Janosi_shear) {}
+
+// -----------------------------------------------------------------------------
+// Implementation of SCMLoader
+// -----------------------------------------------------------------------------
+
+// Constructor.
+SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, bool visualization_mesh) : m_soil_fun(nullptr) {
+    this->SetSystem(system);
+
+    if (visualization_mesh) {
+        // Create the visualization mesh and asset
+        m_trimesh_shape = std::shared_ptr<ChTriangleMeshShape>(new ChTriangleMeshShape);
+        m_trimesh_shape->SetWireframe(true);
+        m_trimesh_shape->SetFixedConnectivity();
+    }
+
+    // Default SCM plane and plane normal
+    m_plane = ChCoordsys<>(VNULL, QUNIT);
+    m_Z = m_plane.rot.GetZaxis();
+
+    // Bulldozing effects
+    m_bulldozing = false;
+    m_flow_factor = 1.2;
+    m_erosion_slope = std::tan(40.0 * CH_C_DEG_TO_RAD);
+    m_erosion_iterations = 3;
+    m_erosion_propagations = 10;
+
+    // Default soil parameters
+    m_Bekker_Kphi = 2e6;
+    m_Bekker_Kc = 0;
+    m_Bekker_n = 1.1;
+    m_Mohr_cohesion = 50;
+    m_Mohr_mu = std::tan(20.0 * CH_C_DEG_TO_RAD);
+    m_Janosi_shear = 0.01;
+    m_elastic_K = 50000000;
+    m_damping_R = 0;
+
+    m_plot_type = SCMTerrain_Custom::PLOT_NONE;
+    m_plot_v_min = 0;
+    m_plot_v_max = 0.2;
+
+    m_test_offset_up = 0.1;
+    m_test_offset_down = 0.5;
+
+    m_moving_patch = false;
+}
+
+// Initialize the terrain as a flat grid
+void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
+    m_type = PatchType::FLAT;
+
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
+
+    m_delta = sizeX / (2 * m_nx);   // grid spacing
+    m_area = std::pow(m_delta, 2);  // area of a cell
+
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
+
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
+}
+
+// Initialize the terrain from a specified height map.
+void SCMLoader_Custom::Initialize(const std::string& heightmap_file,
+                                   double sizeX,
+                                   double sizeY,
+                                   double hMin,
+                                   double hMax,
+                                   double delta) {
+    m_type = PatchType::HEIGHT_MAP;
+
+    // Read the image file (request only 1 channel) and extract number of pixels.
+    STB hmap;
+    if (!hmap.ReadFromFile(heightmap_file, 1)) {
+        std::cout << "STB error in reading height map file " << heightmap_file << std::endl;
+        throw ChException("Cannot read height map image file");
+    }
+    int nx_img = hmap.GetWidth();
+    int ny_img = hmap.GetHeight();
+
+    double dx_img = 1.0 / (nx_img - 1.0);
+    double dy_img = 1.0 / (ny_img - 1.0);
+
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
+    int nvx = 2 * m_nx + 1;                                   // number of grid vertices in X direction
+    int nvy = 2 * m_ny + 1;                                   // number of grid vertices in Y direction
+    m_delta = sizeX / (2.0 * m_nx);                           // grid spacing
+    m_area = std::pow(m_delta, 2);                            // area of a cell
+
+    double dx_grid = 0.5 / m_nx;
+    double dy_grid = 0.5 / m_ny;
+
+    // Resample image and calculate interpolated gray levels and then map it to the height range, with black
+    // corresponding to hMin and white corresponding to hMax. Entry (0,0) corresponds to bottom-left grid vertex.
+    // Note that pixels in the image start at top-left corner.
+    double h_scale = (hMax - hMin) / hmap.GetRange();
+    m_heights = ChMatrixDynamic<>(nvx, nvy);
+    for (int ix = 0; ix < nvx; ix++) {
+        double x = ix * dx_grid;                  // x location in image (in [0,1], 0 at left)
+        int jx1 = (int)std::floor(x / dx_img);    // Left pixel
+        int jx2 = (int)std::ceil(x / dx_img);     // Right pixel
+        double ax = (x - jx1 * dx_img) / dx_img;  // Scaled offset from left pixel
+
+        assert(ax < 1.0);
+        assert(jx1 < nx_img);
+        assert(jx2 < nx_img);
+        assert(jx1 <= jx2);
+
+        for (int iy = 0; iy < nvy; iy++) {
+            double y = (2 * m_ny - iy) * dy_grid;     // y location in image (in [0,1], 0 at top)
+            int jy1 = (int)std::floor(y / dy_img);    // Up pixel
+            int jy2 = (int)std::ceil(y / dy_img);     // Down pixel
+            double ay = (y - jy1 * dy_img) / dy_img;  // Scaled offset from down pixel
+
+            assert(ay < 1.0);
+            assert(jy1 < ny_img);
+            assert(jy2 < ny_img);
+            assert(jy1 <= jy2);
+
+            // Gray levels at left-up, left-down, right-up, and right-down pixels
+            double g11 = hmap.Gray(jx1, jy1);
+            double g12 = hmap.Gray(jx1, jy2);
+            double g21 = hmap.Gray(jx2, jy1);
+            double g22 = hmap.Gray(jx2, jy2);
+
+            // Bilinear interpolation (gray level)
+            m_heights(ix, iy) = (1 - ax) * (1 - ay) * g11 + (1 - ax) * ay * g12 + ax * (1 - ay) * g21 + ax * ay * g22;
+            // Map into height range
+            m_heights(ix, iy) = hMin + m_heights(ix, iy) * h_scale;
+        }
+    }
+
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
+
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
+}
+
+// Initialize the terrain from a specified OBJ mesh file.
+bool calcBarycentricCoordinates(const ChVector<>& v1,
+                                const ChVector<>& v2,
+                                const ChVector<>& v3,
+                                const ChVector<>& v,
+                                double& a1,
+                                double& a2,
+                                double& a3) {
+    double denom = (v2.y() - v3.y()) * (v1.x() - v3.x()) + (v3.x() - v2.x()) * (v1.y() - v3.y());
+    a1 = ((v2.y() - v3.y()) * (v.x() - v3.x()) + (v3.x() - v2.x()) * (v.y() - v3.y())) / denom;
+    a2 = ((v3.y() - v1.y()) * (v.x() - v3.x()) + (v1.x() - v3.x()) * (v.y() - v3.y())) / denom;
+    a3 = 1 - a1 - a2;
+
+    return (0 <= a1) && (a1 <= 1) && (0 <= a2) && (a2 <= 1) && (0 <= a3) && (a3 <= 1);
+}
+
+void SCMLoader_Custom::Initialize(const std::string& mesh_file, double delta) {
+    m_type = PatchType::TRI_MESH;
+
+    // Load triangular mesh
+    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(mesh_file, true, true);
+    const auto& vertices = trimesh->getCoordsVertices();
+    const auto& faces = trimesh->getIndicesVertexes();
+
+    // Find x, y, and z ranges of vertex data
+    auto minmaxX = std::minmax_element(begin(vertices), end(vertices),
+                                       [](const ChVector<>& v1, const ChVector<>& v2) { return v1.x() < v2.x(); });
+    auto minmaxY = std::minmax_element(begin(vertices), end(vertices),
+                                       [](const ChVector<>& v1, const ChVector<>& v2) { return v1.y() < v2.y(); });
+    auto minmaxZ = std::minmax_element(begin(vertices), end(vertices),
+                                       [](const ChVector<>& v1, const ChVector<>& v2) { return v1.z() < v2.z(); });
+    auto minX = minmaxX.first->x() + delta;
+    auto maxX = minmaxX.second->x() - delta;
+    auto minY = minmaxY.first->y() + delta;
+    auto maxY = minmaxY.second->y() - delta;
+    auto minZ = minmaxZ.first->z();
+    ////auto maxZ = minmaxZ.second->z();
+
+    auto sizeX = (maxX - minX);
+    auto sizeY = (maxY - minY);
+    ChVector<> center((maxX + minX) / 2, (maxY + minY) / 2, 0);
+
+    // Initial grid extent
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
+    m_delta = sizeX / (2.0 * m_nx);                           // grid spacing
+    m_area = std::pow(m_delta, 2);                            // area of a cell
+    int nvx = 2 * m_nx + 1;                                   // number of grid vertices in X direction
+    int nvy = 2 * m_ny + 1;                                   // number of grid vertices in Y direction
+
+    // Loop over all mesh faces, project onto the x-y plane and set the height for all covered grid nodes.
+    m_heights = ChMatrixDynamic<>::Zero(nvx, nvy);
+
+    int num_h_set = 0;
+    double a1, a2, a3;
+    for (const auto& f : faces) {
+        // Find bounds of (shifted) face projection
+        const auto& v1 = vertices[f[0]] - center;
+        const auto& v2 = vertices[f[1]] - center;
+        const auto& v3 = vertices[f[2]] - center;
+        auto x_min = ChMin(ChMin(v1.x(), v2.x()), v3.x());
+        auto x_max = ChMax(ChMax(v1.x(), v2.x()), v3.x());
+        auto y_min = ChMin(ChMin(v1.y(), v2.y()), v3.y());
+        auto y_max = ChMax(ChMax(v1.y(), v2.y()), v3.y());
+        int i_min = static_cast<int>(std::floor(x_min / m_delta));
+        int j_min = static_cast<int>(std::floor(y_min / m_delta));
+        int i_max = static_cast<int>(std::ceil(x_max / m_delta));
+        int j_max = static_cast<int>(std::ceil(y_max / m_delta));
+        ChClampValue(i_min, -m_nx, +m_nx);
+        ChClampValue(i_max, -m_nx, +m_nx);
+        ChClampValue(j_min, -m_ny, +m_ny);
+        ChClampValue(j_max, -m_ny, +m_ny);
+        // Loop over all grid nodes within bounds
+        for (int i = i_min; i <= i_max; i++) {
+            for (int j = j_min; j <= j_max; j++) {
+                ChVector<> v(i * m_delta, j * m_delta, 0);
+                if (calcBarycentricCoordinates(v1, v2, v3, v, a1, a2, a3)) {
+                    m_heights(m_nx + i, m_ny + j) = minZ + a1 * v1.z() + a2 * v2.z() + a3 * v3.z();
+                    num_h_set++;
+                }
+            }
+        }
+    }
+
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
+
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
+}
+
+void SCMLoader_Custom::CreateVisualizationMesh(double sizeX, double sizeY) {
+    int nvx = 2 * m_nx + 1;                     // number of grid vertices in X direction
+    int nvy = 2 * m_ny + 1;                     // number of grid vertices in Y direction
+    int n_verts = nvx * nvy;                    // total number of vertices for initial visualization trimesh
+    int n_faces = 2 * (2 * m_nx) * (2 * m_ny);  // total number of faces for initial visualization trimesh
+    double x_scale = 0.5 / m_nx;                // scale for texture coordinates (U direction)
+    double y_scale = 0.5 / m_ny;                // scale for texture coordinates (V direction)
+
+    // Readability aliases
+    auto trimesh = m_trimesh_shape->GetMesh();
+    trimesh->Clear();
+    std::vector<ChVector<>>& vertices = trimesh->getCoordsVertices();
+    std::vector<ChVector<>>& normals = trimesh->getCoordsNormals();
+    std::vector<ChVector<int>>& idx_vertices = trimesh->getIndicesVertexes();
+    std::vector<ChVector<int>>& idx_normals = trimesh->getIndicesNormals();
+    std::vector<ChVector2<>>& uv_coords = trimesh->getCoordsUV();
+    std::vector<ChColor>& colors = trimesh->getCoordsColors();
+
+    // Resize mesh arrays.
+    vertices.resize(n_verts);
+    normals.resize(n_verts);
+    uv_coords.resize(n_verts);
+    colors.resize(n_verts);
+    idx_vertices.resize(n_faces);
+    idx_normals.resize(n_faces);
+
+    // Load mesh vertices.
+    // We order the vertices starting at the bottom-left corner, row after row.
+    // The bottom-left corner corresponds to the point (-sizeX/2, -sizeY/2).
+    // UV coordinates are mapped in [0,1] x [0,1]. Use smoothed vertex normals.
+    int iv = 0;
+    for (int iy = 0; iy < nvy; iy++) {
+        double y = iy * m_delta - 0.5 * sizeY;
+        for (int ix = 0; ix < nvx; ix++) {
+            double x = ix * m_delta - 0.5 * sizeX;
+            if (m_type == PatchType::FLAT) {
+                // Set vertex location
+                vertices[iv] = m_plane * ChVector<>(x, y, 0);
+                // Initialize vertex normal to Z up
+                normals[iv] = m_plane.TransformDirectionLocalToParent(ChVector<>(0, 0, 1));
+            } else {
+                // Set vertex location
+                vertices[iv] = m_plane * ChVector<>(x, y, m_heights(ix, iy));
+                // Initialize vertex normal to zero (will be set later)
+                normals[iv] = ChVector<>(0, 0, 0);
+            }
+            // Assign color white to all vertices
+            colors[iv] = ChColor(1, 1, 1);
+            // Set UV coordinates in [0,1] x [0,1]
+            uv_coords[iv] = ChVector2<>(ix * x_scale, iy * y_scale);
+            ++iv;
+        }
+    }
+
+    // Specify triangular faces (two at a time).
+    // Specify the face vertices counter-clockwise.
+    // Set the normal indices same as the vertex indices.
+    int it = 0;
+    for (int iy = 0; iy < nvy - 1; iy++) {
+        for (int ix = 0; ix < nvx - 1; ix++) {
+            int v0 = ix + nvx * iy;
+            idx_vertices[it] = ChVector<int>(v0, v0 + 1, v0 + nvx + 1);
+            idx_normals[it] = ChVector<int>(v0, v0 + 1, v0 + nvx + 1);
+            ++it;
+            idx_vertices[it] = ChVector<int>(v0, v0 + nvx + 1, v0 + nvx);
+            idx_normals[it] = ChVector<int>(v0, v0 + nvx + 1, v0 + nvx);
+            ++it;
+        }
+    }
+
+    if (m_type == PatchType::FLAT)
+        return;
+
+    // Initialize the array of accumulators (number of adjacent faces to a vertex)
+    std::vector<int> accumulators(n_verts, 0);
+
+    // Calculate normals and then average the normals from all adjacent faces.
+    for (it = 0; it < n_faces; it++) {
+        // Calculate the triangle normal as a normalized cross product.
+        ChVector<> nrm = Vcross(vertices[idx_vertices[it][1]] - vertices[idx_vertices[it][0]],
+                                vertices[idx_vertices[it][2]] - vertices[idx_vertices[it][0]]);
+        nrm.Normalize();
+        // Increment the normals of all incident vertices by the face normal
+        normals[idx_normals[it][0]] += nrm;
+        normals[idx_normals[it][1]] += nrm;
+        normals[idx_normals[it][2]] += nrm;
+        // Increment the count of all incident vertices by 1
+        accumulators[idx_normals[it][0]] += 1;
+        accumulators[idx_normals[it][1]] += 1;
+        accumulators[idx_normals[it][2]] += 1;
+    }
+
+    // Set the normals to the average values.
+    for (int in = 0; in < n_verts; in++) {
+        normals[in] /= (double)accumulators[in];
+    }
+}
+
+void SCMLoader_Custom::SetupInitial() {
+    // If no user-specified moving patches, create one that will encompass all collision shapes in the system
+    if (!m_moving_patch) {
+        SCMLoader_Custom::MovingPatchInfo pinfo;
+        pinfo.m_body = nullptr;
+        m_patches.push_back(pinfo);
+    }
+}
+
+bool SCMLoader_Custom::CheckMeshBounds(const ChVector2<int>& loc) const {
+    return loc.x() >= -m_nx && loc.x() <= m_nx && loc.y() >= -m_ny && loc.y() <= m_ny;
+}
+
+SCMTerrain_Custom::NodeInfo SCMLoader_Custom::GetNodeInfo(const ChVector<>& loc) const {
+    SCMTerrain_Custom::NodeInfo ni;
+
+    // Express location in the SCM frame
+    ChVector<> loc_loc = m_plane.TransformPointParentToLocal(loc);
+
+    // Find closest grid vertex (approximation)
+    int i = static_cast<int>(std::round(loc_loc.x() / m_delta));
+    int j = static_cast<int>(std::round(loc_loc.y() / m_delta));
+    ChVector2<int> ij(i, j);
+
+    // First query the hash-map
+    auto p = m_grid_map.find(ij);
+    if (p != m_grid_map.end()) {
+        ni.sinkage = p->second.sinkage;
+        ni.sinkage_plastic = p->second.sinkage_plastic;
+        ni.sinkage_elastic = p->second.sinkage_elastic;
+        ni.sigma = p->second.sigma;
+        ni.sigma_yield = p->second.sigma_yield;
+        ni.kshear = p->second.kshear;
+        ni.tau = p->second.tau;
+        return ni;
+    }
+
+    // Return a default node record
+    ni.sinkage = 0;
+    ni.sinkage_plastic = 0;
+    ni.sinkage_elastic = 0;
+    ni.sigma = 0;
+    ni.sigma_yield = 0;
+    ni.kshear = 0;
+    ni.tau = 0;
+    return ni;
+}
+
+// Get index of trimesh vertex corresponding to the specified grid vertex.
+int SCMLoader_Custom::GetMeshVertexIndex(const ChVector2<int>& loc) {
+    assert(loc.x() >= -m_nx);
+    assert(loc.x() <= +m_nx);
+    assert(loc.y() >= -m_ny);
+    assert(loc.y() <= +m_ny);
+    return (loc.x() + m_nx) + (2 * m_nx + 1) * (loc.y() + m_ny);
+}
+
+// Get indices of trimesh faces incident to the specified grid vertex.
+std::vector<int> SCMLoader_Custom::GetMeshFaceIndices(const ChVector2<int>& loc) {
+    int i = loc.x();
+    int j = loc.y();
+
+    // Ignore boundary vertices
+    if (i == -m_nx || i == m_nx || j == -m_ny || j == m_ny)
+        return std::vector<int>();
+
+    // Load indices of 6 adjacent faces
+    i += m_nx;
+    j += m_ny;
+    int nx = 2 * m_nx;
+    std::vector<int> faces(6);
+    faces[0] = 2 * ((i - 1) + nx * (j - 1));
+    faces[1] = 2 * ((i - 1) + nx * (j - 1)) + 1;
+    faces[2] = 2 * ((i - 1) + nx * (j - 0));
+    faces[3] = 2 * ((i - 0) + nx * (j - 0));
+    faces[4] = 2 * ((i - 0) + nx * (j - 0)) + 1;
+    faces[5] = 2 * ((i - 0) + nx * (j - 1)) + 1;
+
+    return faces;
+}
+
+// Get the initial undeformed terrain height (relative to the SCM plane) at the specified grid vertex.
+double SCMLoader_Custom::GetInitHeight(const ChVector2<int>& loc) const {
+    switch (m_type) {
+        case PatchType::FLAT:
+            return 0;
+        case PatchType::HEIGHT_MAP:
+        case PatchType::TRI_MESH: {
+            auto x = ChClamp(loc.x(), -m_nx, +m_nx);
+            auto y = ChClamp(loc.y(), -m_ny, +m_ny);
+            return m_heights(x + m_nx, y + m_ny);
+        }
+        default:
+            return 0;
+    }
+}
+
+// Get the initial undeformed terrain normal (relative to the SCM plane) at the specified grid node.
+ChVector<> SCMLoader_Custom::GetInitNormal(const ChVector2<int>& loc) const {
+    switch (m_type) {
+        case PatchType::HEIGHT_MAP:
+        case PatchType::TRI_MESH: {
+            // Average normals of 4 triangular faces incident to given grid node
+            auto hE = GetInitHeight(loc + ChVector2<int>(1, 0));  // east
+            auto hW = GetInitHeight(loc - ChVector2<int>(1, 0));  // west
+            auto hN = GetInitHeight(loc + ChVector2<int>(0, 1));  // north
+            auto hS = GetInitHeight(loc - ChVector2<int>(0, 1));  // south
+            return ChVector<>(hW - hE, hS - hN, 2 * m_delta).GetNormalized();
+        }
+        case PatchType::FLAT:
+        default:
+            return ChVector<>(0, 0, 1);
+    }
+}
+
+// Get the terrain height (relative to the SCM plane) at the specified grid vertex.
+double SCMLoader_Custom::GetHeight(const ChVector2<int>& loc) const {
+    // First query the hash-map
+    auto p = m_grid_map.find(loc);
+    if (p != m_grid_map.end())
+        return p->second.level;
+
+    // Else return undeformed height
+    return GetInitHeight(loc);
+}
+
+// Get the terrain normal (relative to the SCM plane) at the specified grid vertex.
+ChVector<> SCMLoader_Custom::GetNormal(const ChVector2<>& loc) const {
+    switch (m_type) {
+        case PatchType::HEIGHT_MAP:
+        case PatchType::TRI_MESH: {
+            // Average normals of 4 triangular faces incident to given grid node
+            auto hE = GetHeight(loc + ChVector2<int>(1, 0));  // east
+            auto hW = GetHeight(loc - ChVector2<int>(1, 0));  // west
+            auto hN = GetHeight(loc + ChVector2<int>(0, 1));  // north
+            auto hS = GetHeight(loc - ChVector2<int>(0, 1));  // south
+            return ChVector<>(hW - hE, hS - hN, 2 * m_delta).GetNormalized();
+        }
+        case PatchType::FLAT:
+        default:
+            return ChVector<>(0, 0, 1);
+    }
+}
+
+// Get the initial terrain height below the specified location.
+double SCMLoader_Custom::GetInitHeight(const ChVector<>& loc) const {
+    // Express location in the SCM frame
+    ChVector<> loc_loc = m_plane.TransformPointParentToLocal(loc);
+
+    // Get height (relative to SCM plane) at closest grid vertex (approximation)
+    int i = static_cast<int>(std::round(loc_loc.x() / m_delta));
+    int j = static_cast<int>(std::round(loc_loc.y() / m_delta));
+    loc_loc.z() = GetInitHeight(ChVector2<int>(i, j));
+
+    // Express in global frame
+    ChVector<> loc_abs = m_plane.TransformPointLocalToParent(loc_loc);
+    return ChWorldFrame::Height(loc_abs);
+}
+
+// Get the initial terrain normal at the point below the specified location.
+ChVector<> SCMLoader_Custom::GetInitNormal(const ChVector<>& loc) const {
+    // Express location in the SCM frame
+    ChVector<> loc_loc = m_plane.TransformPointParentToLocal(loc);
+
+    // Get height (relative to SCM plane) at closest grid vertex (approximation)
+    int i = static_cast<int>(std::round(loc_loc.x() / m_delta));
+    int j = static_cast<int>(std::round(loc_loc.y() / m_delta));
+    auto nrm_loc = GetInitNormal(ChVector2<int>(i, j));
+
+    // Express in global frame
+    auto nrm_abs = m_plane.TransformDirectionLocalToParent(nrm_loc);
+    return ChWorldFrame::FromISO(nrm_abs);
+}
+
+// Get the terrain height below the specified location.
+double SCMLoader_Custom::GetHeight(const ChVector<>& loc) const {
+    // Express location in the SCM frame
+    ChVector<> loc_loc = m_plane.TransformPointParentToLocal(loc);
+
+    // Get height (relative to SCM plane) at closest grid vertex (approximation)
+    int i = static_cast<int>(std::round(loc_loc.x() / m_delta));
+    int j = static_cast<int>(std::round(loc_loc.y() / m_delta));
+    loc_loc.z() = GetHeight(ChVector2<int>(i, j));
+
+    // Express in global frame
+    ChVector<> loc_abs = m_plane.TransformPointLocalToParent(loc_loc);
+    return ChWorldFrame::Height(loc_abs);
+}
+
+// Get the terrain normal at the point below the specified location.
+ChVector<> SCMLoader_Custom::GetNormal(const ChVector<>& loc) const {
+    // Express location in the SCM frame
+    ChVector<> loc_loc = m_plane.TransformPointParentToLocal(loc);
+
+    // Get height (relative to SCM plane) at closest grid vertex (approximation)
+    int i = static_cast<int>(std::round(loc_loc.x() / m_delta));
+    int j = static_cast<int>(std::round(loc_loc.y() / m_delta));
+    auto nrm_loc = GetNormal(ChVector2<int>(i, j));
+
+    // Express in global frame
+    auto nrm_abs = m_plane.TransformDirectionLocalToParent(nrm_loc);
+    return ChWorldFrame::FromISO(nrm_abs);
+}
+
+// Synchronize information for a moving patch
+void SCMLoader_Custom::UpdateMovingPatch(MovingPatchInfo& p, const ChVector<>& Z) {
+    ChVector2<> p_min(+std::numeric_limits<double>::max());
+    ChVector2<> p_max(-std::numeric_limits<double>::max());
+
+    // Loop over all corners of the OOBB
+    for (int j = 0; j < 8; j++) {
+        int ix = j % 2;
+        int iy = (j / 2) % 2;
+        int iz = (j / 4);
+
+        // OOBB corner in body frame
+        ChVector<> c_body = p.m_center + p.m_hdims * ChVector<>(2.0 * ix - 1, 2.0 * iy - 1, 2.0 * iz - 1);
+        // OOBB corner in absolute frame
+        ChVector<> c_abs = p.m_body->GetFrame_REF_to_abs().TransformPointLocalToParent(c_body);
+        // OOBB corner expressed in SCM frame
+        ChVector<> c_scm = m_plane.TransformPointParentToLocal(c_abs);
+
+        // Update AABB of patch projection onto SCM plane
+        p_min.x() = std::min(p_min.x(), c_scm.x());
+        p_min.y() = std::min(p_min.y(), c_scm.y());
+        p_max.x() = std::max(p_max.x(), c_scm.x());
+        p_max.y() = std::max(p_max.y(), c_scm.y());
+    }
+
+    // Find index ranges for grid vertices contained in the patch projection AABB
+    int x_min = static_cast<int>(std::ceil(p_min.x() / m_delta));
+    int y_min = static_cast<int>(std::ceil(p_min.y() / m_delta));
+    int x_max = static_cast<int>(std::floor(p_max.x() / m_delta));
+    int y_max = static_cast<int>(std::floor(p_max.y() / m_delta));
+    int n_x = x_max - x_min + 1;
+    int n_y = y_max - y_min + 1;
+
+    p.m_range.resize(n_x * n_y);
+    for (int i = 0; i < n_x; i++) {
+        for (int j = 0; j < n_y; j++) {
+            p.m_range[j * n_x + i] = ChVector2<int>(i + x_min, j + y_min);
+        }
+    }
+
+    // Calculate inverse of SCM normal expressed in body frame (for optimization of ray-OBB test)
+    ChVector<> dir = p.m_body->TransformDirectionParentToLocal(Z);
+    p.m_ooN.x() = (dir.x() == 0) ? 1e10 : 1.0 / dir.x();
+    p.m_ooN.y() = (dir.y() == 0) ? 1e10 : 1.0 / dir.y();
+    p.m_ooN.z() = (dir.z() == 0) ? 1e10 : 1.0 / dir.z();
+}
+
+// Synchronize information for fixed patch
+void SCMLoader_Custom::UpdateFixedPatch(MovingPatchInfo& p) {
+    ChVector2<> p_min(+std::numeric_limits<double>::max());
+    ChVector2<> p_max(-std::numeric_limits<double>::max());
+
+    // Get current bounding box (AABB) of all collision shapes
+    ChVector<> aabb_min;
+    ChVector<> aabb_max;
+    GetSystem()->GetCollisionSystem()->GetBoundingBox(aabb_min, aabb_max);
+
+    // Loop over all corners of the AABB
+    for (int j = 0; j < 8; j++) {
+        int ix = j % 2;
+        int iy = (j / 2) % 2;
+        int iz = (j / 4);
+
+        // AABB corner in absolute frame
+        ChVector<> c_abs = aabb_max * ChVector<>(ix, iy, iz) + aabb_min * ChVector<>(1.0 - ix, 1.0 - iy, 1.0 - iz);
+        // AABB corner in SCM frame
+        ChVector<> c_scm = m_plane.TransformPointParentToLocal(c_abs);
+
+        // Update AABB of patch projection onto SCM plane
+        p_min.x() = std::min(p_min.x(), c_scm.x());
+        p_min.y() = std::min(p_min.y(), c_scm.y());
+        p_max.x() = std::max(p_max.x(), c_scm.x());
+        p_max.y() = std::max(p_max.y(), c_scm.y());
+    }
+
+    // Find index ranges for grid vertices contained in the patch projection AABB
+    int x_min = static_cast<int>(std::ceil(p_min.x() / m_delta));
+    int y_min = static_cast<int>(std::ceil(p_min.y() / m_delta));
+    int x_max = static_cast<int>(std::floor(p_max.x() / m_delta));
+    int y_max = static_cast<int>(std::floor(p_max.y() / m_delta));
+    int n_x = x_max - x_min + 1;
+    int n_y = y_max - y_min + 1;
+
+    p.m_range.resize(n_x * n_y);
+    for (int i = 0; i < n_x; i++) {
+        for (int j = 0; j < n_y; j++) {
+            p.m_range[j * n_x + i] = ChVector2<int>(i + x_min, j + y_min);
+        }
+    }
+}
+
+// Ray-OBB intersection test
+bool SCMLoader_Custom::RayOBBtest(const MovingPatchInfo& p, const ChVector<>& from, const ChVector<>& Z) {
+    // Express ray origin in OBB frame
+    ChVector<> orig = p.m_body->TransformPointParentToLocal(from) - p.m_center;
+
+    // Perform ray-AABB test (slab tests)
+    double t1 = (-p.m_hdims.x() - orig.x()) * p.m_ooN.x();
+    double t2 = (+p.m_hdims.x() - orig.x()) * p.m_ooN.x();
+    double t3 = (-p.m_hdims.y() - orig.y()) * p.m_ooN.y();
+    double t4 = (+p.m_hdims.y() - orig.y()) * p.m_ooN.y();
+    double t5 = (-p.m_hdims.z() - orig.z()) * p.m_ooN.z();
+    double t6 = (+p.m_hdims.z() - orig.z()) * p.m_ooN.z();
+
+    double tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+    double tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+
+    if (tmax < 0)
+        return false;
+    if (tmin > tmax)
+        return false;
+    return true;
+}
+
+// Offsets for the 8 neighbors of a grid vertex
+static const std::vector<ChVector2<int>> neighbors8{
+    ChVector2<int>(-1, -1),  // SW
+    ChVector2<int>(0, -1),   // S
+    ChVector2<int>(1, -1),   // SE
+    ChVector2<int>(-1, 0),   // W
+    ChVector2<int>(1, 0),    // E
+    ChVector2<int>(-1, 1),   // NW
+    ChVector2<int>(0, 1),    // N
+    ChVector2<int>(1, 1)     // NE
+};
+
+static const std::vector<ChVector2<int>> neighbors4{
+    ChVector2<int>(0, -1),  // S
+    ChVector2<int>(-1, 0),  // W
+    ChVector2<int>(1, 0),   // E
+    ChVector2<int>(0, 1)    // N
+};
+
+// Default implementation uses Map-Reduce for collecting ray intersection hits.
+// The alternative is to simultaenously load the global map of hits while ray casting (using a critical section).
+////#define RAY_CASTING_WITH_CRITICAL_SECTION
+
+// Reset the list of forces, and fills it with forces from a soil contact model.
+void SCMLoader_Custom::ComputeInternalForces() {
+    
+}
+
+void SCMLoader_Custom::AddMaterialToNode(double amount, NodeRecord& nr) {
+    if (amount > nr.hit_level - nr.level) {                      //   if not possible to assign all mass
+        nr.massremainder += amount - (nr.hit_level - nr.level);  //     material to be further propagated
+        amount = nr.hit_level - nr.level;                        //     clamp raise amount
+    }                                                            //
+    nr.level += amount;                                          //   modify node level
+    nr.level_initial += amount;                                  //   reset node initial level
+}
+
+void SCMLoader_Custom::RemoveMaterialFromNode(double amount, NodeRecord& nr) {
+    if (nr.massremainder > amount) {                                 // if too much remainder material
+        nr.massremainder -= amount;                                  //   decrease remainder material
+        /*amount = 0;*/                                              //   ???
+    } else if (nr.massremainder < amount && nr.massremainder > 0) {  // if not enough remainder material
+        amount -= nr.massremainder;                                  //   clamp removed amount
+        nr.massremainder = 0;                                        //   remainder material exhausted
+    }                                                                //
+    nr.level -= amount;                                              //   modify node level
+    nr.level_initial -= amount;                                      //   reset node initial level
+}
+
+// Update vertex position and color in visualization mesh
+void SCMLoader_Custom::UpdateMeshVertexCoordinates(const ChVector2<int> ij, int iv, const NodeRecord& nr) {
+    auto& trimesh = *m_trimesh_shape->GetMesh();
+    std::vector<ChVector<>>& vertices = trimesh.getCoordsVertices();
+    std::vector<ChColor>& colors = trimesh.getCoordsColors();
+
+    // Update visualization mesh vertex position
+    vertices[iv] = m_plane.TransformPointLocalToParent(ChVector<>(ij.x() * m_delta, ij.y() * m_delta, nr.level));
+
+    // Update visualization mesh vertex color
+    if (m_plot_type != SCMTerrain_Custom::PLOT_NONE) {
+        ChColor mcolor;
+        switch (m_plot_type) {
+            case SCMTerrain_Custom::PLOT_LEVEL:
+                mcolor = ChColor::ComputeFalseColor(nr.level, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_LEVEL_INITIAL:
+                mcolor = ChColor::ComputeFalseColor(nr.level_initial, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_SINKAGE:
+                mcolor = ChColor::ComputeFalseColor(nr.sinkage, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_SINKAGE_ELASTIC:
+                mcolor = ChColor::ComputeFalseColor(nr.sinkage_elastic, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_SINKAGE_PLASTIC:
+                mcolor = ChColor::ComputeFalseColor(nr.sinkage_plastic, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_STEP_PLASTIC_FLOW:
+                mcolor = ChColor::ComputeFalseColor(nr.step_plastic_flow, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_K_JANOSI:
+                mcolor = ChColor::ComputeFalseColor(nr.kshear, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_PRESSURE:
+                mcolor = ChColor::ComputeFalseColor(nr.sigma, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_PRESSURE_YELD:
+                mcolor = ChColor::ComputeFalseColor(nr.sigma_yield, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_SHEAR:
+                mcolor = ChColor::ComputeFalseColor(nr.tau, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_MASSREMAINDER:
+                mcolor = ChColor::ComputeFalseColor(nr.massremainder, m_plot_v_min, m_plot_v_max);
+                break;
+            case SCMTerrain_Custom::PLOT_ISLAND_ID:
+                if (nr.erosion)
+                    mcolor = ChColor(0, 0, 0);
+                if (nr.sigma > 0)
+                    mcolor = ChColor(1, 0, 0);
+                break;
+            case SCMTerrain_Custom::PLOT_IS_TOUCHED:
+                if (nr.sigma > 0)
+                    mcolor = ChColor(1, 0, 0);
+                else
+                    mcolor = ChColor(0, 0, 1);
+                break;
+            case SCMTerrain_Custom::PLOT_NONE:
+                break;
+        }
+        colors[iv] = mcolor;
+    }
+}
+
+// Update vertex normal in visualization mesh.
+void SCMLoader_Custom::UpdateMeshVertexNormal(const ChVector2<int> ij, int iv) {
+    auto& trimesh = *m_trimesh_shape->GetMesh();
+    std::vector<ChVector<>>& vertices = trimesh.getCoordsVertices();
+    std::vector<ChVector<>>& normals = trimesh.getCoordsNormals();
+    std::vector<ChVector<int>>& idx_normals = trimesh.getIndicesNormals();
+
+    // Average normals from adjacent faces
+    normals[iv] = ChVector<>(0, 0, 0);
+    auto faces = GetMeshFaceIndices(ij);
+    for (auto f : faces) {
+        ChVector<> nrm = Vcross(vertices[idx_normals[f][1]] - vertices[idx_normals[f][0]],
+                                vertices[idx_normals[f][2]] - vertices[idx_normals[f][0]]);
+        nrm.Normalize();
+        normals[iv] += nrm;
+    }
+    normals[iv] /= (double)faces.size();
+}
+
+// Get the heights of modified grid nodes.
+std::vector<SCMTerrain_Custom::NodeLevel> SCMLoader_Custom::GetModifiedNodes(bool all_nodes) const {
+    std::vector<SCMTerrain_Custom::NodeLevel> nodes;
+    if (all_nodes) {
+        for (const auto& nr : m_grid_map) {
+            nodes.push_back(std::make_pair(nr.first, nr.second.level));
+        }
+    } else {
+        for (const auto& ij : m_modified_nodes) {
+            auto rec = m_grid_map.find(ij);
+            assert(rec != m_grid_map.end());
+            nodes.push_back(std::make_pair(ij, rec->second.level));
+        }
+    }
+    return nodes;
+}
+
+// Modify the level of grid nodes from the given list.
+// NOTE: We set only the level of the specified nodes and none of the other soil properties.
+//       As such, some plot types may be incorrect at these nodes.
+void SCMLoader_Custom::SetModifiedNodes(const std::vector<SCMTerrain_Custom::NodeLevel>& nodes) {
+    for (const auto& n : nodes) {
+        // Modify existing entry in grid map or insert new one
+        m_grid_map[n.first] = SCMLoader_Custom::NodeRecord(n.second, n.second, GetInitNormal(n.first));
+    }
+
+    // Update visualization
+    if (m_trimesh_shape) {
+        for (const auto& n : nodes) {
+            auto ij = n.first;                           // grid location
+            if (!CheckMeshBounds(ij))                    // if outside mesh
+                continue;                                //   do nothing
+            const auto& nr = m_grid_map.at(ij);          // grid node record
+            int iv = GetMeshVertexIndex(ij);             // mesh vertex index
+            UpdateMeshVertexCoordinates(ij, iv, nr);     // update vertex coordinates and color
+            if (!m_trimesh_shape->IsWireframe())         // if not in wireframe mode
+                UpdateMeshVertexNormal(ij, iv);          //   update vertex normal
+            m_external_modified_vertices.push_back(iv);  // cache in list
+        }
+    }
 }
 
 
