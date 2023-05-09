@@ -1683,7 +1683,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     // Get wheel inputs for NN
 
     // Prepare NN model inputs
-    //const auto& p_all = m_particles->GetParticles();
+    const auto& p_all = m_particles->GetParticles();
     //std::vector<torch::jit::IValue> inputs;
     
     std::array<ChVector<float>, 4> w_pos;
@@ -1719,17 +1719,18 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         ChVector<> box_pos = w_pos[i] + box_rot * (m_box_offset - ChVector<>(0, 0, tire_radius));
 
         // Find particles in sampling OBB
-        // m_wheel_particles[i].resize(p_all.size());
-        // auto end = std::copy_if(p_all.begin(), p_all.end(), m_wheel_particles[i].begin(),
-        //                         in_box(box_pos, box_rot, m_box_size));
-        // m_num_particles[i] = (size_t)(end - m_wheel_particles[i].begin());
-        // m_wheel_particles[i].resize(m_num_particles[i]);
+        m_wheel_particles[i].resize(p_all.size());
+        auto end = std::copy_if(p_all.begin(), p_all.end(), m_wheel_particles[i].begin(),
+                                in_box(box_pos, box_rot, m_box_size));
+        m_num_particles[i] = (size_t)(end - m_wheel_particles[i].begin());
+        m_wheel_particles[i].resize(m_num_particles[i]);
 
-        // // Do nothing if no particles under a wheel
+        // Do nothing if no particles under a wheel
         // if (m_num_particles[i] == 0) {
         //     return;
         // }
 
+        // Torch part
         // Load particle positions and velocities
         // w_contact[i] = false;
         // auto part_pos = torch::empty({(int)m_num_particles[i], 4}, torch::kFloat32);
@@ -2036,7 +2037,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     //     return;
     // }
 
-    // // Loop over all vehicle wheels
+    // Loop over all vehicle wheels
     // for (int i = 0; i < 4; i++) {
     //     // Outputs for this wheel
     //     const auto& part_disp = outputs.toTuple()->elements()[i].toTensor();
