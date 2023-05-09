@@ -310,6 +310,7 @@ void SCMTerrain_Custom::RegisterSoilParametersCallback(std::shared_ptr<SoilParam
 }
 
 
+
 // -----------------------------------------------------------------------------
 // Contactable user-data (contactable-soil parameters)
 // -----------------------------------------------------------------------------
@@ -328,9 +329,10 @@ SCMContactableData_Custom::SCMContactableData_Custom(double area_ratio,
 // -----------------------------------------------------------------------------
 
 // Constructor.
-SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) : m_soil_fun(nullptr) {
+SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) : m_sys(*system), m_vehicle(vehicle), m_soil_fun(nullptr) {
     this->SetSystem(system);
-    m_vehicle=vehicle;
+    //m_vehicle = vehicle;
+    //m_sys = *system;
 
     if (visualization_mesh) {
         // Create the visualization mesh and asset
@@ -391,6 +393,9 @@ SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehi
     else{
         std::cout << "Using standard SCM" << std::endl;
     }
+
+    // Pablo
+    Create(terrain_dir,true);
 
 }
 
@@ -2540,6 +2545,50 @@ void SCMLoader_Custom::SetModifiedNodes(const std::vector<SCMTerrain_Custom::Nod
             m_external_modified_vertices.push_back(iv);  // cache in list
         }
     }
+}
+
+
+// Pablo
+void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
+    m_particles = chrono_types::make_shared<ChParticleCloud>();
+    m_particles->SetFixed(true);
+
+    int num_particles = 0;
+    ChVector<> marker;
+    std::string line;
+    std::string cell;
+
+    std::ifstream is(vehicle::GetDataFile(terrain_dir + "/vertices_0.txt"));
+    getline(is, line);  // Comment line
+    while (getline(is, line)) {
+        std::stringstream ls(line);
+        for (int i = 0; i < 3; i++) {
+            getline(ls, cell, ',');
+            marker[i] = stod(cell);
+            
+        }
+        m_particles->AddParticle(ChCoordsys<>(marker));
+        num_particles++;
+
+        if (num_particles > 1000000)
+            break;
+    }
+    is.close();
+
+
+    m_sys.Add(m_particles);
+
+    if (vis) {
+        auto sph = chrono_types::make_shared<ChSphereShape>();
+        sph->GetSphereGeometry().rad = 0.01;
+        m_particles->AddVisualShape(sph);
+    }
+
+
+    // Initial size of sampling box particle vectors
+    for (int i = 0; i < 4; i++)
+        m_wheel_particles[i].resize(num_particles);
+
 }
 
 
