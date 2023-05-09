@@ -37,6 +37,12 @@
 #include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
+// Pablo
+#include "chrono/physics/ChParticleCloud.h"
+#include "chrono/assets/ChSphereShape.h"
+
+
+
 namespace chrono {
 namespace vehicle {
 
@@ -352,6 +358,9 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
                     double delta                   ///< [in] grid spacing (may be slightly decreased)
     );
 
+    // Pablo
+    void Create(const std::string& terrain_dir, bool vis = true);
+
   private:
 
     // Pablo
@@ -594,11 +603,18 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
 
     friend class SCMTerrain_Custom;
 
-    
+    // Pablo
+    ChSystem& m_sys;
     std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
     std::array<std::shared_ptr<ChWheel>, 4> m_wheels;
     ChVector<> m_box_size;
     ChVector<> m_box_offset;
+    std::shared_ptr<ChParticleCloud> m_particles;
+    std::array<std::vector<ChAparticle*>, 4> m_wheel_particles;
+    std::array<size_t, 4> m_num_particles;
+
+    // Pablo, hardcoded
+    std::string terrain_dir = "terrain/scm/testterrain";
     
 };
 
