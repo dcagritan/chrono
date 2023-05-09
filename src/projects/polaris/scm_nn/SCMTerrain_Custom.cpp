@@ -329,10 +329,8 @@ SCMContactableData_Custom::SCMContactableData_Custom(double area_ratio,
 // -----------------------------------------------------------------------------
 
 // Constructor.
-SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) : m_sys(*system), m_vehicle(vehicle), m_soil_fun(nullptr) {
+SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) : m_sys(system), m_vehicle(vehicle), m_soil_fun(nullptr) {
     this->SetSystem(system);
-    //m_vehicle = vehicle;
-    //m_sys = *system;
 
     if (visualization_mesh) {
         // Create the visualization mesh and asset
@@ -2576,7 +2574,7 @@ void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
     is.close();
 
 
-    m_sys.Add(m_particles);
+    m_sys->Add(m_particles);
 
     if (vis) {
         auto sph = chrono_types::make_shared<ChSphereShape>();

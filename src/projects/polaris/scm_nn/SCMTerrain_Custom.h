@@ -604,7 +604,7 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     friend class SCMTerrain_Custom;
 
     // Pablo
-    ChSystem& m_sys;
+    ChSystem* m_sys;
     std::shared_ptr<chrono::vehicle::WheeledVehicle> m_vehicle;
     std::array<std::shared_ptr<ChWheel>, 4> m_wheels;
     ChVector<> m_box_size;
