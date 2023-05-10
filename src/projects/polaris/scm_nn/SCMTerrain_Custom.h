@@ -348,21 +348,21 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
                     double delta    ///< [in] grid spacing (may be slightly decreased)
     );
 
-    // Initialize the terrain system (height map).
-    // The initial undeformed mesh is provided via the specified image file as a height map.
-    void Initialize(const std::string& heightmap_file,  ///< [in] filename for the height map (image file)
-                    double sizeX,                       ///< [in] terrain dimension in the X direction
-                    double sizeY,                       ///< [in] terrain dimension in the Y direction
-                    double hMin,                        ///< [in] minimum height (black level)
-                    double hMax,                        ///< [in] maximum height (white level)
-                    double delta                        ///< [in] grid spacing (may be slightly decreased)
-    );
+    // /// Initialize the terrain system (height map).
+    // /// The initial undeformed mesh is provided via the specified image file as a height map.
+    // void Initialize(const std::string& heightmap_file,  ///< [in] filename for the height map (image file)
+    //                 double sizeX,                       ///< [in] terrain dimension in the X direction
+    //                 double sizeY,                       ///< [in] terrain dimension in the Y direction
+    //                 double hMin,                        ///< [in] minimum height (black level)
+    //                 double hMax,                        ///< [in] maximum height (white level)
+    //                 double delta                        ///< [in] grid spacing (may be slightly decreased)
+    // );
 
-    // Initialize the terrain system (mesh).
-    // The initial undeformed terrain profile is provided via the specified Wavefront OBJ mesh file.
-    void Initialize(const std::string& mesh_file,  ///< [in] filename for the height map (image file)
-                    double delta                   ///< [in] grid spacing (may be slightly decreased)
-    );
+    // /// Initialize the terrain system (mesh).
+    // /// The initial undeformed terrain profile is provided via the specified Wavefront OBJ mesh file.
+    // void Initialize(const std::string& mesh_file,  ///< [in] filename for the height map (image file)
+    //                 double delta                   ///< [in] grid spacing (may be slightly decreased)
+    // );
 
     bool Load(const std::string& pt_file);
     // Pablo
@@ -433,8 +433,6 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
         std::size_t operator()(const ChVector2<int>& p) const { return p.x() * 31 + p.y(); }
     };
 
-    // Create visualization mesh
-    void CreateVisualizationMesh(double sizeX, double sizeY);
 
     // Get the initial undeformed terrain height (relative to the SCM plane) at the specified grid node.
     double GetInitHeight(const ChVector2<int>& loc) const;
@@ -481,7 +479,8 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
         ComputeInternalForcesNN();
       }
       else{
-        ComputeInternalForces();
+        //TODO DENIZ switch back to Pablo's flag method once we have the working version. Done this way to minimize the code
+        ComputeInternalForcesNN();
       }
         ChLoadContainer::Update(ChTime, true);
     }
@@ -506,7 +505,6 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
 
     // Reset the list of forces and fill it with forces from the soil contact model.
     // This is called automatically during timestepping (only at the beginning of each step).
-    void ComputeInternalForces();
 
     void ComputeInternalForcesNN();
 
@@ -619,11 +617,13 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     std::shared_ptr<ChParticleCloud> m_particles;
     std::array<std::vector<ChAparticle*>, 4> m_wheel_particles;
     std::array<size_t, 4> m_num_particles;
-
-    torch::jit::script::Module module;
+    torch::jit::script::Module m_module;
+    std::array<std::vector<ChVector<>>, 4> m_particle_positions;
+    std::array<TerrainForce, 4> m_tire_forces;
+    bool m_verbose;
 
     // Pablo, hardcoded
-    //std::string terrain_dir = "terrain/scm/testterrain";
+    std::string terrain_dir = "terrain/scm/testterrain";
 
     struct in_box {
     in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
@@ -642,7 +642,6 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     ChVector<> pos;
     ChMatrix33<> rot;
     ChVector<> h;
-
 };
     
 };
