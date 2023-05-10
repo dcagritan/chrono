@@ -4,7 +4,7 @@
 #
 #=============================================================================
 
-#add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
+add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 
 #-----------------------------------------------------------------------------
 # Optionally enable building the various programs

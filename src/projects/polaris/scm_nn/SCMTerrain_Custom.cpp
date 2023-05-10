@@ -367,12 +367,6 @@ SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehi
     m_wheels[2] = m_vehicle->GetWheel(1, LEFT);
     m_wheels[3] = m_vehicle->GetWheel(1, RIGHT);
 
-}
-
-// Initialize the terrain as a flat grid
-void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
-    m_type = PatchType::FLAT;
-
     // Set default size and offset of sampling box
     double tire_radius = m_wheels[0]->GetTire()->GetRadius();
     double tire_width = m_wheels[0]->GetTire()->GetWidth();
@@ -390,11 +384,15 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
         std::cout << "Using standard SCM" << std::endl;
     }
 
-    std::string terrain_dir = "terrain/scm/testterrain";
-    std::string NN_module_name = "terrain/scm/wrapped_gnn_onlydef.pt";
-    // Load(vehicle::GetDataFile(terrain_dir + "/" + NN_module_name));
-    Load(vehicle::GetDataFile(NN_module_name));
-    // Pablo
+}
+
+// Initialize the terrain as a flat grid
+void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
+    m_type = PatchType::FLAT;
+
+    std::string terrain_dir = "terrain/scm/";
+    std::string NN_module_name = "wrapped_gnn_onlydef.pt";
+    Load(vehicle::GetDataFile(terrain_dir + NN_module_name));
     Create(terrain_dir,true);
 }
 
@@ -2040,43 +2038,30 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     std::unordered_map<ChVector2<int>, HitRecord, CoordHash> newhits;
 
     // //m_timer_model_eval.start();
-    // torch::jit::IValue outputs;
-    // try {
-    //     outputs = module.forward(inputs);
-    // } catch (const c10::Error& e) {
-    //     cerr << "Execute error: " << e.msg() << endl;
-    //     return;
-    // } catch (const std::exception& e) {
-    //     cerr << "Execute error other: " << e.what() << endl;
-    //     return;
-    // }
-
-    // Loop over all vehicle wheels
-    // for (int i = 0; i < 4; i++) {
-    //     // Outputs for this wheel
-    //     const auto& part_disp = outputs.toTuple()->elements()[i].toTensor();
-    //     const auto& tire_frc = outputs.toTuple()->elements()[i + 4].toTensor();
-
-    //     ChVector<> disc_center = m_wheels[i]->GetPos();
-
-    //     // Extract particle displacements
-    //     m_particle_displacements[i].resize(m_num_particles[i]);
-    //     for (size_t j = 0; j < m_num_particles[i]; j++) {
-    //         m_particle_displacements[i][j] =
-    //             ChVector<>(part_disp[j][0].item<float>(), part_disp[j][1].item<float>(), part_disp[j][2].item<float>());
-    //     }
-
-    // }
-    // } 
-
+    torch::jit::IValue outputs;
+    //outputs = module.forward(inputs);
+    try {
+        outputs = module.forward(inputs);
+    } catch (const c10::Error& e) {
+        std::cerr << "Execute error: " << e.msg() << std::endl;
+        return;
+    } catch (const std::exception& e) {
+        std::cerr << "Execute error other: " << e.what() << std::endl;
+        return;
+    }
    
     // Test for newhits
     // For each wheel
     for (int i = 0; i < 4; i++) {
+        
+        const auto& w_out = outputs.toTuple()->elements()[i].toTensor();
+
         // For each node around the wheel
-        for (auto newpos : outsoil[i]) {
+        for (auto iw = 0; iw < sizeof(w_out); iw++) {
 
             ChVector2<int> indexes;
+
+            ChVector<> newpos(w_out[iw][0].item<float>(), w_out[iw][1].item<float>(), w_out[iw][2].item<float>());
             
             indexes.x() = std::round(newpos.x()/m_delta);
             indexes.y() = std::round(newpos.y()/m_delta);
@@ -2560,7 +2545,7 @@ bool SCMLoader_Custom::Load(const std::string& pt_file) {
     std::cout << tensor << std::endl;
 
     std::ifstream is(pt_file, std::ios_base::binary);
-    torch::jit::script::Module module;
+
     try {
         // Deserialize the ScriptModule from a file using torch::jit::load().
         module = torch::jit::load(is);
@@ -2575,6 +2560,7 @@ bool SCMLoader_Custom::Load(const std::string& pt_file) {
     is.close();
     return true;
 }
+
 
 // Pablo
 void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {

@@ -620,8 +620,10 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     std::array<std::vector<ChAparticle*>, 4> m_wheel_particles;
     std::array<size_t, 4> m_num_particles;
 
+    torch::jit::script::Module module;
+
     // Pablo, hardcoded
-    std::string terrain_dir = "terrain/scm/testterrain";
+    //std::string terrain_dir = "terrain/scm/testterrain";
 
     struct in_box {
     in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
@@ -640,6 +642,7 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     ChVector<> pos;
     ChMatrix33<> rot;
     ChVector<> h;
+
 };
     
 };
