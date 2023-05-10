@@ -75,10 +75,13 @@ foreach(PROGRAM ${PROGRAMS})
         COMPILER_FLAGS "${COMPILER_FLAGS}"
         LINK_FLAGS "${LINKER_FLAGS}"
   )
-
+  
+  set_property(TARGET ${PROGRAM} PROPERTY CXX_STANDARD 14)
   set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
+  
   target_include_directories(${PROGRAM} PRIVATE ${TorchScatter_INCLUDE_DIR})
   target_include_directories(${PROGRAM} PRIVATE ${TorchCluster_INCLUDE_DIR})
+  
   target_link_libraries(${PROGRAM} ${LIBRARIES})
   target_link_libraries(${PROGRAM} ${TORCH_LIBRARIES})
   target_link_libraries(${PROGRAM} TorchScatter::TorchScatter)

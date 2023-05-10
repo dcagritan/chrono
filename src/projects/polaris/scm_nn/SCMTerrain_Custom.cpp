@@ -38,6 +38,8 @@
 
 #include "chrono_thirdparty/stb/stb.h"
 
+
+
 namespace chrono {
 namespace vehicle {
 
@@ -331,6 +333,11 @@ SCMContactableData_Custom::SCMContactableData_Custom(double area_ratio,
 // Constructor.
 SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh) : m_sys(system), m_vehicle(vehicle), m_soil_fun(nullptr) {
     this->SetSystem(system);
+
+    std::cout << "Inside SCMLoader_Custom" << std::endl;
+    std::cout << "cuda version " << scatter::cuda_version() << std::endl;
+    torch::Tensor tensor = torch::eye(3);
+    std::cout << tensor << std::endl;
 
     if (visualization_mesh) {
         // Create the visualization mesh and asset

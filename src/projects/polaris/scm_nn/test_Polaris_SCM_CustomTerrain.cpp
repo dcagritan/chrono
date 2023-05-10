@@ -51,6 +51,15 @@ using namespace chrono::vehicle::hmmwv;
 using std::cout;
 using std::endl;
 
+#include <torch/torch.h>
+#include <torch/script.h>
+#include <torchscatter/scatter.h>
+#include <torchcluster/cluster.h>
+// torch::jit::script::Module module;
+
+// torch::Tensor tensor = torch::eye(3);
+// std::cout << tensor << std::endl;
+
 bool GetProblemSpecs(int argc,
                      char** argv,
                      std::string& terrain_dir, double& tend, double& throttlemagnitude, double& steeringmagnitude, double& render_step_size, bool& heightmapterrain);
