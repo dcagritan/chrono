@@ -121,6 +121,21 @@ void SCMTerrain_Custom::Initialize(double sizeX, double sizeY, double delta) {
     m_loader->Initialize(sizeX, sizeY, delta);
 }
 
+// Initialize the terrain from a specified height map.
+void SCMTerrain_Custom::Initialize(const std::string& heightmap_file,
+                                      double sizeX,
+                                      double sizeY,
+                                      double hMin,
+                                      double hMax,
+                                      double delta) {
+    m_loader->Initialize(heightmap_file, sizeX, sizeY, hMin, hMax, delta);
+}
+
+// Initialize the terrain from a specified OBJ mesh file.
+void SCMTerrain_Custom::Initialize(const std::string& mesh_file, double delta) {
+    m_loader->Initialize(mesh_file, delta);
+}
+
 // Get the heights of modified grid nodes.
 std::vector<SCMTerrain_Custom::NodeLevel> SCMTerrain_Custom::GetModifiedNodes(bool all_nodes) const {
     return m_loader->GetModifiedNodes(all_nodes);
@@ -367,12 +382,6 @@ SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehi
     m_wheels[2] = m_vehicle->GetWheel(1, LEFT);
     m_wheels[3] = m_vehicle->GetWheel(1, RIGHT);
 
-}
-
-// Initialize the terrain as a flat grid
-void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
-    m_type = PatchType::FLAT;
-
     // Set default size and offset of sampling box
     double tire_radius = m_wheels[0]->GetTire()->GetRadius();
     double tire_width = m_wheels[0]->GetTire()->GetWidth();
@@ -390,92 +399,109 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
         std::cout << "Using standard SCM" << std::endl;
     }
 
-    std::string terrain_dir = "terrain/scm/testterrain";
-    std::string NN_module_name = "terrain/scm/wrapped_gnn_onlydef.pt";
-    // Load(vehicle::GetDataFile(terrain_dir + "/" + NN_module_name));
-    Load(vehicle::GetDataFile(NN_module_name));
-    // Pablo
+    std::string terrain_dir = "terrain/scm/";
+    std::string NN_module_name = "wrapped_gnn_onlydef.pt";
+    Load(vehicle::GetDataFile(terrain_dir + NN_module_name));
     Create(terrain_dir,true);
+
 }
 
-// // Initialize the terrain from a specified height map.
-// void SCMLoader_Custom::Initialize(const std::string& heightmap_file,
-//                                    double sizeX,
-//                                    double sizeY,
-//                                    double hMin,
-//                                    double hMax,
-//                                    double delta) {
-//     m_type = PatchType::HEIGHT_MAP;
+// Initialize the terrain as a flat grid
+void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
+    m_type = PatchType::FLAT;
 
-//     // Read the image file (request only 1 channel) and extract number of pixels.
-//     STB hmap;
-//     if (!hmap.ReadFromFile(heightmap_file, 1)) {
-//         std::cout << "STB error in reading height map file " << heightmap_file << std::endl;
-//         throw ChException("Cannot read height map image file");
-//     }
-//     int nx_img = hmap.GetWidth();
-//     int ny_img = hmap.GetHeight();
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
 
-//     double dx_img = 1.0 / (nx_img - 1.0);
-//     double dy_img = 1.0 / (ny_img - 1.0);
+    m_delta = sizeX / (2 * m_nx);   // grid spacing
+    m_area = std::pow(m_delta, 2);  // area of a cell
 
-//     m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
-//     m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
-//     int nvx = 2 * m_nx + 1;                                   // number of grid vertices in X direction
-//     int nvy = 2 * m_ny + 1;                                   // number of grid vertices in Y direction
-//     m_delta = sizeX / (2.0 * m_nx);                           // grid spacing
-//     m_area = std::pow(m_delta, 2);                            // area of a cell
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
 
-//     double dx_grid = 0.5 / m_nx;
-//     double dy_grid = 0.5 / m_ny;
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
+}
 
-//     // Resample image and calculate interpolated gray levels and then map it to the height range, with black
-//     // corresponding to hMin and white corresponding to hMax. Entry (0,0) corresponds to bottom-left grid vertex.
-//     // Note that pixels in the image start at top-left corner.
-//     double h_scale = (hMax - hMin) / hmap.GetRange();
-//     m_heights = ChMatrixDynamic<>(nvx, nvy);
-//     for (int ix = 0; ix < nvx; ix++) {
-//         double x = ix * dx_grid;                  // x location in image (in [0,1], 0 at left)
-//         int jx1 = (int)std::floor(x / dx_img);    // Left pixel
-//         int jx2 = (int)std::ceil(x / dx_img);     // Right pixel
-//         double ax = (x - jx1 * dx_img) / dx_img;  // Scaled offset from left pixel
+// Initialize the terrain from a specified height map.
+void SCMLoader_Custom::Initialize(const std::string& heightmap_file,
+                                   double sizeX,
+                                   double sizeY,
+                                   double hMin,
+                                   double hMax,
+                                   double delta) {
+    m_type = PatchType::HEIGHT_MAP;
 
-//         assert(ax < 1.0);
-//         assert(jx1 < nx_img);
-//         assert(jx2 < nx_img);
-//         assert(jx1 <= jx2);
+    // Read the image file (request only 1 channel) and extract number of pixels.
+    STB hmap;
+    if (!hmap.ReadFromFile(heightmap_file, 1)) {
+        std::cout << "STB error in reading height map file " << heightmap_file << std::endl;
+        throw ChException("Cannot read height map image file");
+    }
+    int nx_img = hmap.GetWidth();
+    int ny_img = hmap.GetHeight();
 
-//         for (int iy = 0; iy < nvy; iy++) {
-//             double y = (2 * m_ny - iy) * dy_grid;     // y location in image (in [0,1], 0 at top)
-//             int jy1 = (int)std::floor(y / dy_img);    // Up pixel
-//             int jy2 = (int)std::ceil(y / dy_img);     // Down pixel
-//             double ay = (y - jy1 * dy_img) / dy_img;  // Scaled offset from down pixel
+    double dx_img = 1.0 / (nx_img - 1.0);
+    double dy_img = 1.0 / (ny_img - 1.0);
 
-//             assert(ay < 1.0);
-//             assert(jy1 < ny_img);
-//             assert(jy2 < ny_img);
-//             assert(jy1 <= jy2);
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
+    int nvx = 2 * m_nx + 1;                                   // number of grid vertices in X direction
+    int nvy = 2 * m_ny + 1;                                   // number of grid vertices in Y direction
+    m_delta = sizeX / (2.0 * m_nx);                           // grid spacing
+    m_area = std::pow(m_delta, 2);                            // area of a cell
 
-//             // Gray levels at left-up, left-down, right-up, and right-down pixels
-//             double g11 = hmap.Gray(jx1, jy1);
-//             double g12 = hmap.Gray(jx1, jy2);
-//             double g21 = hmap.Gray(jx2, jy1);
-//             double g22 = hmap.Gray(jx2, jy2);
+    double dx_grid = 0.5 / m_nx;
+    double dy_grid = 0.5 / m_ny;
 
-//             // Bilinear interpolation (gray level)
-//             m_heights(ix, iy) = (1 - ax) * (1 - ay) * g11 + (1 - ax) * ay * g12 + ax * (1 - ay) * g21 + ax * ay * g22;
-//             // Map into height range
-//             m_heights(ix, iy) = hMin + m_heights(ix, iy) * h_scale;
-//         }
-//     }
+    // Resample image and calculate interpolated gray levels and then map it to the height range, with black
+    // corresponding to hMin and white corresponding to hMax. Entry (0,0) corresponds to bottom-left grid vertex.
+    // Note that pixels in the image start at top-left corner.
+    double h_scale = (hMax - hMin) / hmap.GetRange();
+    m_heights = ChMatrixDynamic<>(nvx, nvy);
+    for (int ix = 0; ix < nvx; ix++) {
+        double x = ix * dx_grid;                  // x location in image (in [0,1], 0 at left)
+        int jx1 = (int)std::floor(x / dx_img);    // Left pixel
+        int jx2 = (int)std::ceil(x / dx_img);     // Right pixel
+        double ax = (x - jx1 * dx_img) / dx_img;  // Scaled offset from left pixel
 
-//     // Return now if no visualization
-//     if (!m_trimesh_shape)
-//         return;
+        assert(ax < 1.0);
+        assert(jx1 < nx_img);
+        assert(jx2 < nx_img);
+        assert(jx1 <= jx2);
 
-//     CreateVisualizationMesh(sizeX, sizeY);
-//     this->AddVisualShape(m_trimesh_shape);
-// }
+        for (int iy = 0; iy < nvy; iy++) {
+            double y = (2 * m_ny - iy) * dy_grid;     // y location in image (in [0,1], 0 at top)
+            int jy1 = (int)std::floor(y / dy_img);    // Up pixel
+            int jy2 = (int)std::ceil(y / dy_img);     // Down pixel
+            double ay = (y - jy1 * dy_img) / dy_img;  // Scaled offset from down pixel
+
+            assert(ay < 1.0);
+            assert(jy1 < ny_img);
+            assert(jy2 < ny_img);
+            assert(jy1 <= jy2);
+
+            // Gray levels at left-up, left-down, right-up, and right-down pixels
+            double g11 = hmap.Gray(jx1, jy1);
+            double g12 = hmap.Gray(jx1, jy2);
+            double g21 = hmap.Gray(jx2, jy1);
+            double g22 = hmap.Gray(jx2, jy2);
+
+            // Bilinear interpolation (gray level)
+            m_heights(ix, iy) = (1 - ax) * (1 - ay) * g11 + (1 - ax) * ay * g12 + ax * (1 - ay) * g21 + ax * ay * g22;
+            // Map into height range
+            m_heights(ix, iy) = hMin + m_heights(ix, iy) * h_scale;
+        }
+    }
+
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
+
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
+}
 
 // Initialize the terrain from a specified OBJ mesh file.
 bool calcBarycentricCoordinates(const ChVector<>& v1,
@@ -493,81 +519,81 @@ bool calcBarycentricCoordinates(const ChVector<>& v1,
     return (0 <= a1) && (a1 <= 1) && (0 <= a2) && (a2 <= 1) && (0 <= a3) && (a3 <= 1);
 }
 
-// void SCMLoader_Custom::Initialize(const std::string& mesh_file, double delta) {
-//     m_type = PatchType::TRI_MESH;
+void SCMLoader_Custom::Initialize(const std::string& mesh_file, double delta) {
+    m_type = PatchType::TRI_MESH;
 
-//     // Load triangular mesh
-//     auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(mesh_file, true, true);
-//     const auto& vertices = trimesh->getCoordsVertices();
-//     const auto& faces = trimesh->getIndicesVertexes();
+    // Load triangular mesh
+    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(mesh_file, true, true);
+    const auto& vertices = trimesh->getCoordsVertices();
+    const auto& faces = trimesh->getIndicesVertexes();
 
-//     // Find x, y, and z ranges of vertex data
-//     auto minmaxX = std::minmax_element(begin(vertices), end(vertices),
-//                                        [](const ChVector<>& v1, const ChVector<>& v2) { return v1.x() < v2.x(); });
-//     auto minmaxY = std::minmax_element(begin(vertices), end(vertices),
-//                                        [](const ChVector<>& v1, const ChVector<>& v2) { return v1.y() < v2.y(); });
-//     auto minmaxZ = std::minmax_element(begin(vertices), end(vertices),
-//                                        [](const ChVector<>& v1, const ChVector<>& v2) { return v1.z() < v2.z(); });
-//     auto minX = minmaxX.first->x() + delta;
-//     auto maxX = minmaxX.second->x() - delta;
-//     auto minY = minmaxY.first->y() + delta;
-//     auto maxY = minmaxY.second->y() - delta;
-//     auto minZ = minmaxZ.first->z();
-//     ////auto maxZ = minmaxZ.second->z();
+    // Find x, y, and z ranges of vertex data
+    auto minmaxX = std::minmax_element(begin(vertices), end(vertices),
+                                       [](const ChVector<>& v1, const ChVector<>& v2) { return v1.x() < v2.x(); });
+    auto minmaxY = std::minmax_element(begin(vertices), end(vertices),
+                                       [](const ChVector<>& v1, const ChVector<>& v2) { return v1.y() < v2.y(); });
+    auto minmaxZ = std::minmax_element(begin(vertices), end(vertices),
+                                       [](const ChVector<>& v1, const ChVector<>& v2) { return v1.z() < v2.z(); });
+    auto minX = minmaxX.first->x() + delta;
+    auto maxX = minmaxX.second->x() - delta;
+    auto minY = minmaxY.first->y() + delta;
+    auto maxY = minmaxY.second->y() - delta;
+    auto minZ = minmaxZ.first->z();
+    ////auto maxZ = minmaxZ.second->z();
 
-//     auto sizeX = (maxX - minX);
-//     auto sizeY = (maxY - minY);
-//     ChVector<> center((maxX + minX) / 2, (maxY + minY) / 2, 0);
+    auto sizeX = (maxX - minX);
+    auto sizeY = (maxY - minY);
+    ChVector<> center((maxX + minX) / 2, (maxY + minY) / 2, 0);
 
-//     // Initial grid extent
-//     m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
-//     m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
-//     m_delta = sizeX / (2.0 * m_nx);                           // grid spacing
-//     m_area = std::pow(m_delta, 2);                            // area of a cell
-//     int nvx = 2 * m_nx + 1;                                   // number of grid vertices in X direction
-//     int nvy = 2 * m_ny + 1;                                   // number of grid vertices in Y direction
+    // Initial grid extent
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
+    m_delta = sizeX / (2.0 * m_nx);                           // grid spacing
+    m_area = std::pow(m_delta, 2);                            // area of a cell
+    int nvx = 2 * m_nx + 1;                                   // number of grid vertices in X direction
+    int nvy = 2 * m_ny + 1;                                   // number of grid vertices in Y direction
 
-//     // Loop over all mesh faces, project onto the x-y plane and set the height for all covered grid nodes.
-//     m_heights = ChMatrixDynamic<>::Zero(nvx, nvy);
+    // Loop over all mesh faces, project onto the x-y plane and set the height for all covered grid nodes.
+    m_heights = ChMatrixDynamic<>::Zero(nvx, nvy);
 
-//     int num_h_set = 0;
-//     double a1, a2, a3;
-//     for (const auto& f : faces) {
-//         // Find bounds of (shifted) face projection
-//         const auto& v1 = vertices[f[0]] - center;
-//         const auto& v2 = vertices[f[1]] - center;
-//         const auto& v3 = vertices[f[2]] - center;
-//         auto x_min = ChMin(ChMin(v1.x(), v2.x()), v3.x());
-//         auto x_max = ChMax(ChMax(v1.x(), v2.x()), v3.x());
-//         auto y_min = ChMin(ChMin(v1.y(), v2.y()), v3.y());
-//         auto y_max = ChMax(ChMax(v1.y(), v2.y()), v3.y());
-//         int i_min = static_cast<int>(std::floor(x_min / m_delta));
-//         int j_min = static_cast<int>(std::floor(y_min / m_delta));
-//         int i_max = static_cast<int>(std::ceil(x_max / m_delta));
-//         int j_max = static_cast<int>(std::ceil(y_max / m_delta));
-//         ChClampValue(i_min, -m_nx, +m_nx);
-//         ChClampValue(i_max, -m_nx, +m_nx);
-//         ChClampValue(j_min, -m_ny, +m_ny);
-//         ChClampValue(j_max, -m_ny, +m_ny);
-//         // Loop over all grid nodes within bounds
-//         for (int i = i_min; i <= i_max; i++) {
-//             for (int j = j_min; j <= j_max; j++) {
-//                 ChVector<> v(i * m_delta, j * m_delta, 0);
-//                 if (calcBarycentricCoordinates(v1, v2, v3, v, a1, a2, a3)) {
-//                     m_heights(m_nx + i, m_ny + j) = minZ + a1 * v1.z() + a2 * v2.z() + a3 * v3.z();
-//                     num_h_set++;
-//                 }
-//             }
-//         }
-//     }
+    int num_h_set = 0;
+    double a1, a2, a3;
+    for (const auto& f : faces) {
+        // Find bounds of (shifted) face projection
+        const auto& v1 = vertices[f[0]] - center;
+        const auto& v2 = vertices[f[1]] - center;
+        const auto& v3 = vertices[f[2]] - center;
+        auto x_min = ChMin(ChMin(v1.x(), v2.x()), v3.x());
+        auto x_max = ChMax(ChMax(v1.x(), v2.x()), v3.x());
+        auto y_min = ChMin(ChMin(v1.y(), v2.y()), v3.y());
+        auto y_max = ChMax(ChMax(v1.y(), v2.y()), v3.y());
+        int i_min = static_cast<int>(std::floor(x_min / m_delta));
+        int j_min = static_cast<int>(std::floor(y_min / m_delta));
+        int i_max = static_cast<int>(std::ceil(x_max / m_delta));
+        int j_max = static_cast<int>(std::ceil(y_max / m_delta));
+        ChClampValue(i_min, -m_nx, +m_nx);
+        ChClampValue(i_max, -m_nx, +m_nx);
+        ChClampValue(j_min, -m_ny, +m_ny);
+        ChClampValue(j_max, -m_ny, +m_ny);
+        // Loop over all grid nodes within bounds
+        for (int i = i_min; i <= i_max; i++) {
+            for (int j = j_min; j <= j_max; j++) {
+                ChVector<> v(i * m_delta, j * m_delta, 0);
+                if (calcBarycentricCoordinates(v1, v2, v3, v, a1, a2, a3)) {
+                    m_heights(m_nx + i, m_ny + j) = minZ + a1 * v1.z() + a2 * v2.z() + a3 * v3.z();
+                    num_h_set++;
+                }
+            }
+        }
+    }
 
-//     // Return now if no visualization
-//     if (!m_trimesh_shape)
-//         return;
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
 
-//     CreateVisualizationMesh(sizeX, sizeY);
-//     this->AddVisualShape(m_trimesh_shape);
-// }
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
+}
 
 void SCMLoader_Custom::CreateVisualizationMesh(double sizeX, double sizeY) {
     int nvx = 2 * m_nx + 1;                     // number of grid vertices in X direction
@@ -1664,24 +1690,6 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     // Pablo
     // Adapted from test_Polaris_SCMnn_Allvertices.cpp
     // Get wheel inputs for NN
-    struct in_box {
-    in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
-        : pos(box_pos), rot(box_rot), h(box_size / 2) {}
-
-    bool operator()(const ChAparticle* p) {
-        // Convert location in box frame
-        auto w = rot * (p->GetPos() - pos);
-
-        // Check w between all box limits
-        return (w.x() >= -h.x() && w.x() <= +h.x()) &&  //
-               (w.y() >= -h.y() && w.y() <= +h.y()) &&  //
-               (w.z() >= -h.z() && w.z() <= +h.z());
-    }
-
-    ChVector<> pos;
-    ChMatrix33<> rot;
-    ChVector<> h;
-};
 
     // Prepare NN model inputs
     const auto& p_all = m_particles->GetParticles();
@@ -1708,7 +1716,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         w_contactable[i] = m_wheels[i]->GetSpindle()->GetCollisionModel()->GetContactable();
 
-        std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
+        //std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
 
         auto tire_radius = m_wheels[i]->GetTire()->GetRadius();
 
@@ -1726,10 +1734,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         m_num_particles[i] = (size_t)(end - m_wheel_particles[i].begin());
         m_wheel_particles[i].resize(m_num_particles[i]);
 
-        // Do nothing if no particles under a wheel
-        // if (m_num_particles[i] == 0) {
-        //     return;
-        // }
+        //std::cout << "Num particles in wheel " << i << ": " << m_num_particles[i] << std::endl;
 
         // Torch part
         // Load particle positions and velocities
@@ -1754,15 +1759,15 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         auto w_linvel_t = torch::from_blob((void*)w_linvel[i].data(), {3}, torch::kFloat32);
         auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
 
-#if 1
-        if (true) {
-            std::cout << "wheel " << i << std::endl;
-            std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
-            std::cout << "  position:       " << w_pos[i] << std::endl;
-            std::cout << "  pos. address:   " << w_pos[i].data() << std::endl;
-            std::cout << "  in contact:     " << w_contact[i] << std::endl;
-        }
-#endif        
+// #if 1
+//         if (true) {
+//             std::cout << "wheel " << i << std::endl;
+//             std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
+//             std::cout << "  position:       " << w_pos[i] << std::endl;
+//             std::cout << "  pos. address:   " << w_pos[i].data() << std::endl;
+//             std::cout << "  in contact:     " << w_contact[i] << std::endl;
+//         }
+// #endif        
 
         // Prepare the tuple input for this wheel
         std::vector<torch::jit::IValue> tuple;
@@ -1776,6 +1781,12 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         inputs.push_back(torch::ivalue::Tuple::create(tuple));
 
     } 
+
+    std::cout << "Tot particles under wheels : " << m_num_particles[0] + m_num_particles[1] + m_num_particles[2] + m_num_particles[3] << std::endl;
+    // Do nothing if no particles under all wheels
+    if (m_num_particles[0] + m_num_particles[1] + m_num_particles[2] + m_num_particles[3] == 0) {
+        return;
+    }
 
     //std::cout << "NN inputs:" << inputs << std::endl;
 
@@ -2040,43 +2051,30 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     std::unordered_map<ChVector2<int>, HitRecord, CoordHash> newhits;
 
     // //m_timer_model_eval.start();
-    // torch::jit::IValue outputs;
-    // try {
-    //     outputs = module.forward(inputs);
-    // } catch (const c10::Error& e) {
-    //     cerr << "Execute error: " << e.msg() << endl;
-    //     return;
-    // } catch (const std::exception& e) {
-    //     cerr << "Execute error other: " << e.what() << endl;
-    //     return;
-    // }
-
-    // Loop over all vehicle wheels
-    // for (int i = 0; i < 4; i++) {
-    //     // Outputs for this wheel
-    //     const auto& part_disp = outputs.toTuple()->elements()[i].toTensor();
-    //     const auto& tire_frc = outputs.toTuple()->elements()[i + 4].toTensor();
-
-    //     ChVector<> disc_center = m_wheels[i]->GetPos();
-
-    //     // Extract particle displacements
-    //     m_particle_displacements[i].resize(m_num_particles[i]);
-    //     for (size_t j = 0; j < m_num_particles[i]; j++) {
-    //         m_particle_displacements[i][j] =
-    //             ChVector<>(part_disp[j][0].item<float>(), part_disp[j][1].item<float>(), part_disp[j][2].item<float>());
-    //     }
-
-    // }
-    // } 
-
+    torch::jit::IValue outputs;
+    
+    try {
+        outputs = module.forward(inputs);
+    } catch (const c10::Error& e) {
+        std::cerr << "Execute error: " << e.msg() << std::endl;
+        return;
+    } catch (const std::exception& e) {
+        std::cerr << "Execute error other: " << e.what() << std::endl;
+        return;
+    }
    
     // Test for newhits
     // For each wheel
     for (int i = 0; i < 4; i++) {
+        
+        const auto& w_out = outputs.toTuple()->elements()[i].toTensor();
+
         // For each node around the wheel
-        for (auto newpos : outsoil[i]) {
+        for (auto iw = 0; iw < sizeof(w_out); iw++) {
 
             ChVector2<int> indexes;
+
+            ChVector<> newpos(w_out[iw][0].item<float>(), w_out[iw][1].item<float>(), w_out[iw][2].item<float>());
             
             indexes.x() = std::round(newpos.x()/m_delta);
             indexes.y() = std::round(newpos.y()/m_delta);
@@ -2560,7 +2558,7 @@ bool SCMLoader_Custom::Load(const std::string& pt_file) {
     std::cout << tensor << std::endl;
 
     std::ifstream is(pt_file, std::ios_base::binary);
-    torch::jit::script::Module module;
+
     try {
         // Deserialize the ScriptModule from a file using torch::jit::load().
         module = torch::jit::load(is);
@@ -2575,6 +2573,7 @@ bool SCMLoader_Custom::Load(const std::string& pt_file) {
     is.close();
     return true;
 }
+
 
 // Pablo
 void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
