@@ -384,16 +384,29 @@ SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehi
         std::cout << "Using standard SCM" << std::endl;
     }
 
+    std::string terrain_dir = "terrain/scm/";
+    std::string NN_module_name = "wrapped_gnn_onlydef.pt";
+    Load(vehicle::GetDataFile(terrain_dir + NN_module_name));
+    Create(terrain_dir,true);
+
 }
 
 // Initialize the terrain as a flat grid
 void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
     m_type = PatchType::FLAT;
 
-    std::string terrain_dir = "terrain/scm/";
-    std::string NN_module_name = "wrapped_gnn_onlydef.pt";
-    Load(vehicle::GetDataFile(terrain_dir + NN_module_name));
-    Create(terrain_dir,true);
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
+
+    m_delta = sizeX / (2 * m_nx);   // grid spacing
+    m_area = std::pow(m_delta, 2);  // area of a cell
+
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
+
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
 }
 
 // // Initialize the terrain from a specified height map.
@@ -1662,24 +1675,6 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     // Pablo
     // Adapted from test_Polaris_SCMnn_Allvertices.cpp
     // Get wheel inputs for NN
-    struct in_box {
-    in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
-        : pos(box_pos), rot(box_rot), h(box_size / 2) {}
-
-    bool operator()(const ChAparticle* p) {
-        // Convert location in box frame
-        auto w = rot * (p->GetPos() - pos);
-
-        // Check w between all box limits
-        return (w.x() >= -h.x() && w.x() <= +h.x()) &&  //
-               (w.y() >= -h.y() && w.y() <= +h.y()) &&  //
-               (w.z() >= -h.z() && w.z() <= +h.z());
-    }
-
-    ChVector<> pos;
-    ChMatrix33<> rot;
-    ChVector<> h;
-};
 
     // Prepare NN model inputs
     const auto& p_all = m_particles->GetParticles();
@@ -1706,7 +1701,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         w_contactable[i] = m_wheels[i]->GetSpindle()->GetCollisionModel()->GetContactable();
 
-        std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
+        //std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
 
         auto tire_radius = m_wheels[i]->GetTire()->GetRadius();
 
@@ -1724,10 +1719,12 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         m_num_particles[i] = (size_t)(end - m_wheel_particles[i].begin());
         m_wheel_particles[i].resize(m_num_particles[i]);
 
+        std::cout << "Num particles in wheel " << i << ": " << m_num_particles[i] << std::endl;
+
         // Do nothing if no particles under a wheel
-        // if (m_num_particles[i] == 0) {
-        //     return;
-        // }
+        if (m_num_particles[i] == 0) {
+            return;
+        }
 
         // Torch part
         // Load particle positions and velocities
@@ -1753,13 +1750,13 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
 
 #if 1
-        if (true) {
-            std::cout << "wheel " << i << std::endl;
-            std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
-            std::cout << "  position:       " << w_pos[i] << std::endl;
-            std::cout << "  pos. address:   " << w_pos[i].data() << std::endl;
-            std::cout << "  in contact:     " << w_contact[i] << std::endl;
-        }
+        // if (true) {
+        //     std::cout << "wheel " << i << std::endl;
+        //     std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
+        //     std::cout << "  position:       " << w_pos[i] << std::endl;
+        //     std::cout << "  pos. address:   " << w_pos[i].data() << std::endl;
+        //     std::cout << "  in contact:     " << w_contact[i] << std::endl;
+        // }
 #endif        
 
         // Prepare the tuple input for this wheel
@@ -2039,7 +2036,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
     // //m_timer_model_eval.start();
     torch::jit::IValue outputs;
-    //outputs = module.forward(inputs);
+    
     try {
         outputs = module.forward(inputs);
     } catch (const c10::Error& e) {
