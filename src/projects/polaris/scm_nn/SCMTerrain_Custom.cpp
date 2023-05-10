@@ -1772,6 +1772,8 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
     } 
 
+    //std::cout << "NN inputs:" << inputs << std::endl;
+
 
     // Pablo end modified part
 
