@@ -348,22 +348,23 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
                     double delta    ///< [in] grid spacing (may be slightly decreased)
     );
 
-    /// Initialize the terrain system (height map).
-    /// The initial undeformed mesh is provided via the specified image file as a height map.
-    void Initialize(const std::string& heightmap_file,  ///< [in] filename for the height map (image file)
-                    double sizeX,                       ///< [in] terrain dimension in the X direction
-                    double sizeY,                       ///< [in] terrain dimension in the Y direction
-                    double hMin,                        ///< [in] minimum height (black level)
-                    double hMax,                        ///< [in] maximum height (white level)
-                    double delta                        ///< [in] grid spacing (may be slightly decreased)
-    );
+    // /// Initialize the terrain system (height map).
+    // /// The initial undeformed mesh is provided via the specified image file as a height map.
+    // void Initialize(const std::string& heightmap_file,  ///< [in] filename for the height map (image file)
+    //                 double sizeX,                       ///< [in] terrain dimension in the X direction
+    //                 double sizeY,                       ///< [in] terrain dimension in the Y direction
+    //                 double hMin,                        ///< [in] minimum height (black level)
+    //                 double hMax,                        ///< [in] maximum height (white level)
+    //                 double delta                        ///< [in] grid spacing (may be slightly decreased)
+    // );
 
-    /// Initialize the terrain system (mesh).
-    /// The initial undeformed terrain profile is provided via the specified Wavefront OBJ mesh file.
-    void Initialize(const std::string& mesh_file,  ///< [in] filename for the height map (image file)
-                    double delta                   ///< [in] grid spacing (may be slightly decreased)
-    );
+    // /// Initialize the terrain system (mesh).
+    // /// The initial undeformed terrain profile is provided via the specified Wavefront OBJ mesh file.
+    // void Initialize(const std::string& mesh_file,  ///< [in] filename for the height map (image file)
+    //                 double delta                   ///< [in] grid spacing (may be slightly decreased)
+    // );
 
+    bool Load(const std::string& pt_file);
     // Pablo
     void Create(const std::string& terrain_dir, bool vis = true);
 
