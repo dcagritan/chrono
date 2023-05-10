@@ -1691,7 +1691,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
     // Prepare NN model inputs
     const auto& p_all = m_particles->GetParticles();
-    //std::vector<torch::jit::IValue> inputs;
+    std::vector<torch::jit::IValue> inputs;
     
     std::array<ChVector<float>, 4> w_pos;
     std::array<ChQuaternion<float>, 4> w_rot;
@@ -1739,36 +1739,36 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         // Torch part
         // Load particle positions and velocities
-        // w_contact[i] = false;
-        // auto part_pos = torch::empty({(int)m_num_particles[i], 4}, torch::kFloat32);
-        // float* part_pos_data = part_pos.data<float>();
-        // for (const auto& part : m_wheel_particles[i]) {
-        //     ChVector<float> p(part->GetPos());
-        //     *part_pos_data++ = p.x();
-        //     *part_pos_data++ = p.y();
-        //     *part_pos_data++ = p.z();
-        //     *part_pos_data++ = -p.z();
+        w_contact[i] = false;
+        auto part_pos = torch::empty({(int)m_num_particles[i], 4}, torch::kFloat32);
+        float* part_pos_data = part_pos.data<float>();
+        for (const auto& part : m_wheel_particles[i]) {
+            ChVector<float> p(part->GetPos());
+            *part_pos_data++ = p.x();
+            *part_pos_data++ = p.y();
+            *part_pos_data++ = p.z();
+            *part_pos_data++ = -p.z();
 
-        //     if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
-        //         w_contact[i] = true;
-        // }
+            if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
+                w_contact[i] = true;
+        }
 
         // Load wheel position, orientation, linear velocity, and angular velocity
-        // auto w_pos_t = torch::from_blob((void*)w_pos[i].data(), {3}, torch::kFloat32);
-        // auto w_rot_t = torch::from_blob((void*)w_rot[i].data(), {4}, torch::kFloat32);
-        // auto w_linvel_t = torch::from_blob((void*)w_linvel[i].data(), {3}, torch::kFloat32);
-        // auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
+        auto w_pos_t = torch::from_blob((void*)w_pos[i].data(), {3}, torch::kFloat32);
+        auto w_rot_t = torch::from_blob((void*)w_rot[i].data(), {4}, torch::kFloat32);
+        auto w_linvel_t = torch::from_blob((void*)w_linvel[i].data(), {3}, torch::kFloat32);
+        auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
 
         // Prepare the tuple input for this wheel
-        // std::vector<torch::jit::IValue> tuple;
-        // tuple.push_back(part_pos);
-        // tuple.push_back(w_pos_t);
-        // tuple.push_back(w_rot_t);
-        // tuple.push_back(w_linvel_t);
-        // tuple.push_back(w_angvel_t);
+        std::vector<torch::jit::IValue> tuple;
+        tuple.push_back(part_pos);
+        tuple.push_back(w_pos_t);
+        tuple.push_back(w_rot_t);
+        tuple.push_back(w_linvel_t);
+        tuple.push_back(w_angvel_t);
 
-        // // Add this wheel's tuple to NN model inputs
-        // inputs.push_back(torch::ivalue::Tuple::create(tuple));
+        // Add this wheel's tuple to NN model inputs
+        inputs.push_back(torch::ivalue::Tuple::create(tuple));
 
     } 
 
