@@ -372,6 +372,7 @@ SCMLoader_Custom::SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehi
 // Initialize the terrain as a flat grid
 void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
     m_type = PatchType::FLAT;
+    m_delta=delta;
 
     // Set default size and offset of sampling box
     double tire_radius = m_wheels[0]->GetTire()->GetRadius();
@@ -381,7 +382,6 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
     m_box_size.z() = 2.2;
     m_box_offset = ChVector<>(0.0, 0.0, 0.0);
 
-    m_delta=delta;
 
     //m_use_nn = 0;
     m_use_nn = 1;
@@ -815,6 +815,25 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         int patch_id;                // index of associated patch id
     };
 
+    struct in_box {
+    in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
+        : pos(box_pos), rot(box_rot), h(box_size / 2) {}
+
+    bool operator()(const ChAparticle* p) {
+        // Convert location in box frame
+        auto w = rot * (p->GetPos() - pos);
+
+        // Check w between all box limits
+        return (w.x() >= -h.x() && w.x() <= +h.x()) &&  //
+               (w.y() >= -h.y() && w.y() <= +h.y()) &&  //
+               (w.z() >= -h.z() && w.z() <= +h.z());
+    }
+
+    ChVector<> pos;
+    ChMatrix33<> rot;
+    ChVector<> h;
+    };
+
     // Prepare NN model inputs
     const auto& p_all = m_particles->GetParticles();
     std::vector<torch::jit::IValue> inputs;
@@ -942,7 +961,9 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
        indexes.x() = std::round((m_particle_positions[i][j].x()+4.0)/m_delta);
        indexes.y() = std::round((m_particle_positions[i][j].y()+2.0)/m_delta);
         //     //TODO Deniz do this part in a better way
+            std::cout<<"m_particle_positions[i][j].x()= "<<m_particle_positions[i][j].x()<<std::endl;
             std::cout<<"indexes.x()= "<<indexes.x()<<std::endl;
+            std::cout<<"m_particle_positions[i][j].y()= "<<m_particle_positions[i][j].y()<<std::endl;
             std::cout<<"indexes.y()= "<<indexes.y()<<std::endl;    
         }
     } 
@@ -1661,6 +1682,8 @@ void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
             break;
     }
     is.close();
+
+    std::cout<<"num_particles= "<<num_particles<<std::endl;
 
 
     m_sys->Add(m_particles);

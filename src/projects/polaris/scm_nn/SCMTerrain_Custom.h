@@ -625,24 +625,7 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     // Pablo, hardcoded
     std::string terrain_dir = "terrain/scm/testterrain";
 
-    struct in_box {
-    in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
-        : pos(box_pos), rot(box_rot), h(box_size / 2) {}
-
-    bool operator()(const ChAparticle* p) {
-        // Convert location in box frame
-        auto w = rot * (p->GetPos() - pos);
-
-        // Check w between all box limits
-        return (w.x() >= -h.x() && w.x() <= +h.x()) &&  //
-               (w.y() >= -h.y() && w.y() <= +h.y()) &&  //
-               (w.z() >= -h.z() && w.z() <= +h.z());
-    }
-
-    ChVector<> pos;
-    ChMatrix33<> rot;
-    ChVector<> h;
-};
+    
     
 };
 
