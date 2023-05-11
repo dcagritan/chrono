@@ -623,7 +623,7 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     bool m_verbose;
 
     // Pablo, hardcoded
-    std::string terrain_dir = "terrain/scm/testterrain";
+    std::string m_terrain_dir = "terrain/scm/";
 
     
     

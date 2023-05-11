@@ -392,12 +392,10 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
         std::cout << "Using standard SCM" << std::endl;
     }
 
-    std::string terrain_dir = "terrain/scm";
-    std::string NN_module_name = "terrain/scm/wrapped_gnn_onlydef.pt";
-    // Load(vehicle::GetDataFile(terrain_dir + "/" + NN_module_name));
-    Load(vehicle::GetDataFile(NN_module_name));
+    std::string NN_module_name = "wrapped_gnn_onlydef.pt";
+    Load(vehicle::GetDataFile(m_terrain_dir + NN_module_name));
     // Pablo
-    Create(terrain_dir,true);
+    Create(m_terrain_dir,true);
 }
 
 // Initialize the terrain from a specified OBJ mesh file.
@@ -837,7 +835,6 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     // Prepare NN model inputs
     const auto& p_all = m_particles->GetParticles();
     std::vector<torch::jit::IValue> inputs;
-    std::array<std::vector<ChVector<>>, 4> m_particle_positions;
     
     // Pablo
     // Hash-map for vertices with ray-cast hits
@@ -864,7 +861,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         w_contactable[i] = m_wheels[i]->GetSpindle()->GetCollisionModel()->GetContactable();
 
-        std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
+        // std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
 
         auto tire_radius = m_wheels[i]->GetTire()->GetRadius();
 
@@ -910,7 +907,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         auto w_linvel_t = torch::from_blob((void*)w_linvel[i].data(), {3}, torch::kFloat32);
         auto w_angvel_t = torch::from_blob((void*)w_angvel[i].data(), {3}, torch::kFloat32);
 
-#if 1
+#if 0
         if (true) {
             std::cout << "wheel " << i << std::endl;
             std::cout << "  num. particles: " << m_num_particles[i] << std::endl;
@@ -930,6 +927,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         // Add this wheel's tuple to NN model inputs
         inputs.push_back(torch::ivalue::Tuple::create(tuple));
+        std::cout << " num. particles: " << m_num_particles[i] << std::endl;
     }
 
     // Verbose flag
@@ -957,16 +955,24 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
      m_particle_positions[i].resize(m_num_particles[i]);
      for (size_t j = 0; j < m_num_particles[i]; j++) {
        m_particle_positions[i][j] = ChVector<>(w_out[j][0].item<float>(), w_out[j][1].item<float>(), w_out[j][2].item<float>());
-       ChVector2<int> indexes;    
-       indexes.x() = std::round((m_particle_positions[i][j].x()+4.0)/m_delta);
-       indexes.y() = std::round((m_particle_positions[i][j].y()+2.0)/m_delta);
-        //     //TODO Deniz do this part in a better way
-            std::cout<<"m_particle_positions[i][j].x()= "<<m_particle_positions[i][j].x()<<std::endl;
-            std::cout<<"indexes.x()= "<<indexes.x()<<std::endl;
-            std::cout<<"m_particle_positions[i][j].y()= "<<m_particle_positions[i][j].y()<<std::endl;
-            std::cout<<"indexes.y()= "<<indexes.y()<<std::endl;    
+       ChVector2<int> indexes; 
+       //     //TODO Deniz do this part in a better way   
+       indexes.x() = std::round((m_particle_positions[i][j].x())/m_delta);
+       indexes.y() = std::round((m_particle_positions[i][j].y())/m_delta);
+
+        HitRecord record = {w_contactable[i], m_particle_positions[i][j], i};
+        newhits.insert(std::make_pair(indexes, record));
+
+
+            // std::cout<<"m_particle_positions[i][j].x()= "<<m_particle_positions[i][j].x()<<std::endl;
+            // std::cout<<"indexes.x()= "<<indexes.x()<<std::endl;
+            // std::cout<<"m_particle_positions[i][j].y()= "<<m_particle_positions[i][j].y()<<std::endl;
+            // std::cout<<"indexes.y()= "<<indexes.y()<<std::endl;    
         }
     } 
+
+    int numnewhits = (int)newhits.size();
+    std::cout << "Num newhits: " << numnewhits << std::endl;
 
     //std::cout << "NN inputs:" << inputs << std::endl;
 
@@ -1167,12 +1173,6 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     double damping_R = m_damping_R;
 
     
-
-    
-    
-
-    int numnewhits = (int)newhits.size();
-    std::cout << numnewhits << std::endl;
 
     // Process only hit nodes
     //for (auto& h : hits) {
