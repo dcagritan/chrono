@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
     // --------------------
     // Create driver system
     // --------------------
-    MyDriver driver(*vehicle, 0.2);
+    MyDriver driver(*vehicle, 1.);
     driver.Initialize();
 
     // -----------------
