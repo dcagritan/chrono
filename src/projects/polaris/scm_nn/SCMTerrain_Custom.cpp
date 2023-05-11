@@ -39,6 +39,8 @@
 #include "chrono_thirdparty/stb/stb.h"
 
 
+using std::cout;
+using std::endl;
 
 namespace chrono {
 namespace vehicle {
@@ -974,6 +976,15 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     int numnewhits = (int)newhits.size();
     std::cout << "Num newhits: " << numnewhits << std::endl;
 
+    // Sequential insertion in global hits
+    for (auto& h : newhits) {
+        // If this is the first hit from this node, initialize the node record
+        if (m_grid_map.find(h.first) == m_grid_map.end()) {
+            double z = GetInitHeight(h.first);
+            m_grid_map.insert(std::make_pair(h.first, NodeRecord(z, z, GetInitNormal(h.first))));
+        }
+    }
+
     //std::cout << "NN inputs:" << inputs << std::endl;
 
 
@@ -1172,7 +1183,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     double elastic_K = m_elastic_K;
     double damping_R = m_damping_R;
 
-    
+    cout << "funciona bien hasta aqui" << endl;
 
     // Process only hit nodes
     //for (auto& h : hits) {
