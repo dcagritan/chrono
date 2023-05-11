@@ -81,13 +81,13 @@ double terrainWidth = 4.0;    // size in Y direction
 // double terrainWidth = 16.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing
 
-double throttlemagnitude=0.7;
-double steeringmagnitude=0.6;
+double throttlemagnitude=0.;
+double steeringmagnitude=0.;
 bool heightmapterrain=true;
 
 // Initial vehicle position and orientation
 // Create vehicle
-ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.5), QUNIT);
+ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.1), QUNIT);
 
 // -----------------------------------------------------------------------------
 // Simulation parameters
