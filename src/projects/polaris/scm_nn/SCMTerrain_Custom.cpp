@@ -1072,10 +1072,10 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         for (int t_num = 0; t_num < nthreads; t_num++) {
             for (auto& h : t_hits[t_num]) {
                 // If this is the first hit from this node, initialize the node record
-                if (m_grid_map.find(h.first) == m_grid_map.end()) {
-                    double z = GetInitHeight(h.first);
-                    m_grid_map.insert(std::make_pair(h.first, NodeRecord(z, z, GetInitNormal(h.first))));
-                }
+                // if (m_grid_map.find(h.first) == m_grid_map.end()) {
+                //     double z = GetInitHeight(h.first);
+                //     m_grid_map.insert(std::make_pair(h.first, NodeRecord(z, z, GetInitNormal(h.first))));
+                // }
                 ////hits.insert(h);
             }
 
@@ -1183,7 +1183,8 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     double elastic_K = m_elastic_K;
     double damping_R = m_damping_R;
 
-    cout << "funciona bien hasta aqui" << endl;
+    
+    int newhit_ind = 0;
 
     // Process only hit nodes
     //for (auto& h : hits) {
@@ -1192,6 +1193,8 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         auto& nr = m_grid_map.at(ij);      // node record
         const double& ca = nr.normal.z();  // cosine of angle between local normal and SCM plane vertical
+
+        //cout << ij.x() << " " << ij.y() << endl;
 
         ChContactable* contactable = h.second.contactable;
         const ChVector<>& hit_point_abs = h.second.abs_point;
@@ -1216,6 +1219,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         if (nr.sigma < 0) {
             nr.sigma = 0;
             continue;
+            
         }
 
         // Mark current node as modified
@@ -1239,10 +1243,14 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         // Accumulate shear for Janosi-Hanamoto (along local tangent direction)
         nr.kshear += Vdot(speed_abs, -T) * GetSystem()->GetStep();
 
+        //cout << "hasta aqui" << endl;
+
         // Plastic correction (along local normal direction)
         if (nr.sigma > nr.sigma_yield) {
             // Bekker formula
-            nr.sigma = (contact_patches[patch_id].oob * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
+            // TO DO Pablo corregir esto!!!!
+            //nr.sigma = (contact_patches[patch_id].oob * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
+            nr.sigma = (1. * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
             nr.sigma_yield = nr.sigma;
             double old_sinkage_plastic = nr.sinkage_plastic;
             nr.sinkage_plastic = nr.sinkage - nr.sigma / elastic_K;
@@ -1323,6 +1331,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
         nr.level = nr.level_initial - nr.sinkage / ca;
 
     }  // end loop on ray hits
+
 
     m_timer_contact_forces.stop();
 
