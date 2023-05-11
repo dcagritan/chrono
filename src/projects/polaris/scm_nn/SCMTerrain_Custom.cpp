@@ -379,8 +379,11 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
     // Set default size and offset of sampling box
     double tire_radius = m_wheels[0]->GetTire()->GetRadius();
     double tire_width = m_wheels[0]->GetTire()->GetWidth();
-    m_box_size.x() = 2.0 * std::sqrt(3.0) * tire_radius;
-    m_box_size.y() = 1.5 * tire_width;
+    // m_box_size.x() = 2.0 * std::sqrt(3.0) * tire_radius;
+    // m_box_size.y() = 1.5 * tire_width;
+    // m_box_size.z() = 2.2;
+    m_box_size.x() = 2.0;
+    m_box_size.y() = 1.5;
     m_box_size.z() = 2.2;
     m_box_offset = ChVector<>(0.0, 0.0, 0.0);
 
@@ -929,7 +932,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         // Add this wheel's tuple to NN model inputs
         inputs.push_back(torch::ivalue::Tuple::create(tuple));
-        std::cout << " num. particles: " << m_num_particles[i] << std::endl;
+        //std::cout << " num. particles: " << m_num_particles[i] << std::endl;
     }
 
     // Verbose flag
@@ -967,8 +970,8 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
        
        auto p_current = m_wheel_particles[i][j]->GetPos();
        auto p_new = m_particle_positions[i][j];
-       std::cout<<"p_current= "<<p_current<<std::endl;
-       std::cout<<"p_new= "<<p_new<<std::endl;
+    //    std::cout<<"p_current= "<<p_current<<std::endl;
+    //    std::cout<<"p_new= "<<p_new<<std::endl;
        m_wheel_particles[i][j]->SetPos(p_new); 
 
 
@@ -1256,7 +1259,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
             // Bekker formula
             // TO DO Pablo corregir esto!!!!
             //nr.sigma = (contact_patches[patch_id].oob * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
-            nr.sigma = (1. * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
+            nr.sigma = (5. * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
             nr.sigma_yield = nr.sigma;
             double old_sinkage_plastic = nr.sinkage_plastic;
             nr.sinkage_plastic = nr.sinkage - nr.sigma / elastic_K;
