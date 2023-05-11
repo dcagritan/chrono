@@ -964,6 +964,12 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         HitRecord record = {w_contactable[i], m_particle_positions[i][j], i};
         newhits.insert(std::make_pair(indexes, record));
+       
+       auto p_current = m_wheel_particles[i][j]->GetPos();
+       auto p_new = m_particle_positions[i][j];
+       std::cout<<"p_current= "<<p_current<<std::endl;
+       std::cout<<"p_new= "<<p_new<<std::endl;
+       m_wheel_particles[i][j]->SetPos(p_new); 
 
 
             // std::cout<<"m_particle_positions[i][j].x()= "<<m_particle_positions[i][j].x()<<std::endl;
