@@ -81,8 +81,8 @@ double terrainWidth = 4.0;    // size in Y direction
 // double terrainWidth = 16.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing
 
-double throttlemagnitude=0.;
-double steeringmagnitude=0.;
+double throttlemagnitude=0.7;
+double steeringmagnitude=0.6;
 bool heightmapterrain=true;
 
 // Initial vehicle position and orientation
@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
     // --------------------
     // Create driver system
     // --------------------
-    MyDriver driver(*vehicle, 1.);
+    MyDriver driver(*vehicle, 20.0);
     driver.Initialize();
 
     // -----------------
