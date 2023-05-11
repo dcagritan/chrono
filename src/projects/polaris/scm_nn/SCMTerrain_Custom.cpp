@@ -1259,7 +1259,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
             // Bekker formula
             // TO DO Pablo corregir esto!!!!
             //nr.sigma = (contact_patches[patch_id].oob * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
-            nr.sigma = (1. * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
+            nr.sigma = (5. * Bekker_Kc + Bekker_Kphi) * pow(nr.sinkage, Bekker_n);
             nr.sigma_yield = nr.sigma;
             double old_sinkage_plastic = nr.sinkage_plastic;
             nr.sinkage_plastic = nr.sinkage - nr.sigma / elastic_K;
