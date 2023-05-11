@@ -480,7 +480,7 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
       }
       else{
         //TODO DENIZ switch back to Pablo's flag method once we have the working version. Done this way to minimize the code
-        ComputeInternalForcesNN();
+        ComputeInternalForces();
       }
         ChLoadContainer::Update(ChTime, true);
     }
@@ -507,6 +507,8 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     // This is called automatically during timestepping (only at the beginning of each step).
 
     void ComputeInternalForcesNN();
+
+    void ComputeInternalForces();
 
     // Override the ChLoadContainer method for computing the generalized force F term:
     virtual void IntLoadResidual_F(const unsigned int off,  // offset in R residual
