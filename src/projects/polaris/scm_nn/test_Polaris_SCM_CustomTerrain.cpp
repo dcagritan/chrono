@@ -77,8 +77,8 @@ bool GetProblemSpecs(int argc,
 // double terrainLength = 8.0;  // size in X direction
 // double terrainLength = 16.0;  // size in X direction
 // double terrainWidth = 4.0;    // size in Y direction
-double terrainLength = 4.0;  // size in X direction
-double terrainWidth = 2.0;    // size in Y direction
+double terrainLength = 8.0;  // size in X direction
+double terrainWidth = 4.0;    // size in Y direction
 // double terrainLength = 32.0;  // size in X direction
 // double terrainWidth = 16.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing

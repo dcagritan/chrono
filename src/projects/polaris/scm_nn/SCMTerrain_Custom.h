@@ -344,6 +344,8 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     // Pablo
     void Create(const std::string& terrain_dir, bool vis = true);
 
+    void Modify();
+
   private:
 
     // Pablo
@@ -605,9 +607,11 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     std::array<std::vector<ChVector<>>, 4> m_particle_positions;
     std::array<TerrainForce, 4> m_tire_forces;
     bool m_verbose;
+    bool m_firstcalltomodify=true;
 
     // Pablo, hardcoded
     std::string m_terrain_dir = "terrain/scm/";
+
 
     
     

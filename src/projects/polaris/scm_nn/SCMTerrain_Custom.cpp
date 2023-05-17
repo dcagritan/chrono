@@ -381,6 +381,19 @@ void SCMLoader_Custom::EnterVehicle(std::shared_ptr<WheeledVehicle> vehicle) {
     m_wheels[1] = m_vehicle->GetWheel(0, RIGHT);
     m_wheels[2] = m_vehicle->GetWheel(1, LEFT);
     m_wheels[3] = m_vehicle->GetWheel(1, RIGHT);
+
+        // Set default size and offset of sampling box
+    double tire_radius = m_wheels[0]->GetTire()->GetRadius();
+    double tire_width = m_wheels[0]->GetTire()->GetWidth();
+    m_box_size.x() = 0.5;
+    m_box_size.y() = 0.5;
+    m_box_size.z() = 2.2;
+    m_box_offset = ChVector<>(0.0, 0.0, 0.0);
+
+    // std::string NN_module_name = "wrapped_gnn_onlydef.pt";
+    std::string NN_module_name = "wrapped_gnn_onlydef_stepnew.pt";
+    Load(vehicle::GetDataFile(m_terrain_dir + NN_module_name));
+    Create(m_terrain_dir,true);
 }
 
 // Initialize the terrain as a flat grid
@@ -393,18 +406,6 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
     m_delta = sizeX / (2 * m_nx);   // grid spacing
     m_area = std::pow(m_delta, 2);  // area of a cell
 
-    // Set default size and offset of sampling box
-    double tire_radius = m_wheels[0]->GetTire()->GetRadius();
-    double tire_width = m_wheels[0]->GetTire()->GetWidth();
-    // m_box_size.x() = 2.0 * std::sqrt(3.0) * tire_radius;
-    // m_box_size.y() = 1.5 * tire_width;
-    // m_box_size.z() = 2.2;
-    m_box_size.x() = 0.5;
-    m_box_size.y() = 0.5;
-    m_box_size.z() = 2.2;
-    m_box_offset = ChVector<>(0.0, 0.0, 0.0);
-
-
     //m_use_nn = 0;
     m_use_nn = 1;
     if (m_use_nn){
@@ -414,9 +415,6 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
         std::cout << "Using standard SCM" << std::endl;
     }
 
-    std::string NN_module_name = "wrapped_gnn_onlydef.pt";
-    Load(vehicle::GetDataFile(m_terrain_dir + NN_module_name));
-    // Create(m_terrain_dir,false);
 
     // Return now if no visualization
     if (!m_trimesh_shape)
@@ -907,6 +905,8 @@ void SCMLoader_Custom::ComputeInternalForces() {
         nr.erosion = false;
         nr.hit_level = 1e9;
 
+        std::cout<<"Before if (m_trimesh_shape && CheckMeshBounds(ij))"<<std::endl;
+
         // Update visualization (only color changes relevant here)
         if (m_trimesh_shape && CheckMeshBounds(ij)) {
             int iv = GetMeshVertexIndex(ij);          // mesh vertex index
@@ -915,8 +915,9 @@ void SCMLoader_Custom::ComputeInternalForces() {
             modified_vertices.push_back(iv);
         }
     }
-
+    std::cout<<"Before m_modified_nodes.clear();"<<std::endl;
     m_modified_nodes.clear();
+    std::cout<<"After m_modified_nodes.clear();"<<std::endl;
 
     // Reset timers
     m_timer_moving_patches.reset();
@@ -1519,14 +1520,10 @@ void SCMLoader_Custom::ComputeInternalForces() {
 
 
 void SCMLoader_Custom::ComputeInternalForcesNN() {
-    std::cout<<"Inside ComputeInternalForces()"<<std::endl;
     // Initialize list of modified visualization mesh vertices (use any externally modified vertices)
-    std::cout<<"m_external_modified_vertices.size()= "<<m_external_modified_vertices.size()<<std::endl;
     std::vector<int> modified_vertices = m_external_modified_vertices;
-    std::cout<<"modified_vertices.size()= "<<modified_vertices.size()<<std::endl;
     m_external_modified_vertices.clear();
 
-    std::cout<<"m_modified_nodes.size()= "<<m_modified_nodes.size()<<std::endl;
     // Reset quantities at grid nodes modified over previous step
     // (required for bulldozing effects and for proper visualization coloring)
     for (const auto& ij : m_modified_nodes) {
@@ -1547,7 +1544,6 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
             modified_vertices.push_back(iv);
         }
     }
-
     m_modified_nodes.clear();
 
     // Reset timers
@@ -1739,8 +1735,11 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
     //START NN PART
     // std::cout<<"Before Create"<<std::endl;
-    Create(m_terrain_dir,true);
+    // Create(m_terrain_dir,true);
     // std::cout<<"After Create"<<std::endl;
+    // std::cout<<"Before Modify();"<<std::endl;
+    Modify();
+    // std::cout<<"After Modify();"<<std::endl;
 
     struct in_box {
     in_box(const ChVector<>& box_pos, const ChMatrix33<>& box_rot, const ChVector<>& box_size)
@@ -1787,7 +1786,6 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
         w_contactable[i] = m_wheels[i]->GetSpindle()->GetCollisionModel()->GetContactable();
 
-        // std::cout << w_contactable[i] << ", " << w_pos[i] << ", " << w_rot[i] << w_linvel[i] << std::endl;
 
         auto tire_radius = m_wheels[i]->GetTire()->GetRadius();
 
@@ -1900,7 +1898,6 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     //    }
         }
     } 
-
     int numhits = (int)hits.size();
     // std::cout << "numhits: " << numhits << std::endl;
 
@@ -2325,6 +2322,7 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
     }
 
     m_timer_visualization.stop();
+    
 }
 
 
@@ -2503,10 +2501,22 @@ bool SCMLoader_Custom::Load(const std::string& pt_file) {
 void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
     m_particles = chrono_types::make_shared<ChParticleCloud>();
     m_particles->SetFixed(true);
-    int num_particles = 0;
+    m_particles->SetCollide(false);
 
-    // std::cout<<"SCMLoader_Custom::Create"<<std::endl;
-    // std::cout<<"m_patches.size()= "<<m_patches.size()<<std::endl;
+    // m_sys->Add(m_particles);
+
+    if (vis) {
+        auto sph = chrono_types::make_shared<ChSphereShape>();
+        sph->GetSphereGeometry().rad = 0.01;
+        m_particles->AddVisualShape(sph);
+    }
+}
+
+// Pablo
+void SCMLoader_Custom::Modify() {
+    m_particles->ResizeNparticles(0);
+    int num_particles = 0;
+    
     for (auto& p : m_patches) {
         for (int k = 0; k < p.m_range.size(); k++) {
             ChVector2<int> ij = p.m_range[k];
@@ -2517,16 +2527,7 @@ void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
             m_particles->AddParticle(ChCoordsys<>(ChVector<>(x, y, z)));
             num_particles++;
         }
-        }
-
-
-    // m_sys->Add(m_particles);
-
-    if (vis) {
-        auto sph = chrono_types::make_shared<ChSphereShape>();
-        sph->GetSphereGeometry().rad = 0.01;
-        m_particles->AddVisualShape(sph);
-    }
+        } 
 
     // Initial size of sampling box particle vectors
     for (int i = 0; i < 4; i++)
