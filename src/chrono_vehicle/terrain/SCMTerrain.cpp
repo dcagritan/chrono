@@ -1129,7 +1129,8 @@ void SCMLoader::ComputeInternalForces() {
 
     // Map-reduce approach (to eliminate critical section)
 
-    const int nthreads = GetSystem()->GetNumThreadsChrono();
+    // const int nthreads = GetSystem()->GetNumThreadsChrono();
+    const int nthreads = 1;
     std::vector<std::unordered_map<ChVector2<int>, HitRecord, CoordHash>> t_hits(nthreads);
 
     // Loop through all moving patches (user-defined or default one)
@@ -1149,6 +1150,7 @@ void SCMLoader::ComputeInternalForces() {
             double z = GetHeight(ij);
 
             ChVector<> vertex_abs = m_plane.TransformPointLocalToParent(ChVector<>(x, y, z));
+
 
             // Create ray at current grid location
             collision::ChCollisionSystem::ChRayhitResult mrayhit_result;

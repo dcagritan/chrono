@@ -75,8 +75,10 @@ bool GetProblemSpecs(int argc,
 // double terrainLength = 16.0;  // size in X direction
 // double terrainWidth = 8.0;    // size in Y direction
 // double terrainLength = 8.0;  // size in X direction
-double terrainLength = 16.0;  // size in X direction
-double terrainWidth = 4.0;    // size in Y direction
+// double terrainLength = 16.0;  // size in X direction
+// double terrainWidth = 4.0;    // size in Y direction
+double terrainLength = 4.0;  // size in X direction
+double terrainWidth = 2.0;    // size in Y direction
 // double terrainLength = 32.0;  // size in X direction
 // double terrainWidth = 16.0;    // size in Y direction
 double delta = 0.05;          // SCM grid spacing
@@ -156,7 +158,7 @@ class MyDriver : public ChDriver {
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
     std::string terrain_dir;
-    double tend = 0.5;
+    double tend = 20.5;
     if (!GetProblemSpecs(argc, argv,                                 
                          terrain_dir, tend, throttlemagnitude, steeringmagnitude, render_step_size, heightmapterrain)) 
     {
@@ -191,7 +193,8 @@ int main(int argc, char* argv[]) {
     // Create the terrain
     // ------------------
     // SCMDeformableTerrain terrain(system);
-    SCMTerrain_Custom terrain(&sys, vehicle, false);
+    SCMTerrain_Custom terrain(&sys, true);
+    terrain.EnterVehicle(vehicle);
     terrain.SetSoilParameters(2e6,   // Bekker Kphi
                                 0,     // Bekker Kc
                                 1.1,   // Bekker n exponent

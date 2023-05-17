@@ -605,7 +605,7 @@ void ChAssembly::Setup() {
             item->SetOffset_x(this->offset_x + ncoords);
             item->SetOffset_w(this->offset_w + ncoords_w);
             item->SetOffset_L(this->offset_L + ndoc_w);
-
+            
             item->Setup();
 
             ncoords += item->GetDOF();

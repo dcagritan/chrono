@@ -97,11 +97,12 @@ class CH_VEHICLE_API SCMTerrain_Custom : public SCMTerrain {
     /// Construct a default SCM deformable terrain.
     /// The user is responsible for calling various Set methods before Initialize.
     SCMTerrain_Custom(ChSystem* system,               ///< [in] containing multibody system
-               std::shared_ptr<chrono::vehicle::WheeledVehicle> vehicle,
                bool visualization_mesh = true  ///< [in] enable/disable visualization asset    
     );
 
     ~SCMTerrain_Custom() {}
+
+    void EnterVehicle(std::shared_ptr<WheeledVehicle> vehicle);
 
     /// Set the plane reference.
     /// By default, the reference plane is horizontal with Z up (ISO vehicle reference frame).
@@ -238,33 +239,6 @@ class CH_VEHICLE_API SCMTerrain_Custom : public SCMTerrain {
                     double delta   ///< [in] grid spacing (may be slightly decreased)
     );
 
-    /// Initialize the terrain system (height map).
-    /// The initial undeformed terrain profile is provided via the specified image file as a height map.
-    /// The terrain patch is scaled in the horizontal plane of the SCM frame to sizeX x sizeY, while the initial height
-    /// is scaled between hMin and hMax (with the former corresponding to a pure balck pixel and the latter to a pure
-    /// white pixel).  The SCM grid resolution is specified through 'delta' and initial heights at grid points are
-    /// obtained through interpolation (outside the terrain patch, the SCM node height is initialized to the height of
-    /// the closest image pixel). For visualization purposes, a triangular mesh is also generated from the provided
-    /// image file.
-    void Initialize(const std::string& heightmap_file,  ///< [in] filename for the height map (image file)
-                    double sizeX,                       ///< [in] terrain dimension in the X direction
-                    double sizeY,                       ///< [in] terrain dimension in the Y direction
-                    double hMin,                        ///< [in] minimum height (black level)
-                    double hMax,                        ///< [in] maximum height (white level)
-                    double delta                        ///< [in] grid spacing (may be slightly decreased)
-    );
-
-    /// Initialize the terrain system (mesh).
-    /// The initial undeformed terrain profile is provided via the specified Wavefront OBJ mesh file.
-    /// The dimensions of the terrain patch in the horizontal plane of the SCM frame is set to the range of the x and y
-    /// mesh vertex coordinates, respectively.  The SCM grid resolution is specified through 'delta' and initial heights
-    /// at grid points are obtained through linear interpolation (outside the mesh footprint, the height of a grid node
-    /// is set to the height of the closest point on the mesh).  A visualization mesh is created from the original mesh
-    /// resampled at the grid node points.
-    void Initialize(const std::string& mesh_file,  ///< [in] filename for the height map (image file)
-                    double delta                   ///< [in] grid spacing (may be slightly decreased)
-    );
-
      /// Node height level at a given grid location.
     typedef std::pair<ChVector2<int>, double> NodeLevel;
 
@@ -338,7 +312,7 @@ class CH_VEHICLE_API SCMContactableData_Custom {
 /// Underlying implementation of the Soil Contact Model.
 class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
   public:
-    SCMLoader_Custom(ChSystem* system, std::shared_ptr<WheeledVehicle> vehicle, bool visualization_mesh);
+    SCMLoader_Custom(ChSystem* system, bool visualization_mesh);
     ~SCMLoader_Custom() {}
 
     /// Initialize the terrain system (flat).
@@ -347,6 +321,8 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
                     double hsizeY,  ///< [in] terrain dimension in the Y direction
                     double delta    ///< [in] grid spacing (may be slightly decreased)
     );
+
+    void EnterVehicle(std::shared_ptr<WheeledVehicle> vehicle);
 
     // /// Initialize the terrain system (height map).
     // /// The initial undeformed mesh is provided via the specified image file as a height map.
@@ -433,6 +409,8 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
         std::size_t operator()(const ChVector2<int>& p) const { return p.x() * 31 + p.y(); }
     };
 
+    // Create visualization mesh
+    void CreateVisualizationMesh(double sizeX, double sizeY);
 
     // Get the initial undeformed terrain height (relative to the SCM plane) at the specified grid node.
     double GetInitHeight(const ChVector2<int>& loc) const;
@@ -508,7 +486,10 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
 
     void ComputeInternalForcesNN();
 
+    void ComputeInternalForcesNNN();
+
     void ComputeInternalForces();
+
 
     // Override the ChLoadContainer method for computing the generalized force F term:
     virtual void IntLoadResidual_F(const unsigned int off,  // offset in R residual
@@ -604,6 +585,7 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     ChTimer m_timer_bulldozing_erosion;
     ChTimer m_timer_visualization;
     int m_num_ray_casts;
+    int m_num_ray_oldhits;
     int m_num_ray_hits;
     int m_num_contact_patches;
     int m_num_erosion_nodes;
