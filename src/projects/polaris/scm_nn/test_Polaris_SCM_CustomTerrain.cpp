@@ -77,15 +77,19 @@ bool GetProblemSpecs(int argc,
 // double terrainLength = 8.0;  // size in X direction
 // double terrainLength = 16.0;  // size in X direction
 // double terrainWidth = 4.0;    // size in Y direction
-double terrainLength = 8.0;  // size in X direction
-double terrainWidth = 4.0;    // size in Y direction
 // double terrainLength = 32.0;  // size in X direction
 // double terrainWidth = 16.0;    // size in Y direction
+// double terrainLength = 8.0;  // size in X direction
+// double terrainWidth = 4.0;    // size in Y direction
+double terrainLength = 35.0;  // size in X direction
+double terrainWidth = 17.5;    // size in Y direction
+double maxheight = 1.5*35.0/40.0;
 double delta = 0.05;          // SCM grid spacing
 
 double throttlemagnitude=0.7;
 double steeringmagnitude=0.6;
 bool heightmapterrain=true;
+double initheight=0.1;
 
 // Initial vehicle position and orientation
 // Create vehicle
@@ -181,20 +185,17 @@ int main(int argc, char* argv[]) {
     const ChVector<> gravity(0, 0, -9.81);
     sys.Set_G_acc(gravity);
 
-    // --------------------
-    // Create the Polaris vehicle
-    // --------------------
-    cout << "Create vehicle..." << endl;
-    auto vehicle = CreateVehicle(sys, init_pos);
-    double x_max = (terrainLength/2.0 - 3.0);
-    double y_max = (terrainWidth/2.0 - 3.0);
+    
+
 
     // ------------------
     // Create the terrain
     // ------------------
     // SCMDeformableTerrain terrain(system);
     SCMTerrain_Custom terrain(&sys, true);
-    terrain.EnterVehicle(vehicle);
+
+    
+
     terrain.SetSoilParameters(2e6,   // Bekker Kphi
                                 0,     // Bekker Kc
                                 1.1,   // Bekker n exponent
@@ -224,7 +225,41 @@ int main(int argc, char* argv[]) {
     ////terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_PRESSURE_YELD, 0, 30000.2);
     terrain.SetPlotType(vehicle::SCMTerrain_Custom::PLOT_SINKAGE, 0, 0.1);
 
-    terrain.Initialize(terrainLength, terrainWidth, delta); 
+    if (heightmapterrain)
+    { 
+     terrain.Initialize(terrain_dir,  ///< [in] filename for the height map (image file)
+                    terrainLength ,                       ///< [in] terrain dimension in the X direction
+                    terrainWidth,                       ///< [in] terrain dimension in the Y direction
+                    0.0,                        ///< [in] minimum height (black level)
+                    maxheight,                        ///< [in] maximum height (white level)
+                    delta                        ///< [in] grid spacing (may be slightly decreased)
+     );        
+    }
+    else
+    {
+     terrain.Initialize(terrainLength, terrainWidth, delta);    
+    }
+
+    cout << "Create vehicle..." << endl;
+    // Initial vehicle position and orientation
+    //ChCoordsys<> init_pos(ChVector<>(1.3, 0, 0.1), QUNIT);
+
+    // First find height in the spawn point to ensure that the vehicle spawns above the floor
+    //double init_x = 4.-terrainLength/2.0;
+    double init_x = 0.;
+    ChVector<> initLoc0(init_x, 0, initheight);
+    double terrainheightspawn = terrain.GetHeight(initLoc0);
+    // cout << "Height terrain in spawn point: " << terrainheightspawn << endl;
+
+    ChVector<> initLoc(init_x, 0, initheight + terrainheightspawn);
+    ChQuaternion<> initRot(1, 0, 0, 0); // Same than QUNIT
+    ChCoordsys<> init_pos(initLoc, initRot);
+
+    cout << "Create vehicle..." << endl;
+    auto vehicle = CreateVehicle(sys, init_pos);
+    double x_max = (terrainLength/2.0 - 3.0);
+    double y_max = (terrainWidth/2.0 - 3.0);
+    terrain.EnterVehicle(vehicle);
 
 
     // std::string vertices_filename = out_dir +  "/vertices_" + std::to_string(0) + ".csv";

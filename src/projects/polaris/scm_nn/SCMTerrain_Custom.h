@@ -239,6 +239,22 @@ class CH_VEHICLE_API SCMTerrain_Custom : public SCMTerrain {
                     double delta   ///< [in] grid spacing (may be slightly decreased)
     );
 
+    /// Initialize the terrain system (height map).
+    /// The initial undeformed terrain profile is provided via the specified image file as a height map.
+    /// The terrain patch is scaled in the horizontal plane of the SCM frame to sizeX x sizeY, while the initial height
+    /// is scaled between hMin and hMax (with the former corresponding to a pure balck pixel and the latter to a pure
+    /// white pixel).  The SCM grid resolution is specified through 'delta' and initial heights at grid points are
+    /// obtained through interpolation (outside the terrain patch, the SCM node height is initialized to the height of
+    /// the closest image pixel). For visualization purposes, a triangular mesh is also generated from the provided
+    /// image file.
+    void Initialize(const std::string& heightmap_file,  ///< [in] filename for the height map (image file)
+                    double sizeX,                       ///< [in] terrain dimension in the X direction
+                    double sizeY,                       ///< [in] terrain dimension in the Y direction
+                    double hMin,                        ///< [in] minimum height (black level)
+                    double hMax,                        ///< [in] maximum height (white level)
+                    double delta                        ///< [in] grid spacing (may be slightly decreased)
+    );
+
      /// Node height level at a given grid location.
     typedef std::pair<ChVector2<int>, double> NodeLevel;
 
@@ -320,6 +336,16 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
     void Initialize(double hsizeX,  ///< [in] terrain dimension in the X direction
                     double hsizeY,  ///< [in] terrain dimension in the Y direction
                     double delta    ///< [in] grid spacing (may be slightly decreased)
+    );
+
+    /// Initialize the terrain system (height map).
+    /// The initial undeformed mesh is provided via the specified image file as a height map.
+    void Initialize(const std::string& heightmap_file,  ///< [in] filename for the height map (image file)
+                    double sizeX,                       ///< [in] terrain dimension in the X direction
+                    double sizeY,                       ///< [in] terrain dimension in the Y direction
+                    double hMin,                        ///< [in] minimum height (black level)
+                    double hMax,                        ///< [in] maximum height (white level)
+                    double delta                        ///< [in] grid spacing (may be slightly decreased)
     );
 
     void EnterVehicle(std::shared_ptr<WheeledVehicle> vehicle);
@@ -488,7 +514,6 @@ class CH_VEHICLE_API SCMLoader_Custom : public ChLoadContainer {
 
     void ComputeInternalForcesNN();
 
-    void ComputeInternalForcesNNN();
 
     void ComputeInternalForces();
 

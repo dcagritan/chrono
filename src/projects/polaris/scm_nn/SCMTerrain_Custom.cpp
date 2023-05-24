@@ -65,6 +65,16 @@ void SCMTerrain_Custom::EnterVehicle(std::shared_ptr<WheeledVehicle> vehicle) {
     m_loader->EnterVehicle(vehicle);
 }
 
+// Initialize the terrain from a specified height map.
+void SCMTerrain_Custom::Initialize(const std::string& heightmap_file,
+                                      double sizeX,
+                                      double sizeY,
+                                      double hMin,
+                                      double hMax,
+                                      double delta) {
+    m_loader->Initialize(heightmap_file, sizeX, sizeY, hMin, hMax, delta);
+}
+
 // Get the initial terrain normal at the point below the specified location.
 ChVector<> SCMTerrain_Custom::GetInitNormal(const ChVector<>& loc) const {
     return m_loader->GetInitNormal(loc);
@@ -385,13 +395,14 @@ void SCMLoader_Custom::EnterVehicle(std::shared_ptr<WheeledVehicle> vehicle) {
         // Set default size and offset of sampling box
     double tire_radius = m_wheels[0]->GetTire()->GetRadius();
     double tire_width = m_wheels[0]->GetTire()->GetWidth();
-    m_box_size.x() = 0.5;
-    m_box_size.y() = 0.5;
+    m_box_size.x() = 0.6;
+    m_box_size.y() = 0.6;
     m_box_size.z() = 2.2;
     m_box_offset = ChVector<>(0.0, 0.0, 0.0);
 
     // std::string NN_module_name = "wrapped_gnn_onlydef.pt";
-    std::string NN_module_name = "wrapped_gnn_onlydef_stepnew.pt";
+    // std::string NN_module_name = "wrapped_gnn_onlydef_stepnew.pt";
+    std::string NN_module_name = "wrapped_gnn_onlydef.pt";
     Load(vehicle::GetDataFile(m_terrain_dir + NN_module_name));
     Create(m_terrain_dir,true);
 }
@@ -415,6 +426,93 @@ void SCMLoader_Custom::Initialize(double sizeX, double sizeY, double delta) {
         std::cout << "Using standard SCM" << std::endl;
     }
 
+
+    // Return now if no visualization
+    if (!m_trimesh_shape)
+        return;
+
+    CreateVisualizationMesh(sizeX, sizeY);
+    this->AddVisualShape(m_trimesh_shape);
+}
+
+// Initialize the terrain from a specified height map.
+void SCMLoader_Custom::Initialize(const std::string& heightmap_file,
+                                   double sizeX,
+                                   double sizeY,
+                                   double hMin,
+                                   double hMax,
+                                   double delta) {
+    m_type = PatchType::HEIGHT_MAP;
+
+    m_use_nn = 1;
+    if (m_use_nn){
+        std::cout << "Using NN" << std::endl;
+    }
+    else{
+        std::cout << "Using standard SCM" << std::endl;
+    }
+
+    // Read the image file (request only 1 channel) and extract number of pixels.
+    STB hmap;
+    if (!hmap.ReadFromFile(heightmap_file, 1)) {
+        std::cout << "STB error in reading height map file " << heightmap_file << std::endl;
+        throw ChException("Cannot read height map image file");
+    }
+    int nx_img = hmap.GetWidth();
+    int ny_img = hmap.GetHeight();
+
+    double dx_img = 1.0 / (nx_img - 1.0);
+    double dy_img = 1.0 / (ny_img - 1.0);
+
+    m_nx = static_cast<int>(std::ceil((sizeX / 2) / delta));  // half number of divisions in X direction
+    m_ny = static_cast<int>(std::ceil((sizeY / 2) / delta));  // number of divisions in Y direction
+    int nvx = 2 * m_nx + 1;                                   // number of grid vertices in X direction
+    int nvy = 2 * m_ny + 1;                                   // number of grid vertices in Y direction
+    m_delta = sizeX / (2.0 * m_nx);                           // grid spacing
+    m_area = std::pow(m_delta, 2);                            // area of a cell
+
+    double dx_grid = 0.5 / m_nx;
+    double dy_grid = 0.5 / m_ny;
+
+    // Resample image and calculate interpolated gray levels and then map it to the height range, with black
+    // corresponding to hMin and white corresponding to hMax. Entry (0,0) corresponds to bottom-left grid vertex.
+    // Note that pixels in the image start at top-left corner.
+    double h_scale = (hMax - hMin) / hmap.GetRange();
+    m_heights = ChMatrixDynamic<>(nvx, nvy);
+    for (int ix = 0; ix < nvx; ix++) {
+        double x = ix * dx_grid;                  // x location in image (in [0,1], 0 at left)
+        int jx1 = (int)std::floor(x / dx_img);    // Left pixel
+        int jx2 = (int)std::ceil(x / dx_img);     // Right pixel
+        double ax = (x - jx1 * dx_img) / dx_img;  // Scaled offset from left pixel
+
+        assert(ax < 1.0);
+        assert(jx1 < nx_img);
+        assert(jx2 < nx_img);
+        assert(jx1 <= jx2);
+
+        for (int iy = 0; iy < nvy; iy++) {
+            double y = (2 * m_ny - iy) * dy_grid;     // y location in image (in [0,1], 0 at top)
+            int jy1 = (int)std::floor(y / dy_img);    // Up pixel
+            int jy2 = (int)std::ceil(y / dy_img);     // Down pixel
+            double ay = (y - jy1 * dy_img) / dy_img;  // Scaled offset from down pixel
+
+            assert(ay < 1.0);
+            assert(jy1 < ny_img);
+            assert(jy2 < ny_img);
+            assert(jy1 <= jy2);
+
+            // Gray levels at left-up, left-down, right-up, and right-down pixels
+            double g11 = hmap.Gray(jx1, jy1);
+            double g12 = hmap.Gray(jx1, jy2);
+            double g21 = hmap.Gray(jx2, jy1);
+            double g22 = hmap.Gray(jx2, jy2);
+
+            // Bilinear interpolation (gray level)
+            m_heights(ix, iy) = (1 - ax) * (1 - ay) * g11 + (1 - ax) * ay * g12 + ax * (1 - ay) * g21 + ax * ay * g22;
+            // Map into height range
+            m_heights(ix, iy) = hMin + m_heights(ix, iy) * h_scale;
+        }
+    }
 
     // Return now if no visualization
     if (!m_trimesh_shape)
@@ -798,8 +896,12 @@ void SCMLoader_Custom::UpdateFixedPatch(MovingPatchInfo& p) {
     ChVector<> aabb_min;
     ChVector<> aabb_max;
     GetSystem()->GetCollisionSystem()->GetBoundingBox(aabb_min, aabb_max);
-    // std::cout<<"aabb_min= "<<aabb_min<<std::endl;
-    // std::cout<<"aabb_max= "<<aabb_max<<std::endl;
+    std::cout<<"aabb_min= "<<aabb_min<<std::endl;
+    std::cout<<"aabb_max= "<<aabb_max<<std::endl;
+    aabb_min.x()=-4.0;
+    aabb_min.y()=-2.0;
+    aabb_max.x()=4.0;
+    aabb_max.y()=2.0;
 
     // Loop over all corners of the AABB
     for (int j = 0; j < 8; j++) {
@@ -818,6 +920,10 @@ void SCMLoader_Custom::UpdateFixedPatch(MovingPatchInfo& p) {
         p_max.x() = std::max(p_max.x(), c_scm.x());
         p_max.y() = std::max(p_max.y(), c_scm.y());
     }
+    std::cout<<"p_min.x()= "<<p_min.x()<<std::endl;
+    std::cout<<"p_min.y()= "<<p_min.y()<<std::endl;
+    std::cout<<"p_max.x()= "<<p_max.x()<<std::endl;
+    std::cout<<"p_max.y()= "<<p_max.y()<<std::endl;
 
     // Find index ranges for grid vertices contained in the patch projection AABB
     int x_min = static_cast<int>(std::ceil(p_min.x() / m_delta));
@@ -1657,81 +1763,81 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
 
     
 
-    // // Map-reduce approach (to eliminate critical section)
+    // Map-reduce approach (to eliminate critical section)
 
-    // // const int nthreads = GetSystem()->GetNumThreadsChrono();
-    // const int nthreads = 1;
-    // std::vector<std::unordered_map<ChVector2<int>, HitRecord, CoordHash>> t_hits(nthreads);
+    // const int nthreads = GetSystem()->GetNumThreadsChrono();
+    const int nthreads = 1;
+    std::vector<std::unordered_map<ChVector2<int>, HitRecord, CoordHash>> t_hits(nthreads);
 
-    // // Loop through all moving patches (user-defined or default one)
-    // for (auto& p : m_patches) {
-    //     m_timer_ray_testing.start();
-    //     std::cout<<"p.m_range.size()= "<<p.m_range.size()<<std::endl;
-    //     // Loop through all vertices in the patch range
-    //     int num_ray_casts = 0;
-    // #pragma omp parallel for num_threads(nthreads) reduction(+ : num_ray_casts)
-    //     for (int k = 0; k < p.m_range.size(); k++) {
-    //         int t_num = ChOMP::GetThreadNum();
-    //         ChVector2<int> ij = p.m_range[k];
+    // Loop through all moving patches (user-defined or default one)
+    for (auto& p : m_patches) {
+        m_timer_ray_testing.start();
+        std::cout<<"p.m_range.size()= "<<p.m_range.size()<<std::endl;
+        // Loop through all vertices in the patch range
+        int num_ray_casts = 0;
+    #pragma omp parallel for num_threads(nthreads) reduction(+ : num_ray_casts)
+        for (int k = 0; k < p.m_range.size(); k++) {
+            int t_num = ChOMP::GetThreadNum();
+            ChVector2<int> ij = p.m_range[k];
 
-    //         // Move from (i, j) to (x, y, z) representation in the world frame
-    //         double x = ij.x() * m_delta;
-    //         double y = ij.y() * m_delta;
-    //         double z = GetHeight(ij);
+            // Move from (i, j) to (x, y, z) representation in the world frame
+            double x = ij.x() * m_delta;
+            double y = ij.y() * m_delta;
+            double z = GetHeight(ij);
 
-    //         // std::cout<<"ij.x()= "<<ij.x()<<std::endl;
-    //         // std::cout<<"ij.y()= "<<ij.y()<<std::endl;
-    //         // std::cout<<"x= "<<x<<std::endl;
-    //         // std::cout<<"y= "<<y<<std::endl;
-    //         // std::cout<<"z= "<<z<<std::endl;
+            // std::cout<<"ij.x()= "<<ij.x()<<std::endl;
+            // std::cout<<"ij.y()= "<<ij.y()<<std::endl;
+            // std::cout<<"x= "<<x<<std::endl;
+            // std::cout<<"y= "<<y<<std::endl;
+            // std::cout<<"z= "<<z<<std::endl;
 
-    //         ChVector<> vertex_abs = m_plane.TransformPointLocalToParent(ChVector<>(x, y, z));
+            ChVector<> vertex_abs = m_plane.TransformPointLocalToParent(ChVector<>(x, y, z));
 
-    //         // std::cout<<"ij.x()= "<<ij.x()<<std::endl;
-    //         // std::cout<<"ij.y()= "<<ij.y()<<std::endl;
-    //         // std::cout<<"vertex_abs.x()= "<<vertex_abs.x()<<std::endl;
-    //         // std::cout<<"vertex_abs.y()= "<<vertex_abs.y()<<std::endl;
-    //         // std::cout<<"vertex_abs.z()= "<<vertex_abs.z()<<std::endl;
+            // std::cout<<"ij.x()= "<<ij.x()<<std::endl;
+            // std::cout<<"ij.y()= "<<ij.y()<<std::endl;
+            // std::cout<<"vertex_abs.x()= "<<vertex_abs.x()<<std::endl;
+            // std::cout<<"vertex_abs.y()= "<<vertex_abs.y()<<std::endl;
+            // std::cout<<"vertex_abs.z()= "<<vertex_abs.z()<<std::endl;
 
-    //         // Create ray at current grid location
-    //         collision::ChCollisionSystem::ChRayhitResult mrayhit_result;
-    //         ChVector<> to = vertex_abs + m_Z * m_test_offset_up;
-    //         ChVector<> from = to - m_Z * m_test_offset_down;
+            // Create ray at current grid location
+            collision::ChCollisionSystem::ChRayhitResult mrayhit_result;
+            ChVector<> to = vertex_abs + m_Z * m_test_offset_up;
+            ChVector<> from = to - m_Z * m_test_offset_down;
 
-    //         // Ray-OBB test (quick rejection)
-    //         if (m_moving_patch && !RayOBBtest(p, from, m_Z))
-    //             continue;
+            // Ray-OBB test (quick rejection)
+            if (m_moving_patch && !RayOBBtest(p, from, m_Z))
+                continue;
 
-    //         // Cast ray into collision system
-    //         GetSystem()->GetCollisionSystem()->RayHit(from, to, mrayhit_result);
-    //         num_ray_casts++;
+            // Cast ray into collision system
+            GetSystem()->GetCollisionSystem()->RayHit(from, to, mrayhit_result);
+            num_ray_casts++;
 
-    //         if (mrayhit_result.hit) {
-    //             HitRecord record = {mrayhit_result.hitModel->GetContactable(), mrayhit_result.abs_hitPoint, -1};
-    //             t_hits[t_num].insert(std::make_pair(ij, record));
-    //         }
-    //     }
+            if (mrayhit_result.hit) {
+                HitRecord record = {mrayhit_result.hitModel->GetContactable(), mrayhit_result.abs_hitPoint, -1};
+                t_hits[t_num].insert(std::make_pair(ij, record));
+            }
+        }
 
-    //     m_timer_ray_testing.stop();
+        m_timer_ray_testing.stop();
 
-    //     m_num_ray_casts += num_ray_casts;
+        m_num_ray_casts += num_ray_casts;
 
-    //     // Sequential insertion in global hits
-    //     for (int t_num = 0; t_num < nthreads; t_num++) {
-    //         for (auto& h : t_hits[t_num]) {
-    //             // If this is the first hit from this node, initialize the node record
-    //             // if (m_grid_map.find(h.first) == m_grid_map.end()) {
-    //             //     double z = GetInitHeight(h.first);
-    //                 // m_grid_map.insert(std::make_pair(h.first, NodeRecord(z, z, GetInitNormal(h.first))));
-    //             // }
-    //             ////hits.insert(h);
-    //         }
+        // Sequential insertion in global hits
+        for (int t_num = 0; t_num < nthreads; t_num++) {
+            for (auto& h : t_hits[t_num]) {
+                // If this is the first hit from this node, initialize the node record
+                // if (m_grid_map.find(h.first) == m_grid_map.end()) {
+                //     double z = GetInitHeight(h.first);
+                    // m_grid_map.insert(std::make_pair(h.first, NodeRecord(z, z, GetInitNormal(h.first))));
+                // }
+                ////hits.insert(h);
+            }
 
-    //         oldhits.insert(t_hits[t_num].begin(), t_hits[t_num].end());
-    //         t_hits[t_num].clear();
-    //     }
-    //     m_num_ray_oldhits = (int)oldhits.size();
-    // }
+            oldhits.insert(t_hits[t_num].begin(), t_hits[t_num].end());
+            t_hits[t_num].clear();
+        }
+        m_num_ray_oldhits = (int)oldhits.size();
+    }
 
     //START NN PART
     // std::cout<<"Before Create"<<std::endl;
@@ -1819,7 +1925,10 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
             *part_pos_data++ = p.y();
             *part_pos_data++ = p.z();
             //TODO DENIZ calculate the displacement in the next line better
-            *part_pos_data++ = -p.z();
+            const ChVector<> loc(p.x(),p.y(),p.z());
+            const auto& initheight=GetInitHeight(loc);
+            std::cout<<"initheight= "<<initheight<<std::endl;
+            *part_pos_data++ = initheight-p.z();
 
             if (!w_contact[i] && (p - w_pos[i]).Length2() < tire_radius * tire_radius)
                 w_contact[i] = true;
@@ -1879,13 +1988,19 @@ void SCMLoader_Custom::ComputeInternalForcesNN() {
      m_particle_positions[i].resize(m_num_particles[i]);
      for (size_t j = 0; j < m_num_particles[i]; j++) {
        m_particle_positions[i][j] = ChVector<>(w_out[j][0].item<float>(), w_out[j][1].item<float>(), w_out[j][2].item<float>());
+       auto tire_radius = m_wheels[i]->GetTire()->GetRadius();
+       if ((m_particle_positions[i][j] - w_pos[i]).Length2() < tire_radius * tire_radius){
        
        ChVector2<int> indexes; 
        //     //TODO Deniz do this part in a better way   
        indexes.x() = static_cast<int>(std::round((m_particle_positions[i][j].x())/m_delta));
        indexes.y() = static_cast<int>(std::round((m_particle_positions[i][j].y())/m_delta));
+    //    if (!(oldhits.find(indexes) == oldhits.end()))
+    //    {
        HitRecord record = {w_contactable[i], m_particle_positions[i][j], -1};
        hits.insert(std::make_pair(indexes, record));
+       }
+    //    }
        
     //    if (!(oldhits.find(indexes) == oldhits.end()))
     //    {
@@ -2503,7 +2618,7 @@ void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
     m_particles->SetFixed(true);
     m_particles->SetCollide(false);
 
-    // m_sys->Add(m_particles);
+    m_sys->Add(m_particles);
 
     if (vis) {
         auto sph = chrono_types::make_shared<ChSphereShape>();
@@ -2514,6 +2629,7 @@ void SCMLoader_Custom::Create(const std::string& terrain_dir, bool vis) {
 
 // Pablo
 void SCMLoader_Custom::Modify() {
+    m_sys->Remove(m_particles);
     m_particles->ResizeNparticles(0);
     int num_particles = 0;
     
@@ -2527,7 +2643,15 @@ void SCMLoader_Custom::Modify() {
             m_particles->AddParticle(ChCoordsys<>(ChVector<>(x, y, z)));
             num_particles++;
         }
-        } 
+        }
+
+    m_sys->Add(m_particles);     
+
+        if (true) {
+        auto sph = chrono_types::make_shared<ChSphereShape>();
+        sph->GetSphereGeometry().rad = 0.01;
+        m_particles->AddVisualShape(sph);
+    }
 
     // Initial size of sampling box particle vectors
     for (int i = 0; i < 4; i++)
